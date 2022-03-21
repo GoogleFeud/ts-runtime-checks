@@ -1,0 +1,25 @@
+{
+  "name": "ts-runtime-checks",
+  "version": "0.1.0",
+  "description": "Typescript transformer which adds runtime checks.",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GoogleFeud/ts-runtime-checks.git"
+  },
+  "keywords": [
+    "typescript",
+    "typecheck",
+    "runtime",
+    "check"
+  ],
+  "author": "GoogleFeud",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/GoogleFeud/ts-runtime-checks/issues"
+  },
+  "homepage": "https://github.com/GoogleFeud/ts-runtime-checks#readme"
+}
