@@ -1,13 +1,16 @@
 import ts from "typescript";
 import { Transformer } from "./transformer";
 
-export default (program: ts.Program): ts.TransformerFactory<ts.Node> => () => {
-    const transformer = new Transformer(program);
+export default (program: ts.Program): ts.TransformerFactory<ts.Node> => ctx => {
+    const transformer = new Transformer(program, ctx);
     return firstNode => {
         return transformer.run(firstNode as ts.SourceFile);
     };
 };
 
-export type Assert<T> = T | T & { __marker: "assert" };
+//@ts-expect-error Unused ErrorType
+//eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type Assert<T, ErrorType = Error> = T | T & { __marker: "assert" };
+//@ts-expect-error Unused ReturnValue
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type OrReturn<T, _ReturnValue> = T | T & { __marker: "or-return" }; 
+export type OrReturn<T, ReturnValue> = T | T & { __marker: "or-return" }; 

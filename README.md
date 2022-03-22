@@ -1,6 +1,6 @@
 # ts-runtime-checks
 
-A typescript transformer which allows you to never worry about users of your library passing incorrect data! This transformer adds runtime checks so you **always** know the data you use 100% correct, without EVER seeing the validation code.
+A typescript transformer which allows you to never worry about users of your library passing incorrect data! This transformer adds runtime checks so you **always** know the data you use is 100% correct, without EVER seeing the validation code.
 
 Here's an example in functions:
 
@@ -37,8 +37,8 @@ Results in:
 
 ```ts
 let temp__ = { a: number };
-if (!("a" in temp__) || typeof temp__.a !== "string") throw new Error("`obj.a` needs to be of type `string`.");
-else if ("b" in temp__ && typeof typeof temp__.b !== "number") throw new Error("`obj.b` needs to be of type `number`.");
+if (!("a" in temp__) || typeof temp__.a !== "string") throw new Error("`a` needs to be of type `string`.");
+else if ("b" in temp__ && typeof typeof temp__.b !== "number") throw new Error("`b` needs to be of type `number`.");
 someFn(temp__);
 ```
 

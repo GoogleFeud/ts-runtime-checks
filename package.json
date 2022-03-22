@@ -4,7 +4,8 @@
   "description": "Typescript transformer which adds runtime checks.",
   "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "ttest": "tsc && cd ./test && ttsc"
   },
   "repository": {
     "type": "git",
@@ -26,6 +27,7 @@
     "@typescript-eslint/eslint-plugin": "^5.16.0",
     "@typescript-eslint/parser": "^5.16.0",
     "eslint": "^8.11.0",
+    "ttypescript": "^1.5.13",
     "typescript": "^4.6.2"
   }
 }
