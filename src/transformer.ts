@@ -1,5 +1,6 @@
 import ts from "typescript";
 import * as Block from "./block";
+import { MacroCallContext, MacroFn, Markers } from "./markers";
 
 export class Transformer {
     checker: ts.TypeChecker;
@@ -29,7 +30,7 @@ export class Transformer {
         if (ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isArrowFunction(node)) {
             if (!node.body) return node;
             const fnBody = Block.createBlock<ts.Statement>(body);
-            // TBD: Check if any of the markers are in the function parameters, and if so only do the following AND run the markers
+            for (const param of node.parameters) this.callMarkerFromParameterDecl(param, fnBody);
             if (ts.isBlock(node.body)) this.visitEach(node.body.statements, fnBody);
             else {
                 const exp = ts.visitNode(node.body, (node) => this.visitor(node, fnBody));
@@ -51,5 +52,18 @@ export class Transformer {
         }
         else return ts.visitEachChild(node, (node) => this.visitor(node, body), this.ctx);
     }
+
+    callMarkerFromParameterDecl(param: ts.ParameterDeclaration, block: Block.Block<unknown>) : void {
+        if (!param.type || !ts.isTypeReferenceNode(param.type)) return;
+        const symbol = this.checker.getTypeAtLocation(param.type).aliasSymbol;
+        if (!symbol || !Markers[symbol.name] || !symbol.declarations || !symbol.declarations[0]?.getSourceFile().fileName.includes("ts-runtime-checks")) return;
+        (Markers[symbol.name] as MacroFn)(this, {
+            block,
+            parameters: param.type.typeArguments ? param.type.typeArguments.map(t => this.checker.getTypeAtLocation(t)) : [],
+            ctx: MacroCallContext.Parameter,
+            exp: param.name
+        });
+    }
+
 
 }
