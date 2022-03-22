@@ -11,8 +11,8 @@ export function genIf(condition: ts.Expression, action: ts.Node | Array<ts.Node>
 /**
  * Compares the two expressions (strict equality).
  */
-export function genCmp(a: ts.Expression, b: ts.Expression) : ts.Expression {
-    return ts.factory.createBinaryExpression(a, ts.SyntaxKind.EqualsEqualsEqualsToken, b);
+export function genCmp(a: ts.Expression, b: ts.Expression, not = true) : ts.Expression {
+    return ts.factory.createBinaryExpression(a, not ? ts.SyntaxKind.ExclamationEqualsEqualsToken : ts.SyntaxKind.EqualsEqualsEqualsToken, b);
 }
 
 /**
@@ -21,32 +21,19 @@ export function genCmp(a: ts.Expression, b: ts.Expression) : ts.Expression {
  * typeof exp === "type"
  * ```
  */
-export function genTypeCmp(a: ts.Expression, type: string) : ts.Expression {
+export function genTypeCmp(a: ts.Expression, type: string, not = true) : ts.Expression {
     return ts.factory.createBinaryExpression(ts.factory.createTypeOfExpression(a), 
-        ts.SyntaxKind.EqualsEqualsEqualsToken, ts.factory.createStringLiteral(type));
+        not ? ts.SyntaxKind.ExclamationEqualsEqualsToken : ts.SyntaxKind.EqualsEqualsEqualsToken, ts.factory.createStringLiteral(type));
 }
 
-/**
- * Compares the type of the expression with `type` if the expression is not `undefined`:
- * 
- * ```ts
- * a !== undefined && typeof exp === "type"
- * ```
- * 
- * If `parent` and `name` are provided then it uses the `in` keyword to check if the expression is in the parent:
- * 
- * ```ts
- * "a" in exp && typeof exp.a === 'type"
- * ```
- */
-export function genOptionalTypeCmp(a: ts.Expression, type: string, parent?: ts.Expression, name?: ts.StringLiteral) : ts.Expression {
+export function genOptional(a: ts.Expression, b: ts.Expression, parent?: ts.Expression, name?: ts.StringLiteral) : ts.Expression {
     if (parent && name) return ts.factory.createLogicalAnd(
         ts.factory.createBinaryExpression(name, ts.SyntaxKind.InKeyword, parent),
-        genTypeCmp(a, type)
+        b
     );
     else return ts.factory.createLogicalAnd(
-        genCmp(a, ts.factory.createIdentifier("undefined")),
-        genTypeCmp(a, type)
+        genCmp(a, ts.factory.createIdentifier("undefined"), true),
+        b
     );
 }
 

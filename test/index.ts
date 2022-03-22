@@ -5,12 +5,10 @@ interface A {
     b: string
 }
 
-function a(a: Assert<A>) : () => void {
+class C {}
+
+function a(a?: Assert<123>) : () => void {
     return (() => {
-        if (a.a === 1) {
-            return a.a as number;
-        }
-        a.a as number;
-        return a.a as number;
+        return a;
     });
 }

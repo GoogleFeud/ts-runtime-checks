@@ -1,6 +1,7 @@
 import ts from "typescript";
 import { Block } from "./block";
 import { Transformer } from "./transformer";
+import { validate } from "./validation";
 
 export const enum MacroCallContext {
     As,
@@ -18,10 +19,13 @@ export interface MarkerCallData {
 export type MacroFn = (transformer: Transformer, data: MarkerCallData) => ts.Node|undefined;
 
 export const Markers: Record<string, MacroFn> = {
-    Assert: (trans, {ctx, exp, block, parameters}) => {
-        if (ctx === MacroCallContext.Parameter && parameters[0]) {
-            console.log(trans.checker.getPropertiesOfType(parameters[0]).map(sym => sym.name));
-            if (ts.isIdentifier(exp)) block.nodes.push(ts.factory.createExpressionStatement(exp));
+    Assert: (_trans, {ctx, exp, block, parameters, optional}) => {
+        if (!parameters[0]) return;
+        if (ctx === MacroCallContext.Parameter) {
+            if (ts.isIdentifier(exp)) {
+                const validator = validate(parameters[0], exp, optional);
+                if (validator) block.nodes.push(validator);
+            }
             return undefined;
         } else return undefined;
     }
