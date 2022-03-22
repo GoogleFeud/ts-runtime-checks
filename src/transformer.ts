@@ -1,23 +1,5 @@
 import ts from "typescript";
-
-export interface Block<T> {
-    nodes: Array<T>,
-    cache: Set<ts.Symbol>,
-    parent: Block<unknown> | undefined
-}
-
-function createBlock<T>(parent?: Block<unknown> | undefined) : Block<T> {
-    return { nodes: [], cache: new Set(), parent };
-}
-
-function isInCache(sym: ts.Symbol, block: Block<unknown>) : boolean {
-    let parent: Block<unknown> | undefined = block;
-    while (parent) {
-        if (parent.cache.has(sym)) return true;
-        parent = parent.parent;
-    }
-    return false;
-} 
+import * as Block from "./block";
 
 export class Transformer {
     checker: ts.TypeChecker;
@@ -33,7 +15,7 @@ export class Transformer {
         return ts.factory.updateSourceFile(node, children);
     }
 
-    private visitEach<T extends ts.Node>(nodes: ts.NodeArray<T> | Array<T>, block: Block<T> = createBlock()) : Array<T> {
+    private visitEach<T extends ts.Node>(nodes: ts.NodeArray<T> | Array<T>, block: Block.Block<T> = Block.createBlock()) : Array<T> {
         for (const statement of nodes) {
             const res = this.visitor(statement, block);
             if (!res) continue;
@@ -43,10 +25,10 @@ export class Transformer {
         return block.nodes;
     } 
 
-    visitor(node: ts.Node, body: Block<ts.Node>) : ts.VisitResult<ts.Node> {
+    visitor(node: ts.Node, body: Block.Block<ts.Node>) : ts.VisitResult<ts.Node> {
         if (ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isArrowFunction(node)) {
             if (!node.body) return node;
-            const fnBody = createBlock<ts.Statement>(body);
+            const fnBody = Block.createBlock<ts.Statement>(body);
             // TBD: Check if any of the markers are in the function parameters, and if so only do the following AND run the markers
             if (ts.isBlock(node.body)) this.visitEach(node.body.statements, fnBody);
             else {
@@ -59,13 +41,13 @@ export class Transformer {
         else if (ts.isAsExpression(node)) {
             const sym = this.checker.getSymbolAtLocation(node.expression);
             if (sym) {
-                if (isInCache(sym, body)) return node;
+                if (Block.isInCache(sym, body)) return node;
                 body.cache.add(sym);
             }
             // TBD: Check if the asserted value is a marker, if it is run it...
             return node;
         } else if (ts.isBlock(node)) {
-            return ts.factory.createBlock(this.visitEach(node.statements, createBlock(body)));
+            return ts.factory.createBlock(this.visitEach(node.statements, Block.createBlock(body)));
         }
         else return ts.visitEachChild(node, (node) => this.visitor(node, body), this.ctx);
     }
