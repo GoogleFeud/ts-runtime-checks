@@ -88,6 +88,14 @@ export function genNot(exp: ts.Expression) : ts.Expression {
     return factory.createPrefixUnaryExpression(ts.SyntaxKind.ExclamationToken, exp);
 }
 
+export function genAdd(a: ts.Expression, b: ts.Expression) {
+    return factory.createAdd(a, b);
+}
+
+export function genStr(str: string) {
+    return factory.createStringLiteral(str);
+}
+
 export function genStmt(exp: ts.Node) : ts.Statement {
     if (exp.kind > ts.SyntaxKind.EmptyStatement && exp.kind < ts.SyntaxKind.DebuggerStatement) return exp as ts.Statement;
     return factory.createExpressionStatement(exp as ts.Expression);
