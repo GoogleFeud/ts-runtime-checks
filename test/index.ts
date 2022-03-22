@@ -7,7 +7,7 @@ interface A {
 
 class C {}
 
-function a(a?: Assert<123>) : () => void {
+function a(a?: Assert<Array<Array<number>>, TypeError>, b?: Assert<string>) : () => void {
     return (() => {
         return a;
     });

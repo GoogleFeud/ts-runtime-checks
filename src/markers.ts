@@ -1,7 +1,7 @@
 import ts from "typescript";
 import { Block } from "./block";
 import { Transformer } from "./transformer";
-import { validate } from "./validation";
+import { validateType, ValidationContext } from "./validation";
 
 export const enum MacroCallContext {
     As,
@@ -13,18 +13,23 @@ export interface MarkerCallData {
     block: Block<unknown>,
     ctx: MacroCallContext,
     optional?: boolean,
-    exp: ts.BindingName
+    exp: ts.BindingName,
+    paramName: string
 }
 
 export type MacroFn = (transformer: Transformer, data: MarkerCallData) => ts.Node|undefined;
 
 export const Markers: Record<string, MacroFn> = {
-    Assert: (_trans, {ctx, exp, block, parameters, optional}) => {
+    Assert: (trans, {ctx, exp, block, parameters, optional, paramName}) => {
         if (!parameters[0]) return;
         if (ctx === MacroCallContext.Parameter) {
             if (ts.isIdentifier(exp)) {
-                const validator = validate(parameters[0], exp, optional);
-                if (validator) block.nodes.push(validator);
+                block.nodes.push(...validateType(parameters[0], exp, new ValidationContext({
+                    errorTypeName: parameters[1]?.symbol?.name,
+                    checker: trans.checker,
+                    depth: [],
+                    propName: paramName
+                }), optional));
             }
             return undefined;
         } else return undefined;

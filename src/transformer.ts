@@ -62,7 +62,8 @@ export class Transformer {
             parameters: param.type.typeArguments ? param.type.typeArguments.map(t => this.checker.getTypeAtLocation(t)) : [],
             ctx: MacroCallContext.Parameter,
             exp: param.name,
-            optional: Boolean(param.questionToken)
+            optional: Boolean(param.questionToken),
+            paramName: ts.isIdentifier(param.name) ? param.name.text : "__namedParameter"
         });
     }
 
