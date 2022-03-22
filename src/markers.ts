@@ -32,7 +32,7 @@ export const Markers: Record<string, MacroFn> = {
  * Throws a detailed error by using the `Error` constructor. You can speicfy a different class to use as the marker's
  * second parameter. 
  * 
- * This marker can be used in function parameters, the `as` expression.
+ * This marker can be used in function parameters and in the the `as` expression.
  * 
  * @example
  * ```ts
@@ -46,7 +46,7 @@ export const Markers: Record<string, MacroFn> = {
  * ```js
  * function test(a, b) {
  *    if (!a || typeof a !== "string") throw new Error("`a` must be of type `string`.");
- *    else if (b && typeof b !== "number") throw new Error("`b` must be of type `number`.");
+ *    else if (b && typeof b !== "number") throw new TypeError("`b` must be of type `number`.");
  *    // Your code
  * }
  * ```

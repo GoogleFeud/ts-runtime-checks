@@ -21,7 +21,7 @@ Generated javascript would look something like this:
 
 ```js
 function someFn(param) {
-    if (!("a" in param) || typeof param.a !== "string") throw new Error("`param.a` needs to be of type `string`.");
+    if (typeof param.a !== "string") throw new Error("`param.a` needs to be of type `string`.");
     else if ("b" in param && typeof typeof param.b !== "number") throw new Error("`param.b` needs to be of type `number`.");
     // Rest of your code...
 }
