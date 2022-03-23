@@ -1,11 +1,22 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts, { factory } from "typescript";
 
 
 export function genIf(condition: ts.Expression, action: ts.Node | Array<ts.Node>, otherwise?: ts.Node | Array<ts.Node>) : ts.IfStatement {
     return factory.createIfStatement(condition, 
-        Array.isArray(action) ? factory.createBlock(action.map(a => genStmt(a))) : genStmt(action),
-        otherwise && (Array.isArray(otherwise) ? factory.createBlock(otherwise.map(a => genStmt(a))) : genStmt(otherwise))
+        genStmt(action),
+        otherwise && genStmt(otherwise)
     );
+}
+
+function _genIfElseChain(ind: number, check: Array<[ts.Expression, Array<ts.Node>]>, last?: ts.Statement) : ts.IfStatement | undefined {
+    if (ind >= check.length) return;
+    return factory.createIfStatement(check[ind]![0], genStmt(check[ind]![1]), _genIfElseChain(ind + 1, check, last) || last);
+}
+
+export function genIfElseChain(checks: Array<[ts.Expression, Array<ts.Node>]>, last?: ts.Node | Array<ts.Node>) : ts.IfStatement {
+    const chain = _genIfElseChain(0, checks, last ? genStmt(last) : undefined)!;
+    return chain;
 }
 
 /**
@@ -38,6 +49,22 @@ export function genOptional(a: ts.Expression, b: ts.Expression, parent?: ts.Expr
         genCmp(a, UNDEFINED, true),
         b
     );
+}
+
+export function genBinaryChain(syntax: ts.BinaryOperator, exps: Array<ts.Expression>) : ts.Expression {
+    let start = factory.createBinaryExpression(exps[0] as ts.Expression, syntax, exps[1] as ts.Expression);
+    for (let i=2; i < exps.length; i++) {
+        start = factory.createBinaryExpression(start, syntax, exps[i] as ts.Expression);
+    }
+    return start;
+}
+
+export function genLogicalOR(...exps: Array<ts.Expression>) : ts.Expression {
+    return genBinaryChain(ts.SyntaxKind.BarBarToken, exps);
+}
+
+export function genLogicalAND(...exps: Array<ts.Expression>) : ts.Expression {
+    return genBinaryChain(ts.SyntaxKind.AmpersandAmpersandToken, exps);
 }
 
 export function genThrow(val: ts.Expression) : ts.Statement {
@@ -96,7 +123,8 @@ export function genStr(str: string) {
     return factory.createStringLiteral(str);
 }
 
-export function genStmt(exp: ts.Node) : ts.Statement {
+export function genStmt(exp: ts.Node | Array<ts.Node>) : ts.Statement {
+    if (Array.isArray(exp)) return factory.createBlock(exp.map(exp => genStmt(exp)));
     if (exp.kind > ts.SyntaxKind.EmptyStatement && exp.kind < ts.SyntaxKind.DebuggerStatement) return exp as ts.Statement;
     return factory.createExpressionStatement(exp as ts.Expression);
 }
@@ -106,6 +134,33 @@ export function genIdentifier(name: ts.Identifier | string, initializer?: ts.Exp
     return [factory.createVariableStatement(undefined, factory.createVariableDeclarationList([
         factory.createVariableDeclaration(ident, undefined, undefined, initializer),
     ], flag)), ident];
+}
+
+/**
+ * `a === b` -> `a !== b`
+ * `a > b` -> `a < b` (Works for < too)
+ * `!a` -> `a`
+ * Everything else: `!a`
+ */
+export function negate(exp: ts.Expression) : ts.Expression {
+    if (ts.isBinaryExpression(exp)) {
+        switch (exp.operatorToken.kind) {
+        case ts.SyntaxKind.EqualsEqualsEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.ExclamationEqualsEqualsToken, exp.right);
+        case ts.SyntaxKind.ExclamationEqualsEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.EqualsEqualsEqualsToken, exp.right);
+        case ts.SyntaxKind.GreaterThanToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanToken, exp.right);
+        case ts.SyntaxKind.LessThanToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanToken, exp.right);
+        case ts.SyntaxKind.GreaterThanEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanEqualsToken, exp.right);
+        case ts.SyntaxKind.LessThanEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanEqualsToken, exp.right);
+        }
+    }
+    else if (ts.isPrefixUnaryExpression(exp) && exp.operator === ts.SyntaxKind.ExclamationToken) return exp.operand;
+    return factory.createPrefixUnaryExpression(ts.SyntaxKind.ExclamationToken, exp);
 }
 
 export const UNDEFINED = factory.createIdentifier("undefined");

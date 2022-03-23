@@ -54,8 +54,8 @@ export const Markers: Record<string, MacroFn> = {
  * 
  * ```js
  * function test(a, b) {
- *    if (!a || typeof a !== "string") throw new Error("`a` must be of type `string`.");
- *    else if (b && typeof b !== "number") throw new TypeError("`b` must be of type `number`.");
+ *    if (typeof a !== "string") throw new Error("`a` must be of type `string`.");
+ *    else if (b !== undefined && typeof b !== "number") throw new TypeError("`b` must be of type `number`.");
  *    // Your code
  * }
  * ```
