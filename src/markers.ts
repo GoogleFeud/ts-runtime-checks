@@ -63,3 +63,10 @@ export const Markers: Record<string, MacroFn> = {
 //@ts-expect-error Unused ErrorType
 //eslint-disable-next-line @typescript-eslint/no-unused-vars
 export type Assert<T, ErrorType = Error> = T | T & { __marker: "assert" };
+
+/**
+ * Range utility type. Specifies the possible range of a number. 
+ */
+//@ts-expect-error Unused params
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type Range<min extends number, max extends number> = number & { __marker: "Range" }; 

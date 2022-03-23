@@ -1,4 +1,4 @@
-import { Assert } from "../dist/index";
+import { Assert, Range } from "../dist/index";
 
 interface A {
     a: number,
@@ -13,10 +13,12 @@ function a(arg: Assert<string | number | Array<string> | Array<number> | "abc" |
     });
 }
 
-//@ts-expect-error Tesitng
-a([[1, 2, 3]], [44, [1, 2, 3]]);
+
+function b(obj?: Assert<{a?: number, b: string, c?: Array<string>, d?: [string, number, boolean]}>, b: Assert<A>, c: Assert<Range<1, 10>>) : number {
+    return 1;
+}
 
 
-function b(obj: Assert<{a?: number, b: string, c?: Array<string>, d?: [string, number, boolean]}>, b: Assert<A>, c: boolean) : number {
+function c(c?: Assert<Range<1, 10>>) {
     return 1;
 }

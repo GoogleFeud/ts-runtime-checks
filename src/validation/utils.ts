@@ -124,6 +124,10 @@ export function genStr(str: string) {
     return factory.createStringLiteral(str);
 }
 
+export function genNum(num: number) {
+    return factory.createNumericLiteral(num);
+}
+
 export function genStmt(exp: ts.Node | Array<ts.Node>) : ts.Statement {
     if (Array.isArray(exp)) return factory.createBlock(exp.map(exp => genStmt(exp)));
     if (exp.kind > ts.SyntaxKind.EmptyStatement && exp.kind < ts.SyntaxKind.DebuggerStatement) return exp as ts.Statement;

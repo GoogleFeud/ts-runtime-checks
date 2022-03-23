@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { genCmp, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genStr, genTypeCmp } from "./utils";
-import { hasBit } from "../utils";
+import { genCmp, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genNum, genStr, genTypeCmp } from "./utils";
+import { getNumFromType, hasBit, isFromThisLib } from "../utils";
 import { ValidationContext } from "./context";
 
 export interface ValidatedType {
@@ -18,6 +18,7 @@ export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Express
     else if (hasBit(t, TypeFlags.Number)) return genTypeCmp(target, "number");
     else if (hasBit(t, TypeFlags.Boolean)) return genTypeCmp(target, "boolean");
     else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
+    else if (isUtilityType(t, "Range")) return genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(factory.createLessThan(target, genNum(getNumFromType(t, 0))), factory.createGreaterThan(target, genNum(getNumFromType(t, 1)))));
     return undefined;
 }
 
@@ -136,6 +137,11 @@ export function isTupleType(checker: ts.TypeChecker, t: ts.Type) : ReadonlyArray
     if (!node) return;
     if (node.kind === ts.SyntaxKind.TupleType) return checker.getTypeArguments(t as ts.TypeReference);
     return;
+}
+
+export function isUtilityType(type: ts.Type, name: string) : boolean|undefined {
+    if (!type.aliasSymbol) return;
+    return isFromThisLib(type.aliasSymbol) && type.aliasSymbol.name === name;
 }
 
 export {
