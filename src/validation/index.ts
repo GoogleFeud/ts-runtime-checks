@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { genCmp, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genTypeCmp } from "./codegen";
+import { genCmp, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genStr, genTypeCmp } from "./codegen";
 import { hasBit } from "../utils";
 import { ValidationContext } from "./context";
 
@@ -23,19 +23,24 @@ export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Express
 
 export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationContext) : ValidatedType | undefined {
     let type: ts.Type | ReadonlyArray<ts.Type> | ts.Expression | undefined; 
-    if (t.isUnion()) return {
+    if (type = validateBaseType(t, target)) return {
+        condition:() => type as ts.Expression,
+        error: () => ctx.error(t)
+    };
+    else if (t.isUnion()) return {
         condition: () => {
             let isOptional, hasArrayCheck = false;
             const checks = [];
             for (const unionType of t.types) {
                 if (hasBit(unionType, TypeFlags.Undefined)) isOptional = true;
                 else {
-                    if (!hasArrayCheck && (isTupleType(ctx.checker, unionType) || isArrayType(ctx.checker, unionType))) {
+                    if (isTupleType(ctx.checker, unionType) || isArrayType(ctx.checker, unionType)) {
+                        if (hasArrayCheck) continue;
                         checks.push(genNot(genInstanceof(target, "Array")));
                         hasArrayCheck = true;
                     } else {
-                        const type = validateBaseType(unionType, target);
-                        if (type) checks.push(type);
+                        const type = validateType(unionType, target, ctx);
+                        if (type) checks.push(type.condition());
                     }
                 }
             }
@@ -86,11 +91,23 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
             }
         };
     } 
-    else if (type = validateBaseType(t, target)) return {
-        condition:() => type as ts.Expression,
+    else return {
+        other: () => {
+            const properties = t.getProperties();
+            const checks = [];
+            for (const prop of properties) {
+                if (!prop.valueDeclaration) continue;
+                const access = factory.createElementAccessExpression(target, genStr(prop.name));
+                ctx.addPath(target, prop.name);
+                const typeOfProp = ctx.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration);
+                checks.push(...validate(typeOfProp.isUnion() ? typeOfProp.getNonNullableType() : typeOfProp, access, ctx, ts.isPropertySignature(prop.valueDeclaration) ? Boolean(prop.valueDeclaration.questionToken) : false));        
+                ctx.removePath();  
+            }
+            return checks;
+        },
+        condition: () => genTypeCmp(target, "object"),
         error: () => ctx.error(t)
     };
-    return;
 }
 
 export function validate(t: ts.Type, target: ts.Expression, ctx: ValidationContext, isOptional?: boolean) : Array<ts.Statement> {

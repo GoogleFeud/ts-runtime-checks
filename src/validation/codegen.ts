@@ -52,6 +52,7 @@ export function genOptional(a: ts.Expression, b: ts.Expression, parent?: ts.Expr
 }
 
 export function genBinaryChain(syntax: ts.BinaryOperator, exps: Array<ts.Expression>) : ts.Expression {
+    if (exps.length === 1) return exps[0]!;
     let start = factory.createBinaryExpression(exps[0] as ts.Expression, syntax, exps[1] as ts.Expression);
     for (let i=2; i < exps.length; i++) {
         start = factory.createBinaryExpression(start, syntax, exps[i] as ts.Expression);
