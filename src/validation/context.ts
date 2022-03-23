@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts, { factory } from "typescript";
-import { genAdd, genCmp, genNew, genOptional, genStr, genThrow, UNDEFINED } from "./codegen";
+import { genAdd, genCmp, genNew, genOptional, genStr, genThrow, UNDEFINED } from "./utils";
 
 export interface ValidationPath {
     parent?: ts.Expression,
