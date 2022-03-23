@@ -35,7 +35,7 @@ export function genOptional(a: ts.Expression, b: ts.Expression, parent?: ts.Expr
         b
     );
     else return factory.createLogicalAnd(
-        genCmp(a, factory.createIdentifier("undefined"), true),
+        genCmp(a, UNDEFINED, true),
         b
     );
 }

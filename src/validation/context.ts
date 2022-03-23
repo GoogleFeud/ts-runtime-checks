@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts, { factory } from "typescript";
-import { genAdd, genNew, genOptional, genStr, genThrow } from "../codegen";
+import { genAdd, genCmp, genNew, genOptional, genStr, genThrow, UNDEFINED } from "./codegen";
 
 export interface ValidationPath {
     parent?: ts.Expression,
@@ -60,6 +60,18 @@ export class ValidationContext {
     genOptional(a: ts.Expression, b: ts.Expression) : ts.Expression {
         const lastParent = this.depth[this.depth.length - 1]!;
         return genOptional(a, b, lastParent.parent, typeof lastParent.propName === "string" ? lastParent.propName : undefined);
+    }
+
+    /**
+     * Utility type which checks if `a` exists either by comparing it to undefined, or checking if it's inside the parent.
+     */
+    exists(a: ts.Expression) : ts.Expression {
+        const lastParent = this.depth[this.depth.length - 1]!;
+        return lastParent.parent && typeof lastParent.propName === "string" ? factory.createBinaryExpression(
+            genStr(lastParent.propName),
+            ts.SyntaxKind.InKeyword,
+            lastParent.parent
+        ) : genCmp(a, UNDEFINED);
     }
 
     /**
