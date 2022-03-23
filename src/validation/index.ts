@@ -1,22 +1,14 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
-import ts, { TypeFlags, factory, Expression } from "typescript";
-import { genCmp, genForLoop, genIdentifier, genIf, genIfElseChain, genInstanceof, genLogicalAND, genNot, genTypeCmp, negate } from "./codegen";
+import ts, { TypeFlags, factory } from "typescript";
+import { genCmp, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genTypeCmp } from "./codegen";
 import { hasBit } from "../utils";
 import { ValidationContext } from "./context";
-
-export const enum ValidatedTypeOrigin {
-    Basic,
-    Array,
-    Tuple,
-    Union
-}
 
 export interface ValidatedType {
     condition: () => ts.Expression,
     error: () => ts.Statement,
-    other?: () => Array<ts.Statement>,
-    origin: ValidatedTypeOrigin
+    other?: () => Array<ts.Statement>
 }
 
 export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Expression | undefined {
@@ -29,42 +21,30 @@ export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Express
     return undefined;
 }
 
-export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationContext) : Array<ts.Statement> | ValidatedType | undefined {
+export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationContext) : ValidatedType | undefined {
     let type: ts.Type | ReadonlyArray<ts.Type> | ts.Expression | undefined; 
-    if (t.isUnion()) {
-        let isOptional;
-        const inlineChecks: Array<ts.Expression> = [];
-        const otherChecks: Array<ValidatedType> = [];
-        for (const unionType of t.types) {
-            if (hasBit(unionType, TypeFlags.Undefined)) isOptional = true;
-            else {
-                const generated = validateType(unionType, target, ctx);
-                if (!generated || Array.isArray(generated)) continue;
+    if (t.isUnion()) return {
+        condition: () => {
+            let isOptional, hasArrayCheck = false;
+            const checks = [];
+            for (const unionType of t.types) {
+                if (hasBit(unionType, TypeFlags.Undefined)) isOptional = true;
                 else {
-                    if (generated.other) otherChecks.push(generated);
-                    else inlineChecks.push(negate(generated.condition()));
+                    if (!hasArrayCheck && (isTupleType(ctx.checker, unionType) || isArrayType(ctx.checker, unionType))) {
+                        checks.push(genNot(genInstanceof(target, "Array")));
+                        hasArrayCheck = true;
+                    } else {
+                        const type = validateBaseType(unionType, target);
+                        if (type) checks.push(type);
+                    }
                 }
             }
-        }
-        if (isOptional) {
-            if (!otherChecks.length) return { condition: () => genLogicalAND(ctx.exists(target), genLogicalAND(...inlineChecks)), error: () => ctx.error(t), origin: ValidatedTypeOrigin.Union };
-            return [genIf(ctx.exists(target),
-                genIfElseChain([
-                    [genLogicalAND(ctx.exists(target), genLogicalAND(...inlineChecks)), []],
-                    ...otherChecks.map(c => [negate(c.condition()), c.other!()] as [Expression, Array<ts.Node>]) 
-                ], 
-                ctx.error(t)
-                ))];
-        } else {
-            if (!otherChecks.length) return { condition: () => genLogicalAND(...inlineChecks), error: () => ctx.error(t), origin: ValidatedTypeOrigin.Union };
-            return [genIfElseChain([
-                [genLogicalAND(...inlineChecks), []],
-                ...otherChecks.map(c => [negate(c.condition()), c.other!()]  as [Expression, Array<ts.Node>])
-            ], 
-            ctx.error(t))];
-        }
-    }
-    else if (type = isArrayType(ctx.checker, t)) {
+            if (isOptional) return genLogicalAND(ctx.exists(target), genLogicalOR(...checks));
+            else return genLogicalOR(...checks);
+        },
+        error: () => ctx.error(t)
+    };
+    else if (type = isArrayType(ctx.checker, t))
         return {
             condition: () => genNot(genInstanceof(target, "Array")),
             error: () => ctx.error(t),
@@ -81,10 +61,9 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                         ...validationOfChildren
                     ]
                 )[0]];
-            },
-            origin: ValidatedTypeOrigin.Array
+            }
         };
-    } else if (type = isTupleType(ctx.checker, t)) {
+    else if (type = isTupleType(ctx.checker, t)) {
         const arr = [];
         for (let i=0; i < type.length; i++) {
             const access = factory.createElementAccessExpression(target, i);
@@ -104,14 +83,12 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                     ctx.removePath();
                 }
                 return arr;
-            },
-            origin: ValidatedTypeOrigin.Tuple
+            }
         };
     } 
     else if (type = validateBaseType(t, target)) return {
         condition:() => type as ts.Expression,
-        error: () => ctx.error(t),
-        origin: ValidatedTypeOrigin.Basic
+        error: () => ctx.error(t)
     };
     return;
 }
@@ -119,7 +96,6 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
 export function validate(t: ts.Type, target: ts.Expression, ctx: ValidationContext, isOptional?: boolean) : Array<ts.Statement> {
     const type = validateType(t, target, ctx);
     if (!type) return [];
-    if (Array.isArray(type)) return type;
     const {condition, error, other} = type;
     if (isOptional) {
         if (other) return [genIf(ctx.exists(target), [genIf(condition(), error()), ...other()])];

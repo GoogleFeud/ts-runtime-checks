@@ -7,7 +7,7 @@ interface A {
 
 class C {}
 
-function a(arg: Assert<string | number | Array<string> | Array<number> | "abc">) : () => void {
+function a(arg?: Assert<string | number | Array<string> | Array<number> | "abc">) : () => void {
     return (() => {
         return a;
     });
