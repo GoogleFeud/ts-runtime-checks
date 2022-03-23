@@ -1,7 +1,6 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { MacroCallContext, MacroFn, Markers } from "./markers";
-import { isFromThisLib } from "./utils";
 
 export class Transformer {
     checker: ts.TypeChecker;
@@ -57,7 +56,7 @@ export class Transformer {
     callMarkerFromParameterDecl(param: ts.ParameterDeclaration, block: Block.Block<unknown>) : void {
         if (!param.type || !ts.isTypeReferenceNode(param.type)) return;
         const symbol = this.checker.getTypeAtLocation(param.type).aliasSymbol;
-        if (!symbol || !Markers[symbol.name] || !isFromThisLib(symbol)) return;
+        if (!symbol || !Markers[symbol.name] || !symbol.declarations || !symbol.declarations[0]?.getSourceFile().fileName.includes("ts-runtime-checks")) return;
         (Markers[symbol.name] as MacroFn)(this, {
             block,
             parameters: param.type.typeArguments ? param.type.typeArguments.map(t => this.checker.getTypeAtLocation(t)) : [],

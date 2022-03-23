@@ -1,4 +1,4 @@
-import { Assert, Range, NoCheck } from "../dist/index";
+import { Assert, Range, NoCheck, Matches } from "../dist/index";
 
 interface A {
     a: number,
@@ -19,6 +19,6 @@ function b(obj?: Assert<{a?: number, b: string, c?: Array<string>, d?: NoCheck<[
 }
 
 
-function c(c?: Assert<Range<1, 10>>) {
-    return 1;
+function test(abc: Assert<Matches<"/abc/">>) {
+   // Your code...
 }

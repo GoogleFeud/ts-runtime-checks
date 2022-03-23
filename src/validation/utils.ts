@@ -84,22 +84,8 @@ export function genInstanceof(exp: ts.Expression, inst: string | ts.Identifier) 
     return factory.createBinaryExpression(exp, ts.SyntaxKind.InstanceOfKeyword, typeof inst === "string" ? factory.createIdentifier(inst) : inst);
 }
 
-export function genFnCall(call: ts.Expression, args: Array<string>, body: ts.Expression | Array<ts.Statement>) : ts.Expression {
-    return factory.createCallExpression(call, undefined, [
-        factory.createArrowFunction(undefined, undefined, 
-            args.map(arg => factory.createParameterDeclaration(undefined, undefined, undefined, arg, undefined, undefined, undefined)),
-            undefined, 
-            undefined,
-            Array.isArray(body) ? factory.createBlock(body) : body
-        )
-    ]);
-}
-
-export function genPropCall(root: ts.Expression, prop: string, args: Array<string>, body: ts.Expression | Array<ts.Statement>) : ts.Expression {
-    return genFnCall(factory.createPropertyAccessExpression(
-        root,
-        factory.createIdentifier(prop)
-    ), args, body);
+export function genPropAccess(exp: ts.Expression, thing: string) : ts.Expression {
+    return factory.createPropertyAccessExpression(exp, thing);
 }
 
 export function genForLoop(arr: ts.Expression, indName: ts.Identifier | string, body: ts.Expression | Array<ts.Statement>) : [loop: ts.Statement, index: ts.Expression] {

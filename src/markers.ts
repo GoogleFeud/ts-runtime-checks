@@ -62,10 +62,10 @@ export const Markers: Record<string, MacroFn> = {
  */
 //@ts-expect-error Unused ErrorType
 //eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Assert<T, ErrorType = Error> = T | T & { __marker: "assert" };
+export type Assert<T, ErrorType = Error> = T | T & { __marker: "Assert" };
 
 /**
- * Range utility type. Validates if the type is a number and if it's between the specified range.
+ * Range utility type. Validates if the value is a number and if it's between the specified range.
  * 
  * @example
  * ```ts
@@ -88,3 +88,26 @@ export type Range<min extends number, max extends number> = number | number & { 
  * Does not validate the type inside the marker.
  */
 export type NoCheck<T> = T | T & { __marker: "NoCheck" };
+
+/**
+ * Matches utility type. Validates if the provided value is a string and it matches the regex.
+ * 
+ * @example
+ * ```ts
+ * function test(a: Assert<Matches<"/abc/">>) {
+ *   // Your code...
+ * }
+ * ```
+ * 
+ * Generates the following:
+ * 
+ * ```js
+ * function test(a) {
+ *    if (typeof a !== "string" || !/abc/.test(a)) throw new Error("Expected a to be Matches<\"/abc/\">.");
+ *    // Your code...
+ * }
+ * ```
+ */
+//@ts-expect-error Unused params
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type Matches<Regex extends string> = string | string & { __marker: "Matches" };

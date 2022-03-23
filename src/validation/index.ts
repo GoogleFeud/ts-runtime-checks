@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { genCmp, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genNum, genStr, genTypeCmp } from "./utils";
-import { getNumFromType, hasBit, isFromThisLib } from "../utils";
+import { genCmp, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genNum, genPropAccess, genStr, genTypeCmp } from "./utils";
+import { getNumFromType, getStrFromType, hasBit, isFromThisLib } from "../utils";
 import { ValidationContext } from "./context";
 
 export interface ValidatedType {
@@ -21,6 +21,7 @@ export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Express
     else if (hasBit(t, TypeFlags.Boolean)) return genTypeCmp(target, "boolean");
     else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
     else if (isUtilityType(t, "Range")) return genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(factory.createLessThan(target, genNum(getNumFromType(t, 0))), factory.createGreaterThan(target, genNum(getNumFromType(t, 1)))));
+    else if (isUtilityType(t, "Matches")) return genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(factory.createRegularExpressionLiteral(getStrFromType(t, 0)), "test"), undefined, [target])));
     else if (isUtilityType(t, "NoCheck")) return SKIP_SYM;
     return undefined;
 }

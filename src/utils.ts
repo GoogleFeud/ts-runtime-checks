@@ -14,3 +14,8 @@ export function getNumFromType(t: ts.Type, argNum: number) : number {
     const arg = t.aliasTypeArguments![argNum]!;
     return (arg as ts.NumberLiteralType).value || 0;
 }
+
+export function getStrFromType(t: ts.Type, argNum: number) : string {
+    const arg = t.aliasTypeArguments![argNum]!;
+    return (arg as ts.StringLiteralType).value || "";
+}
