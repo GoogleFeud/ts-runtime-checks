@@ -11,7 +11,9 @@ export interface ValidatedType {
     other?: () => Array<ts.Statement>
 }
 
-export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Expression | undefined {
+export const SKIP_SYM = Symbol("NoCheck");
+
+export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Expression | typeof SKIP_SYM | undefined {
     if (t.isStringLiteral()) return genCmp(target, factory.createStringLiteral(t.value));
     else if (t.isNumberLiteral()) return genCmp(target, factory.createNumericLiteral(t.value));
     else if (hasBit(t, TypeFlags.String)) return genTypeCmp(target, "string");
@@ -19,15 +21,19 @@ export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Express
     else if (hasBit(t, TypeFlags.Boolean)) return genTypeCmp(target, "boolean");
     else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
     else if (isUtilityType(t, "Range")) return genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(factory.createLessThan(target, genNum(getNumFromType(t, 0))), factory.createGreaterThan(target, genNum(getNumFromType(t, 1)))));
+    else if (isUtilityType(t, "NoCheck")) return SKIP_SYM;
     return undefined;
 }
 
 export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationContext) : ValidatedType | undefined {
-    let type: ts.Type | ReadonlyArray<ts.Type> | ts.Expression | undefined; 
-    if (type = validateBaseType(t, target)) return {
-        condition:() => type as ts.Expression,
-        error: () => ctx.error(t)
-    };
+    let type: ts.Type | ReadonlyArray<ts.Type> | ts.Expression | undefined | typeof SKIP_SYM; 
+    if (type = validateBaseType(t, target)) {
+        if (type === SKIP_SYM) return;
+        return {
+            condition:() => type as ts.Expression,
+            error: () => ctx.error(t)
+        };
+    }
     else if (t.isUnion()) return {
         condition: () => {
             let isOptional, hasArrayCheck = false;

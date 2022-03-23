@@ -65,8 +65,26 @@ export const Markers: Record<string, MacroFn> = {
 export type Assert<T, ErrorType = Error> = T | T & { __marker: "assert" };
 
 /**
- * Range utility type. Specifies the possible range of a number. 
+ * Range utility type. Validates if the type is a number and if it's between the specified range.
+ * 
+ * @example
+ * ```ts
+ * const someNum = data.num as Assert<Range<1, 10>>;
+ * ```
+ * 
+ * Generates the following:
+ * 
+ * ```js
+ * const __data = data.num;
+ * if (typeof __data !== "number" || (c < 1 || c > 10)) throw new Error("Expected data.num to be Range<1, 10>.");
+ * const someNum = __data;
+ * ```
  */
 //@ts-expect-error Unused params
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Range<min extends number, max extends number> = number & { __marker: "Range" }; 
+export type Range<min extends number, max extends number> = number | number & { __marker: "Range" }; 
+
+/**
+ * Does not validate the type inside the marker.
+ */
+export type NoCheck<T> = T | T & { __marker: "NoCheck" };
