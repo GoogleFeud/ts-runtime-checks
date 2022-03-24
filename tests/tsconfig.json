@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+      "target": "es6",
+      "module": "commonjs",
+      "removeComments": true,
+      "plugins": [
+        { "transform": "./dist/index.js" }
+    ]
+    },
+    "ts-node": {
+        // This can be omitted when using ts-patch
+        "compiler": "ttypescript"
+    },
+    "include": ["./integrated"]
+}
