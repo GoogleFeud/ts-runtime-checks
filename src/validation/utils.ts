@@ -37,20 +37,6 @@ export function genTypeCmp(a: ts.Expression, type: string, not = true) : ts.Expr
         not ? ts.SyntaxKind.ExclamationEqualsEqualsToken : ts.SyntaxKind.EqualsEqualsEqualsToken, factory.createStringLiteral(type));
 }
 
-/**
- * Only runs `b` if `a` is not `undefined`. If `parent` and `name` are provided, then it'll use the `in` keyword to check if `name` is in `parent`.
- */
-export function genOptional(a: ts.Expression, b: ts.Expression, parent?: ts.Expression, name?: string) : ts.Expression {
-    if (parent && name) return factory.createLogicalAnd(
-        factory.createBinaryExpression(factory.createStringLiteral(name), ts.SyntaxKind.InKeyword, parent),
-        b
-    );
-    else return factory.createLogicalAnd(
-        genCmp(a, UNDEFINED, true),
-        b
-    );
-}
-
 export function genBinaryChain(syntax: ts.BinaryOperator, exps: Array<ts.Expression>) : ts.Expression {
     if (exps.length === 1) return exps[0]!;
     let start = factory.createBinaryExpression(exps[0] as ts.Expression, syntax, exps[1] as ts.Expression);
@@ -94,9 +80,14 @@ export function genForLoop(arr: ts.Expression, indName: ts.Identifier | string, 
         initializerCreate.declarationList,
         factory.createBinaryExpression(initializer, ts.SyntaxKind.LessThanToken, factory.createPropertyAccessExpression(arr, "length")),
         factory.createPostfixIncrement(initializer),
-        Array.isArray(body) ? factory.createBlock(body) : factory.createExpressionStatement(body)
+        genStmt(body)
     ), initializer];
 }
+
+export function genForInLoop(arr: ts.Expression, elName: ts.Identifier | string, body: ts.Expression | Array<ts.Statement>) : [loop: ts.Statement, variable: ts.Identifier] {
+    const [initializerCreate, initializer] = genIdentifier(elName);
+    return [factory.createForInStatement(initializerCreate.declarationList, arr, genStmt(body)), initializer];
+} 
 
 export function genNot(exp: ts.Expression) : ts.Expression {
     return factory.createPrefixUnaryExpression(ts.SyntaxKind.ExclamationToken, exp);
@@ -115,7 +106,7 @@ export function genNum(num: number) {
 }
 
 export function genStmt(exp: ts.Node | Array<ts.Node>) : ts.Statement {
-    if (Array.isArray(exp)) return factory.createBlock(exp.map(exp => genStmt(exp)));
+    if (Array.isArray(exp)) return factory.createBlock(exp.map(genStmt));
     if (exp.kind > ts.SyntaxKind.EmptyStatement && exp.kind < ts.SyntaxKind.DebuggerStatement) return exp as ts.Statement;
     return factory.createExpressionStatement(exp as ts.Expression);
 }

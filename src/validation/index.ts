@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { genCmp, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genNum, genPropAccess, genStr, genTypeCmp } from "./utils";
+import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genNum, genPropAccess, genStr, genTypeCmp } from "./utils";
 import { getNumFromType, getStrFromType, hasBit, isFromThisLib } from "../utils";
 import { ValidationContext } from "./context";
 
@@ -11,7 +11,7 @@ export interface ValidatedType {
     other?: () => Array<ts.Statement>
 }
 
-export const SKIP_SYM = Symbol("NoCheck");
+const SKIP_SYM = Symbol("NoCheck");
 
 export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Expression | typeof SKIP_SYM | undefined {
     if (t.isStringLiteral()) return genCmp(target, factory.createStringLiteral(t.value));
@@ -55,7 +55,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                     }
                 }
             }
-            if (isOptional) return genLogicalAND(ctx.exists(target), genLogicalOR(...checks));
+            if (isOptional) return ctx.genOptional(target, genLogicalOR(...checks));
             else return genLogicalOR(...checks);
         },
         error: () => ctx.error(t)
@@ -101,7 +101,25 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                 return arr;
             }
         };
-    } 
+    }
+    else if (isUtilityType(t, "ExactProps")) {
+        const obj = t.aliasTypeArguments?.[0];
+        if (!obj) return;
+        const validatedObj = validateType(obj, target, ctx);
+        if (!validatedObj || !validatedObj.other) return;
+        return {
+            ...validatedObj,
+            other: () => {
+                const propName = factory.createUniqueName("name");
+                ctx.addPath(target, propName);
+                const error = ctx.error(t, ["Property ", " is excessive."]);
+                ctx.removePath();
+                return [...validatedObj.other!(), genForInLoop(target, propName, 
+                    [genIf(genLogicalAND(...obj.getProperties().map(prop => genCmp(propName, genStr(prop.name)))), error)]
+                )[0]];
+            }
+        };
+    }
     else return {
         other: () => {
             const properties = t.getProperties();

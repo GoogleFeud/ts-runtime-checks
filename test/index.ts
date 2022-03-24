@@ -1,4 +1,4 @@
-import { Assert, Range, NoCheck, Matches } from "../dist/index";
+import { Assert, Range, NoCheck, Matches, ExactProps } from "../dist/index";
 
 interface A {
     a: number,
@@ -19,6 +19,12 @@ function b(obj?: Assert<{a?: number, b: string, c?: Array<string>, d?: NoCheck<[
 }
 
 
-function test(abc: Assert<Matches<"/abc/">>, dd: Assert<() => void>, rere: Assert<C>, rerere: Assert<bigint>) {
+function test(abc: Assert<Matches<"/abc/">>, dd: Assert<() => void>, rere: Assert<C>, rerere: Assert<number>, bb: Assert<ExactProps<{ a: number } & { b: string }>>) {
    // Your code...
+}
+
+test("abcde", () => 123, new C(), 333, {a: 12, b: 44});
+
+function test2(prop: Assert<ExactProps<{ a: number, b: string }>>) {
+    // Your code ...
 }

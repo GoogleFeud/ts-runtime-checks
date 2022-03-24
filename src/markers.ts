@@ -49,9 +49,6 @@ export const Markers: Record<string, MacroFn> = {
  *    // Your code
  * }
  * ```
- * 
- * Generates the following javascript code:
- * 
  * ```js
  * function test(a, b) {
  *    if (typeof a !== "string") throw new Error("`a` must be of type `string`.");
@@ -65,15 +62,12 @@ export const Markers: Record<string, MacroFn> = {
 export type Assert<T, ErrorType = Error> = T | T & { __marker: "Assert" };
 
 /**
- * Range utility type. Validates if the value is a number and if it's between the specified range.
+ * Validates if the value is a number and if it's between the specified range.
  * 
  * @example
  * ```ts
  * const someNum = data.num as Assert<Range<1, 10>>;
  * ```
- * 
- * Generates the following:
- * 
  * ```js
  * const __data = data.num;
  * if (typeof __data !== "number" || (c < 1 || c > 10)) throw new Error("Expected data.num to be Range<1, 10>.");
@@ -82,15 +76,15 @@ export type Assert<T, ErrorType = Error> = T | T & { __marker: "Assert" };
  */
 //@ts-expect-error Unused params
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Range<min extends number, max extends number> = number | number & { __marker: "Range" }; 
+export type Range<min extends number, max extends number> = number & number & { __marker?: "Range" }; 
 
 /**
  * Does not validate the type inside the marker.
  */
-export type NoCheck<T> = T | T & { __marker: "NoCheck" };
+export type NoCheck<T> = T & T & { __marker?: "NoCheck" };
 
 /**
- * Matches utility type. Validates if the provided value is a string and it matches the regex.
+ * Validates if the provided value is a string and it matches the regex.
  * 
  * @example
  * ```ts
@@ -98,9 +92,6 @@ export type NoCheck<T> = T | T & { __marker: "NoCheck" };
  *   // Your code...
  * }
  * ```
- * 
- * Generates the following:
- * 
  * ```js
  * function test(a) {
  *    if (typeof a !== "string" || !/abc/.test(a)) throw new Error("Expected a to be Matches<\"/abc/\">.");
@@ -110,4 +101,29 @@ export type NoCheck<T> = T | T & { __marker: "NoCheck" };
  */
 //@ts-expect-error Unused params
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Matches<Regex extends string> = string | string & { __marker: "Matches" };
+export type Matches<Regex extends string> = string & string & { __marker?: "Matches" };
+
+/**
+ * Validates whether the value doesn't have any excessive properties.   
+ * 
+ * **Note:** This marker generates an if loop that goes over each property of the value,
+ * so you might not want to use it if your object is big.
+ * 
+ * @example
+ * ```ts
+ * function test(a: Assert<ExactProps<{a: number, b: string}>>) {
+ *   // Your code...
+ * }
+ * ```
+ * ```js
+ * function test2(prop) {
+ *  if (typeof prop !== "object") throw new Error("Expected prop to be { a: number; b: string; }.");
+ *  if (typeof prop["a"] !== "number") throw new Error("Expected prop.a to be number.");
+ *  if (typeof prop["b"] !== "string") throw new Error("Expected prop.b to be string.");
+ *  for (let name_2 in prop) {
+ *      if (name_2 !== "a" && name_2 !== "b") throw new Error("Property " + ("prop[" + name_2 + "]") + " is excessive.");
+ *   }
+ * }
+ * ```
+ */
+export type ExactProps<Obj extends object> = Obj & Obj & { __marker?: "ExactProps" };

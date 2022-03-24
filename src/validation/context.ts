@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts, { factory } from "typescript";
-import { genAdd, genCmp, genNew, genOptional, genStr, genThrow, UNDEFINED } from "./utils";
+import { genAdd, genCmp, genLogicalAND, genNew, genStr, genThrow, UNDEFINED } from "./utils";
 
 export interface ValidationPath {
     parent?: ts.Expression,
@@ -37,12 +37,12 @@ export class ValidationContext {
     /**
      * Generates a useful error from the provided type. Takes the [[depth]], [[resultType]] and [[errorTypeName]] into account.
      */
-    error(t: ts.Type) : ts.Statement {
+    error(t: ts.Type, error?: [string?, string?]) : ts.Statement {
         if (this.resultType.return) return factory.createReturnStatement(this.resultType.return);
         const errPath = this.visualizeDepth();
-        if (typeof errPath === "string") return genThrow(genNew(this.errorTypeName, `Expected ${errPath} to be ${this.checker.typeToString(t)}.`));
+        if (typeof errPath === "string") return genThrow(genNew(this.errorTypeName, error?.[0] || "Expected " + errPath + (error?.[1] || ` to be ${this.checker.typeToString(t)}.`)));
         else return genThrow(genNew(this.errorTypeName, [
-            genAdd(genAdd(genStr("Expected "), errPath), genStr(` to be ${this.checker.typeToString(t)}.`))
+            genAdd(genAdd(genStr(error?.[0] || "Expected "), errPath), genStr(error?.[1] || ` to be ${this.checker.typeToString(t)}.`))
         ]));
     }
 
@@ -54,12 +54,9 @@ export class ValidationContext {
         this.depth.pop();
     }
 
-    /**
-     * Utility function which wraps around the ohter `genOptional` utility method, but this takes the last path into consideration.
-     */
+
     genOptional(a: ts.Expression, b: ts.Expression) : ts.Expression {
-        const lastParent = this.depth[this.depth.length - 1]!;
-        return genOptional(a, b, lastParent.parent, typeof lastParent.propName === "string" ? lastParent.propName : undefined);
+        return genLogicalAND(this.exists(a), b);
     }
 
     /**
