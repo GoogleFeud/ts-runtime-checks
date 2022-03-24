@@ -19,6 +19,6 @@ function b(obj?: Assert<{a?: number, b: string, c?: Array<string>, d?: NoCheck<[
 }
 
 
-function test(abc: Assert<Matches<"/abc/">>) {
+function test(abc: Assert<Matches<"/abc/">>, dd: Assert<() => void>, rere: Assert<C>, rerere: Assert<bigint>) {
    // Your code...
 }

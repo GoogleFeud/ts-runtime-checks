@@ -17,8 +17,11 @@ export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Express
     if (t.isStringLiteral()) return genCmp(target, factory.createStringLiteral(t.value));
     else if (t.isNumberLiteral()) return genCmp(target, factory.createNumericLiteral(t.value));
     else if (hasBit(t, TypeFlags.String)) return genTypeCmp(target, "string");
+    else if (hasBit(t, TypeFlags.BigInt)) return genTypeCmp(target, "bigint");
     else if (hasBit(t, TypeFlags.Number)) return genTypeCmp(target, "number");
     else if (hasBit(t, TypeFlags.Boolean)) return genTypeCmp(target, "boolean");
+    else if (hasBit(t, TypeFlags.ESSymbol)) return genTypeCmp(target, "symbol");
+    else if (t.getCallSignatures().length === 1) return genTypeCmp(target, "function");
     else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
     else if (isUtilityType(t, "Range")) return genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(factory.createLessThan(target, genNum(getNumFromType(t, 0))), factory.createGreaterThan(target, genNum(getNumFromType(t, 1)))));
     else if (isUtilityType(t, "Matches")) return genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(factory.createRegularExpressionLiteral(getStrFromType(t, 0)), "test"), undefined, [target])));
