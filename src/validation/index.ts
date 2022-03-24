@@ -23,8 +23,20 @@ export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Express
     else if (hasBit(t, TypeFlags.ESSymbol)) return genTypeCmp(target, "symbol");
     else if (t.getCallSignatures().length === 1) return genTypeCmp(target, "function");
     else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
-    else if (isUtilityType(t, "Range")) return genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(factory.createLessThan(target, genNum(getNumFromType(t, 0))), factory.createGreaterThan(target, genNum(getNumFromType(t, 1)))));
-    else if (isUtilityType(t, "Matches")) return genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(factory.createRegularExpressionLiteral(getStrFromType(t, 0)), "test"), undefined, [target])));
+    else if (isUtilityType(t, "Range")) {
+        const min = getNumFromType(t, 0);
+        const max = getNumFromType(t, 1);
+        const checks = [];
+        if (min) checks.push(factory.createLessThan(target, genNum(min)));
+        if (max) checks.push(factory.createGreaterThan(target, genNum(max)));
+        if (!checks.length) return genTypeCmp(target, "number"); 
+        return genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(...checks));
+    }
+    else if (isUtilityType(t, "Matches")) {
+        const regex = getStrFromType(t, 0);
+        if (!regex) return genTypeCmp(target, "string");
+        return genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(factory.createRegularExpressionLiteral(regex), "test"), undefined, [target])));
+    }
     else if (isUtilityType(t, "NoCheck")) return SKIP_SYM;
     return undefined;
 }

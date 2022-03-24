@@ -68,9 +68,21 @@ export type Assert<T, ErrorType = Error> = T | T & { __marker: "Assert" };
  * ```ts
  * const someNum = data.num as Assert<Range<1, 10>>;
  * ```
+ * 
  * ```js
+ * // Generated code:
  * const __data = data.num;
  * if (typeof __data !== "number" || (c < 1 || c > 10)) throw new Error("Expected data.num to be Range<1, 10>.");
+ * const someNum = __data;
+ * ```
+ * ```ts
+ * //Sets only the max
+ * const someNum = data.num as Assert<Range<number, 10>>;
+ * ```
+ * ```js
+ * // Generated code:
+ * const __data = data.num;
+ * if (typeof __data !== "number" || c > 10) throw new Error("Expected data.num to be Range<number, 10>.");
  * const someNum = __data;
  * ```
  */

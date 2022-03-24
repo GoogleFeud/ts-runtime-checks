@@ -25,6 +25,10 @@ function test(abc: Assert<Matches<"/abc/">>, dd: Assert<() => void>, rere: Asser
 
 test("abcde", () => 123, new C(), 333, {a: 12, b: 44});
 
-function test2(prop: Assert<ExactProps<{ a: number, b: string }>>) {
+function test2(prop?: Assert<ExactProps<{ a: number, b: string }>>) {
     // Your code ...
+}
+
+function rangeTest(a: Assert<Range<number, 10>>, b: Assert<Range<40, number>>, c: Assert<Range<number, number>>, d: Assert<Range<40, 80>>) {
+    // Your code
 }
