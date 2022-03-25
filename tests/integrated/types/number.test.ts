@@ -2,7 +2,7 @@ import type { Assert } from "../../../dist/index";
 import { call } from "../../utils";
 import { expect } from "chai";
 
-describe("number", () => {
+describe("Number", () => {
     describe("Assert", () => {
         function test(a: Assert<number>) {
             return a;

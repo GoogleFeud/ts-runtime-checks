@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("../../utils");
 const chai_1 = require("chai");
-describe("number", () => {
+describe("Number", () => {
     describe("Assert", () => {
         function test(a) {
             if (typeof a !== "number")

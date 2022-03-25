@@ -2,7 +2,7 @@ import type { Assert } from "../../../dist/index";
 import { call } from "../../utils";
 import { expect } from "chai";
 
-describe("string", () => {
+describe("Boolean", () => {
     describe("Assert", () => {
         function test(a: Assert<boolean>) {
             return a;
@@ -14,7 +14,7 @@ describe("string", () => {
                 expect(call(test)).to.throw("Expected a to be boolean.");
             });
     
-            it("Not throw when a string is provided", () => {
+            it("Not throw when a boolean is provided", () => {
                 expect(call(test, false)).to.not.throw();
                 expect(call(test, true)).to.not.throw();
             });
