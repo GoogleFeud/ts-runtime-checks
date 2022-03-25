@@ -67,8 +67,8 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                     }
                 }
             }
-            if (isOptional) return ctx.genOptional(target, genLogicalOR(...checks));
-            else return genLogicalOR(...checks);
+            if (isOptional) return ctx.genOptional(target, genLogicalAND(...checks));
+            else return genLogicalAND(...checks);
         },
         error: () => ctx.error(t)
     };
