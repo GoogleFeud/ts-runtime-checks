@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("../../utils");
 const chai_1 = require("chai");
-describe("Matches", function () { describe("Assert", function () { describe("In Function Parameters", function () {
+describe("Matches", function () { describe("Assert", function () { describe("In function parameters", function () {
     function test(a) { if (typeof a !== "string" || !/foo*/g.test(a))
         throw new Error("Expected a to be Matches<\"/foo*/g\">."); return a; }
     it("Throw when the regex doesn't match", function () { (0, chai_1.expect)((0, utils_1.call)(test, "hello")).to.throw("Expected a to be Matches<\"/foo*/g\">."); });

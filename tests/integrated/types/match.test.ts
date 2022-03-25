@@ -4,7 +4,7 @@ import { expect } from "chai";
 
 describe("Matches", () => {
     describe("Assert", () => {
-        describe("In Function Parameters", () => {
+        describe("In function parameters", () => {
             function test(a: Assert<Matches<"/foo*/g">>) {
                 return a;
             }
