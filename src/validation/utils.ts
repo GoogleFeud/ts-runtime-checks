@@ -106,7 +106,7 @@ export function genNum(num: number) {
 }
 
 export function genStmt(exp: ts.Node | Array<ts.Node>) : ts.Statement {
-    if (Array.isArray(exp)) return factory.createBlock(exp.map(genStmt));
+    if (Array.isArray(exp)) return factory.createBlock(exp.map(genStmt), true);
     if (exp.kind > ts.SyntaxKind.EmptyStatement && exp.kind < ts.SyntaxKind.DebuggerStatement) return exp as ts.Statement;
     return factory.createExpressionStatement(exp as ts.Expression);
 }
