@@ -24,7 +24,9 @@ if (!fs.existsSync(artifactsPath)) fs.mkdirSync(artifactsPath);
 
 (async () => {
     if (!NO_PROMPT && !(await askYesOrNo("Run snapshot tests? (y/n): "))) return process.exit();
+    const wrongful = [];
     for (const [fileName, dirName, passedDirs] of eachFile(integrated, "")) {
+        const newFilePath = path.join(dirName, fileName);
         const newFile = fs.readFileSync(path.join(dirName, fileName), "utf-8");
         const targetFilePath = path.join(artifactsPath, passedDirs.replace("/", "_") + fileName);
         if (!fs.existsSync(targetFilePath)) fs.writeFileSync(targetFilePath, newFile);
@@ -35,21 +37,33 @@ if (!fs.existsSync(artifactsPath)) fs.mkdirSync(artifactsPath);
     
             console.log(`[${cyan("FILE CHANGED")}]: ${red(passedDirs + fileName)}`);
             let final = "";
+            let sumOfLines = 3;
             for (const change of diffs) {
-                if (change.added) final += green(change.value);
+                if (change.added) {
+                    final += green(change.value);
+                    sumOfLines += change.count;
+                }
                 else if (change.removed) final += red(change.value);
-                else final += gray(change.value);
+                else {
+                    final += gray(change.value);
+                    sumOfLines += change.count;
+                }
             }
             console.log(final);
             if (!NO_PROMPT && await askYesOrNo("Do you agree with this change? (y/n): ")) {
                 fs.writeFileSync(targetFilePath, newFile);
-                if (!NO_PROMPT) console.clear();
+                await clearConsole(sumOfLines);
             } else {
-                console.error(red(NO_PROMPT ? "Make sure the following changes are valid before continuing." : "Cancelled."));
-                process.exit();
+                if (NO_PROMPT) {
+                    console.error(red("Make sure the following changes are valid before continuing."));
+                    process.exit();
+                } else {
+                    wrongful.push(newFilePath);
+                }
             }
         }
     }
+    if (wrongful.length) console.error(`${red("The following files didn't match the snapshot")}:\n${wrongful.join("\n")}`);
     process.exit();
 })();
 
@@ -64,6 +78,16 @@ function* eachFile(directory: string, passedDirs: string) : Generator<[fileName:
 
 function ask(q: string) : Promise<string> {
     return new Promise(res => rl.question(q, res));
+}
+
+async function clearConsole(lines: number) : Promise<void> {
+    return new Promise(res => {
+        readline.cursorTo(process.stdout, 0, -lines, () => {
+            readline.clearLine(process.stdout, 1, () => {
+                res();
+            });
+        });
+    });
 }
 
 
