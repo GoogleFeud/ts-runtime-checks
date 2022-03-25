@@ -8,7 +8,6 @@ describe("Matches", () => {
             function test(a: Assert<Matches<"/foo*/g">>) {
                 return a;
             }
-    
             it("Throw when the regex doesn't match", () => {
                 expect(call(test, "hello")).to.throw("Expected a to be Matches<\"/foo*/g\">.");
             });

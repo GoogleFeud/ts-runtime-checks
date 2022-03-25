@@ -12,8 +12,7 @@ describe("Optional / nullable parameters", () => {
     });
 
     it("Not throw when optional parameters are provided", () => {
-        // This SHOULD NOT throw
-        expect(call(test, 12, "abc", ["a", "b"])).to.throw();
+        expect(call(test, 12, "abc", ["a", "b"])).to.not.throw();
         expect(call(test, 12, "abc", ["a", "b", 12])).to.not.throw();
     });
 });

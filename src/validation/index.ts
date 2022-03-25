@@ -92,13 +92,6 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
             }
         };
     else if (type = isTupleType(ctx.checker, t)) {
-        const arr = [];
-        for (let i=0; i < type.length; i++) {
-            const access = factory.createElementAccessExpression(target, i);
-            ctx.addPath(access, i.toString());
-            arr.push(...validate(type[i]!, access, ctx, false));
-            ctx.removePath();
-        }
         return {
             condition: () => genNot(genInstanceof(target, "Array")),
             error: () => ctx.error(t),
@@ -106,7 +99,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                 const arr = [];
                 for (let i=0; i < (type as Array<ts.Type>).length; i++) {
                     const access = factory.createElementAccessExpression(target, i);
-                    ctx.addPath(access, i.toString());
+                    ctx.addPath(access, factory.createNumericLiteral(i));
                     arr.push(...validate((type as Array<ts.Type>)[i]!, access, ctx, false));
                     ctx.removePath();
                 }

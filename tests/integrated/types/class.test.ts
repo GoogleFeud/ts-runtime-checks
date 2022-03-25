@@ -11,7 +11,6 @@ describe("Class", () => {
         function test(a: Assert<Test>, b: Assert<Test & Test2>) {
             return [a, b];
         }
-
         describe("In function parameters", () => {
     
             it("Not throw when the right class is provided", () => {

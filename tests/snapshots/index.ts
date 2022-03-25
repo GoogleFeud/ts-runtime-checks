@@ -24,7 +24,7 @@ if (!fs.existsSync(artifactsPath)) fs.mkdirSync(artifactsPath);
 
 (async () => {
     if (!NO_PROMPT && !(await askYesOrNo("Run snapshot tests? (y/n): "))) return process.exit();
-    const wrongful = [];
+    const wrongful: Array<string> = [];
     for (const [fileName, dirName, passedDirs] of eachFile(integrated, "")) {
         const newFilePath = path.join(dirName, fileName);
         const newFile = fs.readFileSync(path.join(dirName, fileName), "utf-8");
@@ -37,22 +37,15 @@ if (!fs.existsSync(artifactsPath)) fs.mkdirSync(artifactsPath);
     
             console.log(`[${cyan("FILE CHANGED")}]: ${red(passedDirs + fileName)}`);
             let final = "";
-            let sumOfLines = 3;
             for (const change of diffs) {
-                if (change.added) {
-                    final += green(change.value);
-                    sumOfLines += change.count;
-                }
+                if (change.added) final += green(change.value);
                 else if (change.removed) final += red(change.value);
-                else {
-                    final += gray(change.value);
-                    sumOfLines += change.count;
-                }
+                else final += gray(change.value);
             }
             console.log(final);
             if (!NO_PROMPT && await askYesOrNo("Do you agree with this change? (y/n): ")) {
                 fs.writeFileSync(targetFilePath, newFile);
-                await clearConsole(sumOfLines);
+                console.clear();
             } else {
                 if (NO_PROMPT) {
                     console.error(red("Make sure the following changes are valid before continuing."));
@@ -79,17 +72,6 @@ function* eachFile(directory: string, passedDirs: string) : Generator<[fileName:
 function ask(q: string) : Promise<string> {
     return new Promise(res => rl.question(q, res));
 }
-
-async function clearConsole(lines: number) : Promise<void> {
-    return new Promise(res => {
-        readline.cursorTo(process.stdout, 0, -lines, () => {
-            readline.clearLine(process.stdout, 1, () => {
-                res();
-            });
-        });
-    });
-}
-
 
 async function askYesOrNo(q: string) : Promise<boolean> {
     // eslint-disable-next-line no-constant-condition
