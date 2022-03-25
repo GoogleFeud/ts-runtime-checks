@@ -2,11 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("../../utils");
 const chai_1 = require("chai");
-describe("number", function () { describe("Assert", function () { function test(a) { if (typeof a !== "number")
-    throw new Error("Expected a to be number."); return a; } describe("In function parameters", function () {
-    it("Throw when a number is not provided", function () {
+describe("number", () => { describe("Assert", () => { function test(a) { if (typeof a !== "number")
+    throw new Error("Expected a to be number."); return a; } function test2(a) { if (a !== 123)
+    throw new Error("Expected a to be 123."); return a; } describe("In function parameters", () => {
+    it("Throw when a number is not provided", () => {
         (0, chai_1.expect)((0, utils_1.call)(test, "abc")).to.throw("Expected a to be number.");
         (0, chai_1.expect)((0, utils_1.call)(test)).to.throw("Expected a to be number.");
     });
-    it("Not throw when a number is provided", function () { (0, chai_1.expect)(test(123)).to.be.equal(123); });
+    it("Not throw when a number is provided", () => { (0, chai_1.expect)((0, utils_1.call)(test, 123)).to.not.throw(); });
+    it("Throw when the number literal is not the same", () => { (0, chai_1.expect)((0, utils_1.call)(test2, 1234)).to.throw("Expected a to be 123."); });
+    it("Not throw when the number literal is the same", () => { (0, chai_1.expect)((0, utils_1.call)(test2, 123)).to.not.throw(); });
 }); }); });

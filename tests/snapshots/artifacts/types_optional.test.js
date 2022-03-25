@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("../../utils");
 const chai_1 = require("chai");
-describe("Optional / nullable parameters", function () {
+describe("Optional / nullable parameters", () => {
     function test(c, a, b) { if (typeof c !== "number")
         throw new Error("Expected c to be number."); if (a !== undefined && typeof a !== "string")
         throw new Error("Expected a to be string."); if (b !== undefined) {
@@ -15,8 +15,8 @@ describe("Optional / nullable parameters", function () {
         if (typeof b[2] !== "number")
             throw new Error("Expected b.2 to be number.");
     } return [a, b, c]; }
-    it("Not throw when optional parameters are not provided", function () { (0, chai_1.expect)((0, utils_1.call)(test, 12)).to.not.throw(); });
-    it("Not throw when optional parameters are provided", function () {
+    it("Not throw when optional parameters are not provided", () => { (0, chai_1.expect)((0, utils_1.call)(test, 12)).to.not.throw(); });
+    it("Not throw when optional parameters are provided", () => {
         (0, chai_1.expect)((0, utils_1.call)(test, 12, "abc", ["a", "b"])).to.throw();
         (0, chai_1.expect)((0, utils_1.call)(test, 12, "abc", ["a", "b", 12])).to.not.throw();
     });
