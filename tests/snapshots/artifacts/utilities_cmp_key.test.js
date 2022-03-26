@@ -35,6 +35,20 @@ describe("CmpKey", () => {
             it("Throw when the property doesn't equal variable value", () => {
                 (0, chai_1.expect)((0, utils_1.call)(test3, { b: 3002 })).to.throw("Expected a.b to be Var<\"someVar\">.");
             });
+            function test4(a) {
+                if (typeof a !== "object")
+                    throw new Error("Expected a to be { a: string; b: number; }.");
+                if (typeof a["a"] !== "string")
+                    throw new Error("Expected a.a to be string.");
+                if (typeof a["b"] !== "number")
+                    throw new Error("Expected a.b to be number.");
+                if (a.a !== "abc")
+                    throw new Error("Expected a.a to be \"abc\".");
+                return a;
+            }
+            it("Throw when some of the types of the object's properties are incorrect with the correct others option", () => {
+                (0, chai_1.expect)((0, utils_1.call)(test4, { a: "abc", b: "bce" })).to.throw("Expected a.b to be number.");
+            });
         });
     });
 });

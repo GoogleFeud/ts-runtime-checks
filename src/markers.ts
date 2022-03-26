@@ -144,8 +144,9 @@ export type ExactProps<Obj extends object> = Obj & { __marker?: "ExactProps" };
 export type Var<Name extends string> = Name | { __marker?: "Var" };
 
 /**
- * Checks if `Obj`[`Key`] === `Value`.
+ * Checks if `Obj`[`Key`] === `Value`. It does **not** check if any other properties of the object
+ * are correct by default. You can provide set the `CorrectOthers` parameter to true to enable that.
  */
 //@ts-expect-error Unused params
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type CmpKey<Obj extends object, Key extends keyof Obj, Value> = Obj & { __marker?: "CmpKey" }
+export type CmpKey<Obj extends object, Key extends keyof Obj, Value, CorrectOthers extends boolean = false> = Obj & { __marker?: "CmpKey" }

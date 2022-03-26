@@ -36,7 +36,14 @@ describe("CmpKey", () => {
             it("Throw when the property doesn't equal variable value", () => {
                 expect(call(test3, { b: 3002 })).to.throw("Expected a.b to be Var<\"someVar\">.");
             });
+
+            function test4(a: Assert<CmpKey<{a: string, b: number}, "a", "abc", true>>) {
+                return a;
+            }
     
+            it("Throw when some of the types of the object's properties are incorrect with the correct others option", () => {
+                expect(call(test4, {a: "abc", b: "bce"})).to.throw("Expected a.b to be number.");
+            });
     
         });
     });

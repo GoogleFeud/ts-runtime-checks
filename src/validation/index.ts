@@ -2,7 +2,7 @@
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
 import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genNum, genPropAccess, genStr, genTypeCmp } from "./utils";
-import { getNumFromType, getStrFromType, hasBit, isUtilityType, typeValueToNode } from "../utils";
+import { getNumFromType, getStrFromType, hasBit, isTrueType, isUtilityType, typeValueToNode } from "../utils";
 import { ValidationContext } from "./context";
 
 export interface ValidatedType {
@@ -123,23 +123,31 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         };
     }
     else if (isUtilityType(t, "CmpKey") && t.aliasTypeArguments) {
+        const objType = t.aliasTypeArguments![0];
         const keyName = getStrFromType(t, 1)!;
         const comparedTo = t.aliasTypeArguments![2]!;
+        if (!objType || !keyName || !comparedTo) throw new TypeError("Wrong parameters for utility type CmpKey.");
+        const verifyObject = isTrueType(t.aliasTypeArguments![3]);
+        const objValidator = verifyObject ? validateType(objType, target, ctx) : undefined;
+        const condition = () => {
+            const valNode = typeValueToNode(comparedTo);
+            const propAccess = genPropAccess(target, keyName);
+            if (Array.isArray(valNode)) return genLogicalAND(...valNode.map(c => genCmp(propAccess, c)));
+            else return genCmp(propAccess, valNode);                
+        };
+        const error = () => {
+            ctx.addPath(target, keyName);
+            const err = ctx.error(t, [undefined, ` to be ${ctx.checker.typeToString(comparedTo)}.`]);
+            ctx.removePath();
+            return err;
+        };
         return {
-            condition: () => {
-                const objType = t.aliasTypeArguments![0];
-                if (!objType || !keyName || !comparedTo) throw new TypeError("Wrong parameters for utility type CmpKey.");
-                const valNode = typeValueToNode(comparedTo);
-                const propAccess = genPropAccess(target, keyName);
-                if (Array.isArray(valNode)) return genLogicalAND(...valNode.map(c => genCmp(propAccess, c)));
-                else return genCmp(propAccess, valNode);                
-            },
-            error: () => {
-                ctx.addPath(target, keyName);
-                const err = ctx.error(t, [undefined, ` to be ${ctx.checker.typeToString(comparedTo)}.`]);
-                ctx.removePath();
-                return err;
-            }
+            condition: verifyObject ? objValidator!.condition : condition,
+            error: verifyObject ? objValidator!.error : error,
+            other: verifyObject ? () => {
+                const all = [...objValidator!.other!(), genIf(condition(), error())];
+                return all;
+            } : undefined
         };
     }
     else return {

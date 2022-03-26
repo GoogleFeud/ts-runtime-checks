@@ -50,3 +50,9 @@ export function typeValueToNode(t: ts.Type) : ts.Expression|Array<ts.Expression>
     else if (t.intrinsicName === "null") return ts.factory.createNull();
     else return UNDEFINED;
 }
+
+export function isTrueType(t: ts.Type|undefined) : boolean {
+    if (!t) return false;
+    //@ts-expect-error Private API
+    return t.intrinsicName === "true";
+}
