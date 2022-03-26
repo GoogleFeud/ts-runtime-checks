@@ -23,6 +23,15 @@ describe("CmpKey", () => {
                 (0, chai_1.expect)((0, utils_1.call)(test2, { a: 123 })).to.not.throw();
                 (0, chai_1.expect)((0, utils_1.call)(test2, { a: "b" })).to.not.throw();
             });
+            const someVar = 3001;
+            function test3(a) {
+                if (a.b !== someVar)
+                    throw new Error("Expected a.b to be Var<\"someVar\">.");
+                return a;
+            }
+            it("Throw when the property doesn't equal variable value", () => {
+                (0, chai_1.expect)((0, utils_1.call)(test3, { b: 3002 })).to.throw("Expected a.b to be Var<\"someVar\">.");
+            });
         });
     });
 });
