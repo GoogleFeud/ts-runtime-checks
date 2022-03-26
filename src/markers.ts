@@ -13,14 +13,13 @@ export interface MarkerCallData {
     block: Block<unknown>,
     ctx: MacroCallContext,
     optional?: boolean,
-    exp: ts.BindingName,
-    paramName: string
+    exp: ts.BindingName
 }
 
 export type MacroFn = (transformer: Transformer, data: MarkerCallData) => ts.Node|undefined;
 
 export const Markers: Record<string, MacroFn> = {
-    Assert: (trans, {ctx, exp, block, parameters, optional, paramName}) => {
+    Assert: (trans, {ctx, exp, block, parameters, optional}) => {
         if (!parameters[0]) return;
         if (ctx === MacroCallContext.Parameter) {
             if (ts.isIdentifier(exp)) {
@@ -28,7 +27,7 @@ export const Markers: Record<string, MacroFn> = {
                     errorTypeName: parameters[1]?.symbol?.name,
                     checker: trans.checker,
                     depth: [],
-                    propName: paramName
+                    propName: exp.text
                 }), optional));
             }
             return undefined;
