@@ -13,6 +13,9 @@ describe("CmpKey", () => {
             it("Throw when the key doesn't equal the value", () => {
                 (0, chai_1.expect)((0, utils_1.call)(test, { a: 314 })).to.throw("Expected a.a to be 3.14.");
             });
+            it("Not throw when the right value is provided", () => {
+                (0, chai_1.expect)((0, utils_1.call)(test, { a: 3.14 })).to.not.throw();
+            });
             function test2(a) {
                 if (a.a !== 123 && a.a !== "a" && a.a !== "b")
                     throw new Error("Expected a.a to be 123 | \"a\" | \"b\".");

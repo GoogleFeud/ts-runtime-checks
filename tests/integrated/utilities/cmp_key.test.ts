@@ -13,6 +13,10 @@ describe("CmpKey", () => {
                 expect(call(test, { a: 314 })).to.throw("Expected a.a to be 3.14.");
             });
 
+            it("Not throw when the right value is provided", () => {
+                expect(call(test, { a: 3.14 })).to.not.throw();
+            });
+
             function test2(a: Assert<CmpKey<{a: string|number }, "a", "a"|"b"|123>>) {
                 return a;
             }
@@ -31,7 +35,6 @@ describe("CmpKey", () => {
 
             it("Throw when the property doesn't equal variable value", () => {
                 expect(call(test3, { b: 3002 })).to.throw("Expected a.b to be Var<\"someVar\">.");
-                
             });
     
     
