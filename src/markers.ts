@@ -88,12 +88,12 @@ export type Assert<T, ErrorType = Error> = T | T & { __marker: "Assert" };
  */
 //@ts-expect-error Unused params
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Range<min extends number, max extends number> = number & number & { __marker?: "Range" }; 
+export type Range<min extends number, max extends number> = number & { __marker?: "Range" }; 
 
 /**
  * Does not validate the type inside the marker.
  */
-export type NoCheck<T> = T & T & { __marker?: "NoCheck" };
+export type NoCheck<T> = T & { __marker?: "NoCheck" };
 
 /**
  * Validates if the provided value is a string and it matches the regex.
@@ -113,7 +113,7 @@ export type NoCheck<T> = T & T & { __marker?: "NoCheck" };
  */
 //@ts-expect-error Unused params
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Matches<Regex extends string> = string & string & { __marker?: "Matches" };
+export type Matches<Regex extends string> = string & { __marker?: "Matches" };
 
 /**
  * Validates whether the value doesn't have any excessive properties.   
@@ -138,4 +138,14 @@ export type Matches<Regex extends string> = string & string & { __marker?: "Matc
  * }
  * ```
  */
-export type ExactProps<Obj extends object> = Obj & Obj & { __marker?: "ExactProps" };
+export type ExactProps<Obj extends object> = Obj & { __marker?: "ExactProps" };
+
+
+export type Var<Name extends string> = Name | { __marker?: "Var" };
+
+/**
+ * Checks if `Obj`[`Key`] === `Value`.
+ */
+//@ts-expect-error Unused params
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type CmpKey<Obj extends object, Key extends keyof Obj, Value> = Obj & { __marker?: "CmpKey" }

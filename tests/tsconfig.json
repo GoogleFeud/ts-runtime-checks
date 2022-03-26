@@ -5,7 +5,7 @@
       "removeComments": true,
       "outDir": "./dist",
       "esModuleInterop": true,
-      "strictNullChecks": true,
+      "strictNullChecks": true, 
       "plugins": [
         { "transform": "../dist/index.js" }
     ]
