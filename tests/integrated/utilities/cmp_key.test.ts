@@ -22,7 +22,7 @@ describe("CmpKey", () => {
             }
 
             it("Throw when the key doesn't equal any of the value's types", () => {
-                expect(call(test2, { a: "c" })).to.throw("Expected a.a to be 123 | \"a\" | \"b\".");
+                expect(call(test2, { a: "c" })).to.throw(/Expected a\.a to be ((123 \| "a" \| "b"\.)|("a" \| "b" \| 123\.))/);
                 expect(call(test2, { a: 123 })).to.not.throw();
                 expect(call(test2, { a: "b" })).to.not.throw();
             });

@@ -17,12 +17,12 @@ describe("CmpKey", () => {
                 (0, chai_1.expect)((0, utils_1.call)(test, { a: 3.14 })).to.not.throw();
             });
             function test2(a) {
-                if (a.a !== 123 && a.a !== "a" && a.a !== "b")
-                    throw new Error("Expected a.a to be 123 | \"a\" | \"b\".");
+                if (a.a !== "a" && a.a !== "b" && a.a !== 123)
+                    throw new Error("Expected a.a to be \"a\" | \"b\" | 123.");
                 return a;
             }
             it("Throw when the key doesn't equal any of the value's types", () => {
-                (0, chai_1.expect)((0, utils_1.call)(test2, { a: "c" })).to.throw("Expected a.a to be 123 | \"a\" | \"b\".");
+                (0, chai_1.expect)((0, utils_1.call)(test2, { a: "c" })).to.throw(/Expected a\.a to be ((123 \| "a" \| "b"\.)|("a" \| "b" \| 123\.))/);
                 (0, chai_1.expect)((0, utils_1.call)(test2, { a: 123 })).to.not.throw();
                 (0, chai_1.expect)((0, utils_1.call)(test2, { a: "b" })).to.not.throw();
             });

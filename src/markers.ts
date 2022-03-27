@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
 import { Block } from "./block";
 import { Transformer } from "./transformer";
@@ -20,20 +21,45 @@ export type MacroFn = (transformer: Transformer, data: MarkerCallData) => ts.Nod
 
 export const Markers: Record<string, MacroFn> = {
     Assert: (trans, {ctx, exp, block, parameters, optional}) => {
-        if (!parameters[0]) return;
         if (ctx === MacroCallContext.Parameter) {
-            if (ts.isIdentifier(exp)) {
-                block.nodes.push(...validate(parameters[0], exp, new ValidationContext({
+            block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
+                return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
                     errorTypeName: parameters[1]?.symbol?.name,
                     checker: trans.checker,
                     depth: [],
-                    propName: exp.text
-                }), optional));
-            }
+                    propName: i.text
+                }), optional);
+            }));
             return undefined;
         } else return undefined;
     }
 };
+
+export const enum BindingPatternTypes {
+    Object,
+    Array
+}
+
+function genValidateForProp(prop: ts.BindingName, 
+    cb: (i: ts.Identifier, bindingPatternType?: BindingPatternTypes) => Array<ts.Statement>,
+    parentType?: BindingPatternTypes) : Array<ts.Statement> {
+    if (ts.isIdentifier(prop)) return cb(prop, parentType);
+    else if (ts.isObjectBindingPattern(prop)) {
+        const result = [];
+        for (const el of prop.elements) {
+            result.push(...genValidateForProp(el.name, cb, BindingPatternTypes.Object));
+        }
+        return result;
+    } else if (ts.isArrayBindingPattern(prop)) {
+        const result = [];
+        for (const el of prop.elements) {
+            if (ts.isOmittedExpression(el)) continue;
+            result.push(...genValidateForProp(el.name, cb, BindingPatternTypes.Array));
+        }
+        return result;
+    }
+    else return [];
+}
 
 /**
  * An assert marker. Makes sure the value matches the provided type by generating code which validates the value. 
