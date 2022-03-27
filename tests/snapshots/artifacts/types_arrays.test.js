@@ -14,14 +14,12 @@ describe("Array", () => {
             }
             return a;
         }
-        describe("In function parameters", () => {
-            it("Throw when one of the values is not of the type", () => {
-                (0, chai_1.expect)((0, utils_1.call)(test, [1, 2, 3, 4, 5, "x"])).to.throw("Expected a[5] to be number.");
-            });
-            it("Not throw when all of the values are of the same type", () => {
-                (0, chai_1.expect)((0, utils_1.call)(test, [1, 2, 3, 4, 5])).to.not.throw();
-                (0, chai_1.expect)((0, utils_1.call)(test, [])).to.not.throw();
-            });
+        it("Throw when one of the values is not of the type", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, [1, 2, 3, 4, 5, "x"])).to.throw("Expected a[5] to be number.");
+        });
+        it("Not throw when all of the values are of the same type", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, [1, 2, 3, 4, 5])).to.not.throw();
+            (0, chai_1.expect)((0, utils_1.call)(test, [])).to.not.throw();
         });
     });
 });

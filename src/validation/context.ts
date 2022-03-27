@@ -24,7 +24,7 @@ export class ValidationContext {
         errorTypeName?: string,
         checker: ts.TypeChecker,
         depth: Array<ValidationPath>,
-        propName: string,
+        propName: string | ts.Expression,
         resultType?: ValidationResultType
     }) {
         this.checker = ctx.checker;

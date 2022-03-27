@@ -1,6 +1,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { MacroCallContext, MacroFn, Markers } from "./markers";
+import { isFromThisLib, resolveAsChain } from "./utils";
 
 export class Transformer {
     checker: ts.TypeChecker;
@@ -41,13 +42,13 @@ export class Transformer {
             else return ts.factory.createFunctionExpression(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
         }
         else if (ts.isAsExpression(node)) {
-            const sym = this.checker.getSymbolAtLocation(node.expression);
+            const expOnly = resolveAsChain(node);
+            const sym = this.checker.getSymbolAtLocation(expOnly);
             if (sym) {
                 if (Block.isInCache(sym, body)) return node;
                 body.cache.add(sym);
             }
-            // TBD: Check if the asserted value is a marker, if it is run it...
-            return node;
+            return this.callMarkerFromAsExpression(node, expOnly, body);
         } else if (ts.isBlock(node)) {
             return ts.factory.createBlock(this.visitEach(node.statements, Block.createBlock(body)));
         }
@@ -57,7 +58,7 @@ export class Transformer {
     callMarkerFromParameterDecl(param: ts.ParameterDeclaration, block: Block.Block<unknown>) : void {
         if (!param.type || !ts.isTypeReferenceNode(param.type)) return;
         const symbol = this.checker.getTypeAtLocation(param.type).aliasSymbol;
-        if (!symbol || !Markers[symbol.name] || !symbol.declarations || !symbol.declarations[0]?.getSourceFile().fileName.includes("ts-runtime-checks")) return;
+        if (!symbol || !Markers[symbol.name] || !isFromThisLib(symbol)) return;
         (Markers[symbol.name] as MacroFn)(this, {
             block,
             parameters: param.type.typeArguments ? param.type.typeArguments.map(t => this.checker.getTypeAtLocation(t)) : [],
@@ -65,6 +66,18 @@ export class Transformer {
             exp: param.name,
             optional: Boolean(param.questionToken)
         });
+    }
+
+    callMarkerFromAsExpression(exp: ts.AsExpression, expOnly: ts.Expression, block: Block.Block<unknown>) : ts.Expression {
+        if (!ts.isTypeReferenceNode(exp.type)) return exp;
+        const symbol = this.checker.getTypeAtLocation(exp.type).aliasSymbol;
+        if (!symbol || !Markers[symbol.name] || !isFromThisLib(symbol)) return exp;
+        return (Markers[symbol.name] as MacroFn)(this, {
+            block,
+            parameters: exp.type.typeArguments ? exp.type.typeArguments.map(t => this.checker.getTypeAtLocation(t)) : [],
+            ctx: MacroCallContext.As,
+            exp: expOnly
+        }) || exp;
     }
 
 

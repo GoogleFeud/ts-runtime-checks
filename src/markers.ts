@@ -3,6 +3,7 @@ import ts from "typescript";
 import { Block } from "./block";
 import { Transformer } from "./transformer";
 import { validate, ValidationContext } from "./validation";
+import { genIdentifier } from "./validation/utils";
 
 export const enum MacroCallContext {
     As,
@@ -14,10 +15,10 @@ export interface MarkerCallData {
     block: Block<unknown>,
     ctx: MacroCallContext,
     optional?: boolean,
-    exp: ts.BindingName
+    exp: ts.Expression | ts.BindingName
 }
 
-export type MacroFn = (transformer: Transformer, data: MarkerCallData) => ts.Node|undefined;
+export type MacroFn = (transformer: Transformer, data: MarkerCallData) => ts.Expression|undefined;
 
 export const Markers: Record<string, MacroFn> = {
     Assert: (trans, {ctx, exp, block, parameters, optional}) => {
@@ -27,11 +28,25 @@ export const Markers: Record<string, MacroFn> = {
                     errorTypeName: parameters[1]?.symbol?.name,
                     checker: trans.checker,
                     depth: [],
-                    propName: i.text
+                    propName: ts.isIdentifier(i) ? i.text : i
                 }), optional);
             }));
             return undefined;
-        } else return undefined;
+        } else {
+            let callBy = exp as ts.Expression;
+            if (!ts.isIdentifier(callBy) && !ts.isPropertyAccessExpression(callBy) && !ts.isElementAccessExpression(callBy)) {
+                const [decl, ident] = genIdentifier("temp", callBy as ts.Expression, ts.NodeFlags.Const);
+                block.nodes.push(decl);
+                callBy = ident;
+            }
+            block.nodes.push(...validate(parameters[0]!, callBy, new ValidationContext({
+                errorTypeName: parameters[1]?.symbol?.name,
+                checker: trans.checker,
+                depth: [],
+                propName: ts.isIdentifier(callBy) ? callBy.text : callBy as ts.Expression
+            })));
+            return callBy;
+        }
     }
 };
 
@@ -40,8 +55,8 @@ export const enum BindingPatternTypes {
     Array
 }
 
-function genValidateForProp(prop: ts.BindingName, 
-    cb: (i: ts.Identifier, bindingPatternType?: BindingPatternTypes) => Array<ts.Statement>,
+function genValidateForProp(prop: ts.Expression|ts.BindingName, 
+    cb: (i: ts.Expression, bindingPatternType?: BindingPatternTypes) => Array<ts.Statement>,
     parentType?: BindingPatternTypes) : Array<ts.Statement> {
     if (ts.isIdentifier(prop)) return cb(prop, parentType);
     else if (ts.isObjectBindingPattern(prop)) {
@@ -58,7 +73,7 @@ function genValidateForProp(prop: ts.BindingName,
         }
         return result;
     }
-    else return [];
+    else return cb(prop);
 }
 
 /**

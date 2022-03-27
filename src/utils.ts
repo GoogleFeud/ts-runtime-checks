@@ -56,3 +56,10 @@ export function isTrueType(t: ts.Type|undefined) : boolean {
     //@ts-expect-error Private API
     return t.intrinsicName === "true";
 }
+
+export function resolveAsChain(exp: ts.Expression) : ts.Expression {
+    while (ts.isAsExpression(exp)) {
+        exp = exp.expression;
+    }
+    return exp;
+}

@@ -11,14 +11,12 @@ describe("Symbol / Bigint", () => {
                 throw new Error("Expected b to be bigint.");
             return [a, b];
         }
-        describe("In function parameters", () => {
-            it("Not throw when the right types are provided", () => {
-                (0, chai_1.expect)((0, utils_1.call)(test, Symbol(), 123n)).to.not.throw();
-            });
-            it("Throw when wrong types are provided", () => {
-                (0, chai_1.expect)((0, utils_1.call)(test, 123, 123n)).to.throw("Expected a to be symbol.");
-                (0, chai_1.expect)((0, utils_1.call)(test, Symbol(), 123)).to.throw("Expected b to be bigint.");
-            });
+        it("Not throw when the right types are provided", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, Symbol(), 123n)).to.not.throw();
+        });
+        it("Throw when wrong types are provided", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, 123, 123n)).to.throw("Expected a to be symbol.");
+            (0, chai_1.expect)((0, utils_1.call)(test, Symbol(), 123)).to.throw("Expected b to be bigint.");
         });
     });
 });

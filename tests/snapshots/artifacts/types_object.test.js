@@ -20,30 +20,28 @@ describe("Object", () => {
             }
             return a;
         }
-        describe("In function parameters", () => {
-            it("Throw when one of the properties has the wrong type", () => {
-                (0, chai_1.expect)((0, utils_1.call)(test, {
-                    a: "ABC",
-                    c: 123
-                })).to.throw("Expected a.c to be string[].");
-                (0, chai_1.expect)((0, utils_1.call)(test, {
-                    a: "ABC",
-                    b: "adc",
-                    c: 123
-                })).to.throw("Expected a.b to be number.");
-                (0, chai_1.expect)((0, utils_1.call)(test, {
-                    a: "ABC",
-                    b: 123,
-                    c: [1]
-                })).to.throw("Expected a.c[0] to be string.");
-            });
-            it("Not throw when all of the values are of the same type", () => {
-                (0, chai_1.expect)((0, utils_1.call)(test, {
-                    a: "ABC",
-                    b: 123,
-                    c: ["Hello"]
-                })).to.not.throw();
-            });
+        it("Throw when one of the properties has the wrong type", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, {
+                a: "ABC",
+                c: 123
+            })).to.throw("Expected a.c to be string[].");
+            (0, chai_1.expect)((0, utils_1.call)(test, {
+                a: "ABC",
+                b: "adc",
+                c: 123
+            })).to.throw("Expected a.b to be number.");
+            (0, chai_1.expect)((0, utils_1.call)(test, {
+                a: "ABC",
+                b: 123,
+                c: [1]
+            })).to.throw("Expected a.c[0] to be string.");
+        });
+        it("Not throw when all of the values are of the same type", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, {
+                a: "ABC",
+                b: 123,
+                c: ["Hello"]
+            })).to.not.throw();
         });
     });
 });
