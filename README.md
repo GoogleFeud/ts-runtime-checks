@@ -26,30 +26,26 @@ function greet(name, age) {
 npm i --save-dev ts-runtime-checks
 ```
 
-### With ttypescript
-
-`tsc` doesn't allow you to add custom transformers, so you must use a tool which adds them. ttypescript does just that:
-
-```
-npm i --save-dev ttypescript
-```
+`tsc` doesn't allow you to add custom transformers, so you must use a tool which adds them:
 
 <details>
     <summary>Usage with ttypescript</summary>
-    ```
+```
 npm i --save-dev ttypescript
-    ```
-    and add the ts-runtime-checks transformer to your tsconfig.json:
+```
 
-    ```json
-    "compilerOptions": {
-    //... other options
-    "plugins": [
-            { "transform": "ts-runtime-checks" }
-        ]
-    }
-    ```
-    Afterwards you must use the `ttsc` CLI command to transpile your typescript code.
+and add the ts-runtime-checks transformer to your tsconfig.json:
+
+```json
+"compilerOptions": {
+//... other options
+"plugins": [
+        { "transform": "ts-runtime-checks" }
+    ]
+}
+```
+
+Afterwards you must use the `ttsc` CLI command to transpile your typescript code.
 </details>
 
 <details>
