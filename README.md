@@ -1,44 +1,67 @@
 # ts-runtime-checks
 
-A typescript transformer which allows you to never worry about users of your library passing incorrect data! This transformer adds runtime checks so you **always** know the data you use is 100% correct, without EVER seeing the validation code.
-
-Here's an example in functions:
+A typescript transformer which automatically generates validation code from your types! Here's a simple example:
 
 ```ts
-import { Assert } from "ts-runtime-checks";
+import type { Assert } from "ts-runtime-checks";
 
-interface MyType {
-    a: string,
-    b?: number
-}
-
-function someFn(param: Assert<MyType>) {
-    // "param" is **guaranteed** to be "MyType" here. NO EXCPETIONS!
+function greet(name: Assert<string>, age: Assert<number>) : string {
+    return `Hello ${name}! I'm ${age} too!`;
 }
 ```
 
-Generated javascript would look something like this:
+transpiles to:
 
 ```js
-function someFn(param) {
-    if (typeof param.a !== "string") throw new Error("`param.a` needs to be of type `string`.");
-    else if ("b" in param && typeof typeof param.b !== "number") throw new Error("`param.b` needs to be of type `number`.");
-    // Rest of your code...
+function greet(name, age) {
+    if (typeof name !== "string") throw new Error("Expected name to be string.");
+    if (typeof age !== "number") throw new Error("Expected age to be number.");
+    return `Hello ${name}! I'm ${age} too!`;
 }
 ```
 
-You can add assert code elsewhere using the `as` keyword:
+## Usage
 
-```ts
-someFn({ a: number } as Assert<MyType>);
+```
+npm i --save-dev ts-runtime-checks
 ```
 
-Results in:
+### With ttypescript
 
-```ts
-let temp__ = { a: number };
-if (!("a" in temp__) || typeof temp__.a !== "string") throw new Error("`a` needs to be of type `string`.");
-else if ("b" in temp__ && typeof typeof temp__.b !== "number") throw new Error("`b` needs to be of type `number`.");
-someFn(temp__);
+`tsc` doesn't allow you to add custom transformers, so you must use a tool which adds them. ttypescript does just that:
+
+```
+npm i --save-dev ttypescript
 ```
 
+<details>
+    <summary>Usage with ttypescript</summary>
+    ```
+npm i --save-dev ttypescript
+    ```
+    and add the ts-runtime-checks transformer to your tsconfig.json:
+
+    ```json
+    "compilerOptions": {
+    //... other options
+    "plugins": [
+            { "transform": "ts-runtime-checks" }
+        ]
+    }
+    ```
+    Afterwards you must use the `ttsc` CLI command to transpile your typescript code.
+</details>
+
+<details>
+    <summary>Usage with ts-loader</summary>
+
+```js
+const TsRuntimeChecks = require("ts-runtime-checks").default;
+
+options: {
+      getCustomTransformers: program => {
+        before: [TsMacros(program)]
+      }
+}
+```
+</details>
