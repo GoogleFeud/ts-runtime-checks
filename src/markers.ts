@@ -3,7 +3,7 @@ import ts from "typescript";
 import { Block } from "./block";
 import { Transformer } from "./transformer";
 import { validate, ValidationContext } from "./validation";
-import { genIdentifier } from "./validation/utils";
+import { genIdentifier, UNDEFINED } from "./validation/utils";
 
 export const enum MacroCallContext {
     As,
@@ -43,7 +43,38 @@ export const Markers: Record<string, MacroFn> = {
                 errorTypeName: parameters[1]?.symbol?.name,
                 checker: trans.checker,
                 depth: [],
-                propName: ts.isIdentifier(callBy) ? callBy.text : callBy as ts.Expression
+                propName: callBy.getText()
+            })));
+            return callBy;
+        }
+    },
+    EarlyReturn: (trans, { ctx, exp, block, parameters, optional}) => {
+        if (ctx === MacroCallContext.Parameter) {
+            block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
+                return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
+                    resultType: {
+                        return: UNDEFINED
+                    },
+                    checker: trans.checker,
+                    depth: [],
+                    propName: ts.isIdentifier(i) ? i.text : i
+                }), optional);
+            }));
+            return undefined;
+        } else {
+            let callBy = exp as ts.Expression;
+            if (!ts.isIdentifier(callBy) && !ts.isPropertyAccessExpression(callBy) && !ts.isElementAccessExpression(callBy)) {
+                const [decl, ident] = genIdentifier("temp", callBy as ts.Expression, ts.NodeFlags.Const);
+                block.nodes.push(decl);
+                callBy = ident;
+            }
+            block.nodes.push(...validate(parameters[0]!, callBy, new ValidationContext({
+                resultType: {
+                    return: UNDEFINED
+                },
+                checker: trans.checker,
+                depth: [],
+                propName: callBy.getText()
             })));
             return callBy;
         }
@@ -77,7 +108,7 @@ function genValidateForProp(prop: ts.Expression|ts.BindingName,
 }
 
 /**
- * An assert marker. Makes sure the value matches the provided type by generating code which validates the value. 
+ * Makes sure the value matches the provided type by generating code which validates the value. 
  * Throws a detailed error by using the `Error` constructor. You can speicfy a different class to use as the marker's
  * second parameter. 
  * 
@@ -100,6 +131,30 @@ function genValidateForProp(prop: ts.Expression|ts.BindingName,
 //@ts-expect-error Unused ErrorType
 //eslint-disable-next-line @typescript-eslint/no-unused-vars
 export type Assert<T, ErrorType = Error> = T | T & { __marker: "Assert" };
+
+/**
+ * Makes sure the value matches the provided type by generating code which validates the value. Returns the provided
+ * `ReturnValue` (or `undefiend` if a return value is not provided) if the value doesn't match the type.
+ * 
+ * This marker can be used in function parameters and in the the `as` expression.
+ * 
+ * @example
+ * ```ts
+ * function test(a: EarlyReturn<string>, b?: EarlyReturn<number, "Expected b to be number...">) {
+ *    // Your code
+ * }
+ * ```
+ * ```js
+ * function test(a, b) {
+ *   if (typeof a !== "string") return;
+ *   else if (b !== undefined && typeof b !== "number") return "Expected b to be number...";
+ *   // Your code
+ * }
+ * ```
+ */
+//@ts-expect-error Unused ErrorType
+//eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type EarlyReturn<T, ReturnValue = undefined> = T | T & { __marker: "EarlyReturn" };
 
 /**
  * Validates if the value is a number and if it's between the specified range.

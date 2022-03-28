@@ -79,9 +79,9 @@ Markers are typescript type aliases which are detected by the transformer. These
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
     - `CmpKey<Obj, key, value, fullCheck>` - Checks if `Obj[key] === value`. 
 
-##### Assert<Type, ErrorType>
+#### Assert<Type, ErrorType>
 
-The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, it throws a new error of the provided `ErrorType`, and it includes a detailed error of what exactly is wrong.
+The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, it throws a new error of the provided `ErrorType`, and it includes a detailed message of what exactly is wrong.
 
 **Example:**
 
@@ -108,7 +108,12 @@ function getType(element: { type: unknown }) : string {
 
 // Transpiles to:
 function getType(element) {
-    if (typeof element.type !== "string") throw new IncorrectElementType("Expected " + element.type + " to be string.");
+    if (typeof element.type !== "string") throw new IncorrectElementType("Expected element.type to be string.");
     return element.type;
 }
 ```
+
+#### EarlyReturn<Type, ReturnValue>
+
+Same as `Assert`, except instead of throwing an error, it returns `ReturnValue`, or `undefined` if a return value is not provided.
+
