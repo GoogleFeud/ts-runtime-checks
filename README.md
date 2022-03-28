@@ -77,8 +77,8 @@ Markers are typescript type aliases which are detected by the transformer. These
     - `Matches<regex>` - Checks if a string matches a regex.
     - `NoCheck<Type>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
-    - `CmpKey<Obj, key, value, fullCheck>` - Checks if `Obj[key] === value`. 
-    - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn` and `CmpKey` for example.
+    - `Cmp<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
+    - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Range` and `Matches` for example.
 
 #### Assert<Type, ErrorType>
 

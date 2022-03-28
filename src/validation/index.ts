@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genPropAccess, genStr, genTypeCmp } from "./utils";
+import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genPropAccess, genStr, genTypeCmp } from "./utils";
 import { hasBit, isTrueType } from "../utils";
 import { ValidationContext } from "./context";
 
@@ -25,7 +25,7 @@ export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.
     else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
     else {
         const utility = ctx.transformer.getUtilityType(t);
-        if (!utility || !utility.aliasSymbol) return;
+        if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) return;
         switch (utility.aliasSymbol.name) {
         case "Range": {
             const min = ctx.transformer.getNodeFromType(utility, 0);
@@ -131,31 +131,21 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                 }
             };
         }
-        case "CmpKey": {
-            const objType = utility.aliasTypeArguments![0];
-            const keyName = ctx.transformer.getNodeFromType(utility, 1)!;
-            const comparedTo = utility.aliasTypeArguments![2]!;
-            if (!objType || !keyName || !comparedTo) throw new TypeError("Wrong parameters for utility type CmpKey.");
-            const verifyObject = isTrueType(utility.aliasTypeArguments![3]);
-            const objValidator = verifyObject ? validateType(objType, target, ctx) : undefined;
-            const condition = () => {
-                const valNode = ctx.transformer.typeValueToNode(comparedTo);
-                const propAccess = genPropAccess(target, keyName);
-                if (Array.isArray(valNode)) return genLogicalAND(...valNode.map(c => genCmp(propAccess, c)));
-                else return genCmp(propAccess, valNode);                
-            };
-            const error = () => {
-                ctx.addPath(target, keyName);
-                const err = ctx.error(utility, [undefined, ` to be ${ctx.transformer.checker.typeToString(comparedTo)}.`]);
-                ctx.removePath();
-                return err;
-            };
+        case "Cmp": {
+            if (!utility.aliasTypeArguments) return;
+            const type = utility.aliasTypeArguments[0];
+            const exp = ctx.transformer.getStringFromType(utility, 1);
+            const fullCheck = isTrueType(utility.aliasTypeArguments[2]!);
+            if (!type || !exp) return;
+            const objValidator = fullCheck ? validateType(type, target, ctx) : undefined;
+            const condition = () => genNegate(ctx.transformer.stringToNode(exp, { $self: target }));
+            const error = () => ctx.error(utility, [undefined, ` to satisfy \`${exp}\`.`]);
             return {
-                condition: verifyObject ? objValidator!.condition : condition,
-                error: verifyObject ? objValidator!.error : error,
-                other: verifyObject ? () => {
-                    const all = [...objValidator!.other!(), genIf(condition(), error())];
-                    return all;
+                condition: objValidator ? objValidator.condition : condition,
+                error: objValidator ? objValidator.error : error,
+                other: objValidator ? () => {
+                    if (objValidator.other) return [...objValidator!.other!(), genIf(condition(), error())];
+                    return [genIf(condition(), error())];
                 } : undefined
             };
         }

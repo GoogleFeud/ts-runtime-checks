@@ -227,7 +227,28 @@ export type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj>
 export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 
 /**
- * Checks if `Obj`[`Key`] === `Value`. It does **not** check if any other properties of the object
- * are correct by default. You can provide set the `CorrectOthers` parameter to true to enable that.
+ * Allows you to create custom comparisons. You can use `$self` in `Expression` - it will turn to value 
+ * that's currently being validated. If `FullCheck` is set to false, then any additional checks regarding the
+ * type of the value will **not** be generated.
+ * 
+ * @example
+ * ```ts
+ * type AssertCmp =  Assert<Cmp<{a: number, b: string}, "$self.a === 123", true>>;
+ *
+ *  function test(a?: AssertCmp) {
+ *    return a;
+ *  }
+ * ```
+ * ```js
+ * function text(a) {
+ *   if (a !== undefined) {
+ *       if (typeof a !== "object") throw new Error("Expected a to be { a: number; b: string; }.");
+ *       if (typeof a["a"] !== "number") throw new Error("Expected a.a to be number.");
+ *       if (typeof a["b"] !== "string") throw new Error("Expected a.b to be string.");
+ *       if (a.a !== 123) throw new Error("Expected a to satisfy self.a === 123.");
+ *   }
+ *   return a;
+ * }
+ * ```
  */
-export type CmpKey<Obj extends object, Key extends string|Expr<"">, Value, CorrectOthers extends boolean = false> = Obj & { __utility?: CmpKey<Obj, Key, Value, CorrectOthers> };
+export type Cmp<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: Cmp<Type, Expression, FullCheck> };

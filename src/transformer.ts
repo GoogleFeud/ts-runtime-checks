@@ -49,7 +49,9 @@ export class Transformer {
                 if (Block.isInCache(sym, body)) return node;
                 body.cache.add(sym);
             }
-            return this.callMarkerFromAsExpression(node, expOnly, body);
+            const newIdent = this.callMarkerFromAsExpression(node, expOnly, body);
+            if (!ts.isExpressionStatement(node.parent)) return newIdent;
+            else return;
         } else if (ts.isBlock(node)) {
             return ts.factory.createBlock(this.visitEach(node.statements, Block.createBlock(body)));
         }
@@ -92,6 +94,12 @@ export class Transformer {
         if (!prop || !prop.valueDeclaration) return;
         return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
     }
+
+    getStringFromType(t: ts.Type, argNum: number) : string|undefined {
+        const arg = t.aliasTypeArguments?.[argNum];
+        if (arg && arg.isStringLiteral()) return arg.value;
+        return undefined;
+    }
     
     getNodeFromType(t: ts.Type, argNum: number) : ts.Expression|undefined {
         const arg = t.aliasTypeArguments?.[argNum];
@@ -124,20 +132,22 @@ export class Transformer {
         else {
             const utility = this.getUtilityType(t);
             if (utility && utility.aliasSymbol?.name === "Expr") {
-                const strVal = t.aliasTypeArguments?.[0];
-                if (!strVal || !strVal.isStringLiteral()) return UNDEFINED;
-                return strVal ? this.stringToNode(strVal.value) : UNDEFINED;
+                const strVal = this.getStringFromType(t, 0);
+                return strVal ? this.stringToNode(strVal) : UNDEFINED;
             }
             else return UNDEFINED;
         }
     }
 
-    stringToNode(str: string) : ts.Expression {
+    stringToNode(str: string, replacements?: Record<string, ts.Expression>) : ts.Expression {
         const result = ts.createSourceFile("expr", str, ts.ScriptTarget.ESNext, false, ts.ScriptKind.JS);
         const firstStmt = result.statements[0];
         if (!firstStmt || !ts.isExpressionStatement(firstStmt)) return UNDEFINED;
         const visitor = (node: ts.Node): ts.Node => {
-            if (ts.isIdentifier(node)) return ts.factory.createIdentifier(node.text);
+            if (ts.isIdentifier(node)) {
+                if (replacements && replacements[node.text]) return replacements[node.text] as ts.Expression;
+                return ts.factory.createIdentifier(node.text);
+            }
             return ts.visitEachChild(node, visitor, this.ctx);
         };
         return ts.visitNode(firstStmt.expression, visitor);

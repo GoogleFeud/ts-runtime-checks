@@ -118,4 +118,29 @@ export function genIdentifier(name: ts.Identifier | string, initializer?: ts.Exp
     ], flag)), ident];
 }
 
+export function genNegate(exp: ts.Expression) : ts.Expression {
+    if (ts.isBinaryExpression(exp)) {
+        switch(exp.operatorToken.kind) {
+        case ts.SyntaxKind.EqualsEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.ExclamationEqualsToken, exp.right); 
+        case ts.SyntaxKind.ExclamationEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.EqualsEqualsToken, exp.right);
+        case ts.SyntaxKind.EqualsEqualsEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.ExclamationEqualsEqualsToken, exp.right); 
+        case ts.SyntaxKind.ExclamationEqualsEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.EqualsEqualsEqualsToken, exp.right);
+        case ts.SyntaxKind.GreaterThanToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanToken, exp.right);
+        case ts.SyntaxKind.GreaterThanEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanEqualsToken, exp.right);
+        case ts.SyntaxKind.LessThanToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanToken, exp.right);
+        case ts.SyntaxKind.LessThanEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanEqualsToken, exp.right);
+        }
+    }
+    else if (ts.isPrefixUnaryExpression(exp) && exp.operator === ts.SyntaxKind.ExclamationToken) return exp.operand;
+    return genNot(exp);
+}
+
 export const UNDEFINED = factory.createIdentifier("undefined");
