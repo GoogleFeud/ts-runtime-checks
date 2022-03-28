@@ -28,19 +28,22 @@ export function getStrFromType(t: ts.Type, argNum: number) : string|undefined {
     return (arg as ts.StringLiteralType).value || "";
 }
 
-export function typeValueToNode(t: ts.Type) : ts.Expression|Array<ts.Expression> {
+export function typeValueToNode(ctx: ts.TransformationContext, t: ts.Type, firstOnly?: true) : ts.Expression;
+export function typeValueToNode(ctx: ts.TransformationContext, t: ts.Type, firstOnly?: boolean) : ts.Expression|Array<ts.Expression> {
     if (t.isStringLiteral()) return ts.factory.createStringLiteral(t.value);
     else if (t.isNumberLiteral()) return ts.factory.createNumericLiteral(t.value);
-    else if (isUtilityType(t, "Var")) {
+    else if (isUtilityType(t, "Expr")) {
         const strVal = getStrFromType(t, 0);
-        return strVal ? ts.factory.createIdentifier(strVal) : UNDEFINED;
+        return strVal ? stringToNode(ctx, strVal) : UNDEFINED;
     }
     else if (hasBit(t, ts.TypeFlags.BigIntLiteral)) {
         const { value } = (t as ts.BigIntLiteralType);
         return ts.factory.createBigIntLiteral(value);
     }
     else if (t.isUnion()) {
-        return t.types.map(t => typeValueToNode(t)) as Array<ts.Expression>;
+        const res = t.types.map(t => typeValueToNode(ctx, t, true));
+        if (firstOnly) return res[0]!;
+        else return res;
     }
     //@ts-expect-error Private API
     else if (t.intrinsicName === "false") return ts.factory.createFalse();
@@ -62,4 +65,15 @@ export function resolveAsChain(exp: ts.Expression) : ts.Expression {
         exp = exp.expression;
     }
     return exp;
+}
+
+export function stringToNode(ctx: ts.TransformationContext, str: string) : ts.Expression {
+    const result = ts.createSourceFile("expr", str, ts.ScriptTarget.ESNext, false, ts.ScriptKind.JS);
+    const firstStmt = result.statements[0];
+    if (!firstStmt || !ts.isExpressionStatement(firstStmt)) return UNDEFINED;
+    const visitor = (node: ts.Node): ts.Node => {
+        if (ts.isIdentifier(node)) return ts.factory.createIdentifier(node.text);
+        return ts.visitEachChild(node, visitor, ctx);
+    };
+    return ts.visitNode(firstStmt.expression, visitor);
 }

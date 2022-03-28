@@ -130,7 +130,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         const verifyObject = isTrueType(t.aliasTypeArguments![3]);
         const objValidator = verifyObject ? validateType(objType, target, ctx) : undefined;
         const condition = () => {
-            const valNode = typeValueToNode(comparedTo);
+            const valNode = typeValueToNode(ctx.transform, comparedTo);
             const propAccess = genPropAccess(target, keyName);
             if (Array.isArray(valNode)) return genLogicalAND(...valNode.map(c => genCmp(propAccess, c)));
             else return genCmp(propAccess, valNode);                

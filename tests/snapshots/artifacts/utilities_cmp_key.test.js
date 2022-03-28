@@ -29,11 +29,11 @@ describe("CmpKey", () => {
             const someVar = 3001;
             function test3(a) {
                 if (a.b !== someVar)
-                    throw new Error("Expected a.b to be Var<\"someVar\">.");
+                    throw new Error("Expected a.b to be Expr<\"someVar\">.");
                 return a;
             }
             it("Throw when the property doesn't equal variable value", () => {
-                (0, chai_1.expect)((0, utils_1.call)(test3, { b: 3002 })).to.throw("Expected a.b to be Var<\"someVar\">.");
+                (0, chai_1.expect)((0, utils_1.call)(test3, { b: 3002 })).to.throw("Expected a.b to be Expr<\"someVar\">.");
             });
             function test4(a) {
                 if (typeof a !== "object")

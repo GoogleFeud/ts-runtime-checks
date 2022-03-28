@@ -1,4 +1,4 @@
-import type { Assert, CmpKey, Var } from "../../../dist/index";
+import type { Assert, CmpKey, Expr } from "../../../dist/index";
 import { call } from "../../utils";
 import { expect } from "chai";
 
@@ -29,12 +29,12 @@ describe("CmpKey", () => {
 
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const someVar = 3001;
-            function test3(a: Assert<CmpKey<{ b: number }, "b", Var<"someVar">>>) {
+            function test3(a: Assert<CmpKey<{ b: number }, "b", Expr<"someVar">>>) {
                 return a;
             }
 
             it("Throw when the property doesn't equal variable value", () => {
-                expect(call(test3, { b: 3002 })).to.throw("Expected a.b to be Var<\"someVar\">.");
+                expect(call(test3, { b: 3002 })).to.throw("Expected a.b to be Expr<\"someVar\">.");
             });
 
             function test4(a: Assert<CmpKey<{a: string, b: number}, "a", "abc", true>>) {

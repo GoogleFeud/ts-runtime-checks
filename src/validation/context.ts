@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts, { factory } from "typescript";
+import { Transformer } from "../transformer";
 import { genAdd, genCmp, genLogicalAND, genNew, genStr, genThrow, UNDEFINED } from "./utils";
 
 export interface ValidationPath {
@@ -18,16 +19,18 @@ export type ValidationResultType = {
 export class ValidationContext {
     errorTypeName: string;
     checker: ts.TypeChecker;
+    transform: ts.TransformationContext;
     depth: Array<ValidationPath>;
     resultType: ValidationResultType;
     constructor(ctx: {
         errorTypeName?: string,
-        checker: ts.TypeChecker,
+        transformer: Transformer,
         depth: Array<ValidationPath>,
         propName: string | ts.Expression,
         resultType?: ValidationResultType
     }) {
-        this.checker = ctx.checker;
+        this.checker = ctx.transformer.checker;
+        this.transform = ctx.transformer.ctx;
         this.errorTypeName = ctx.errorTypeName || "Error";
         this.depth = ctx.depth;
         this.resultType = ctx.resultType || { throw: true };

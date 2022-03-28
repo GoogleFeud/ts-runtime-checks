@@ -2,6 +2,7 @@
 import ts from "typescript";
 import { Block } from "./block";
 import { Transformer } from "./transformer";
+import { typeValueToNode } from "./utils";
 import { validate, ValidationContext } from "./validation";
 import { genIdentifier, UNDEFINED } from "./validation/utils";
 
@@ -26,7 +27,7 @@ export const Markers: Record<string, MacroFn> = {
             block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
                 return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
                     errorTypeName: parameters[1]?.symbol?.name,
-                    checker: trans.checker,
+                    transformer: trans,
                     depth: [],
                     propName: ts.isIdentifier(i) ? i.text : i
                 }), optional);
@@ -41,7 +42,7 @@ export const Markers: Record<string, MacroFn> = {
             }
             block.nodes.push(...validate(parameters[0]!, callBy, new ValidationContext({
                 errorTypeName: parameters[1]?.symbol?.name,
-                checker: trans.checker,
+                transformer: trans,
                 depth: [],
                 propName: callBy.getText()
             })));
@@ -49,13 +50,12 @@ export const Markers: Record<string, MacroFn> = {
         }
     },
     EarlyReturn: (trans, { ctx, exp, block, parameters, optional}) => {
+        const returnType = parameters[1] ? typeValueToNode(trans.ctx, parameters[1], true) : UNDEFINED;
         if (ctx === MacroCallContext.Parameter) {
             block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
                 return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
-                    resultType: {
-                        return: UNDEFINED
-                    },
-                    checker: trans.checker,
+                    resultType: { return: returnType },
+                    transformer: trans,
                     depth: [],
                     propName: ts.isIdentifier(i) ? i.text : i
                 }), optional);
@@ -69,10 +69,8 @@ export const Markers: Record<string, MacroFn> = {
                 callBy = ident;
             }
             block.nodes.push(...validate(parameters[0]!, callBy, new ValidationContext({
-                resultType: {
-                    return: UNDEFINED
-                },
-                checker: trans.checker,
+                resultType: { return: returnType },
+                transformer: trans,
                 depth: [],
                 propName: callBy.getText()
             })));
@@ -235,8 +233,7 @@ export type Matches<Regex extends string> = string & { __marker?: "Matches" };
  */
 export type ExactProps<Obj extends object> = Obj & { __marker?: "ExactProps" };
 
-
-export type Var<Name extends string> = Name | { __marker?: "Var" };
+export type Expr<Expression extends string> = Expression | Expression & { __marker?: "Expr" };
 
 /**
  * Checks if `Obj`[`Key`] === `Value`. It does **not** check if any other properties of the object
