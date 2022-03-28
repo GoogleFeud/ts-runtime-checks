@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genNum, genPropAccess, genStr, genTypeCmp } from "./utils";
-import { getNumFromType, getStrFromType, hasBit, isTrueType, isUtilityType, typeValueToNode } from "../utils";
+import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNot, genPropAccess, genStr, genTypeCmp } from "./utils";
+import { hasBit, isTrueType } from "../utils";
 import { ValidationContext } from "./context";
 
 export interface ValidatedType {
@@ -13,7 +13,7 @@ export interface ValidatedType {
 
 const SKIP_SYM = Symbol("NoCheck");
 
-export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Expression | typeof SKIP_SYM | undefined {
+export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.Expression) : ts.Expression | typeof SKIP_SYM | undefined {
     if (t.isStringLiteral()) return genCmp(target, factory.createStringLiteral(t.value));
     else if (t.isNumberLiteral()) return genCmp(target, factory.createNumericLiteral(t.value));
     else if (hasBit(t, TypeFlags.String)) return genTypeCmp(target, "string");
@@ -23,27 +23,33 @@ export function validateBaseType(t: ts.Type, target: ts.Expression) : ts.Express
     else if (hasBit(t, TypeFlags.ESSymbol)) return genTypeCmp(target, "symbol");
     else if (t.getCallSignatures().length === 1) return genTypeCmp(target, "function");
     else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
-    else if (isUtilityType(t, "Range")) {
-        const min = getNumFromType(t, 0);
-        const max = getNumFromType(t, 1);
-        const checks = [];
-        if (min) checks.push(factory.createLessThan(target, genNum(min)));
-        if (max) checks.push(factory.createGreaterThan(target, genNum(max)));
-        if (!checks.length) return genTypeCmp(target, "number"); 
-        return genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(...checks));
+    else {
+        const utility = ctx.transformer.getUtilityType(t);
+        if (!utility || !utility.aliasSymbol) return;
+        switch (utility.aliasSymbol.name) {
+        case "Range": {
+            const min = ctx.transformer.getNodeFromType(utility, 0);
+            const max = ctx.transformer.getNodeFromType(utility, 1);
+            const checks = [];
+            if (min) checks.push(factory.createLessThan(target, min));
+            if (max) checks.push(factory.createGreaterThan(target, max));
+            if (!checks.length) return genTypeCmp(target, "number"); 
+            return genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(...checks));
+        }
+        case "Matches": {
+            const regex = ctx.transformer.getNodeFromType(utility, 0);
+            if (!regex) return genTypeCmp(target, "string");
+            return genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(ts.isStringLiteral(regex) ? factory.createRegularExpressionLiteral(regex.text) : regex, "test"), undefined, [target])));
+        }
+        case "NoCheck": return SKIP_SYM;
+        }
     }
-    else if (isUtilityType(t, "Matches")) {
-        const regex = getStrFromType(t, 0);
-        if (!regex) return genTypeCmp(target, "string");
-        return genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(factory.createRegularExpressionLiteral(regex), "test"), undefined, [target])));
-    }
-    else if (isUtilityType(t, "NoCheck")) return SKIP_SYM;
     return undefined;
 }
 
 export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationContext) : ValidatedType | undefined {
     let type: ts.Type | ReadonlyArray<ts.Type> | ts.Expression | undefined | typeof SKIP_SYM; 
-    if (type = validateBaseType(t, target)) {
+    if (type = validateBaseType(ctx, t, target)) {
         if (type === SKIP_SYM) return;
         return {
             condition:() => type as ts.Expression,
@@ -57,7 +63,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
             for (const unionType of t.types) {
                 if (hasBit(unionType, TypeFlags.Undefined)) isOptional = true;
                 else {
-                    if (isTupleType(ctx.checker, unionType) || isArrayType(ctx.checker, unionType)) {
+                    if (isTupleType(ctx.transformer.checker, unionType) || isArrayType(ctx.transformer.checker, unionType)) {
                         if (hasArrayCheck) continue;
                         checks.push(genNot(genInstanceof(target, "Array")));
                         hasArrayCheck = true;
@@ -72,7 +78,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         },
         error: () => ctx.error(t)
     };
-    else if (type = isArrayType(ctx.checker, t)) return {
+    else if (type = isArrayType(ctx.transformer.checker, t)) return {
         condition: () => genNot(genInstanceof(target, "Array")),
         error: () => ctx.error(t),
         other: () => {
@@ -90,7 +96,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
             )[0]];
         }
     };
-    else if (type = isTupleType(ctx.checker, t)) return {
+    else if (type = isTupleType(ctx.transformer.checker, t)) return {
         condition: () => genNot(genInstanceof(target, "Array")),
         error: () => ctx.error(t),
         other: () => {
@@ -104,69 +110,74 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
             return arr;
         }
     };
-    else if (isUtilityType(t, "ExactProps")) {
-        const obj = t.aliasTypeArguments?.[0];
-        if (!obj) return;
-        const validatedObj = validateType(obj, target, ctx);
-        if (!validatedObj || !validatedObj.other) return;
-        return {
-            ...validatedObj,
-            other: () => {
-                const propName = factory.createUniqueName("name");
-                ctx.addPath(target, propName);
-                const error = ctx.error(t, ["Property ", " is excessive."]);
+    else {
+        const utility = ctx.transformer.getUtilityType(t);
+        switch (utility?.aliasSymbol?.name) {
+        case "ExactProps": {
+            const obj = utility.aliasTypeArguments?.[0];
+            if (!obj) return;
+            const validatedObj = validateType(obj, target, ctx);
+            if (!validatedObj || !validatedObj.other) return;
+            return {
+                ...validatedObj,
+                other: () => {
+                    const propName = factory.createUniqueName("name");
+                    ctx.addPath(target, propName);
+                    const error = ctx.error(utility, ["Property ", " is excessive."]);
+                    ctx.removePath();
+                    return [...validatedObj.other!(), genForInLoop(target, propName, 
+                        [genIf(genLogicalAND(...obj.getProperties().map(prop => genCmp(propName, genStr(prop.name)))), error)]
+                    )[0]];
+                }
+            };
+        }
+        case "CmpKey": {
+            const objType = utility.aliasTypeArguments![0];
+            const keyName = ctx.transformer.getNodeFromType(utility, 1)!;
+            const comparedTo = utility.aliasTypeArguments![2]!;
+            if (!objType || !keyName || !comparedTo) throw new TypeError("Wrong parameters for utility type CmpKey.");
+            const verifyObject = isTrueType(utility.aliasTypeArguments![3]);
+            const objValidator = verifyObject ? validateType(objType, target, ctx) : undefined;
+            const condition = () => {
+                const valNode = ctx.transformer.typeValueToNode(comparedTo);
+                const propAccess = genPropAccess(target, keyName);
+                if (Array.isArray(valNode)) return genLogicalAND(...valNode.map(c => genCmp(propAccess, c)));
+                else return genCmp(propAccess, valNode);                
+            };
+            const error = () => {
+                ctx.addPath(target, keyName);
+                const err = ctx.error(utility, [undefined, ` to be ${ctx.transformer.checker.typeToString(comparedTo)}.`]);
                 ctx.removePath();
-                return [...validatedObj.other!(), genForInLoop(target, propName, 
-                    [genIf(genLogicalAND(...obj.getProperties().map(prop => genCmp(propName, genStr(prop.name)))), error)]
-                )[0]];
-            }
+                return err;
+            };
+            return {
+                condition: verifyObject ? objValidator!.condition : condition,
+                error: verifyObject ? objValidator!.error : error,
+                other: verifyObject ? () => {
+                    const all = [...objValidator!.other!(), genIf(condition(), error())];
+                    return all;
+                } : undefined
+            };
+        }
+        default: return {
+            other: () => {
+                const properties = t.getProperties();
+                const checks = [];
+                for (const prop of properties) {
+                    if (!prop.valueDeclaration) continue;
+                    const access = factory.createElementAccessExpression(target, genStr(prop.name));
+                    ctx.addPath(target, prop.name);
+                    const typeOfProp = ctx.transformer.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration);
+                    checks.push(...validate(typeOfProp.isUnion() ? typeOfProp.getNonNullableType() : typeOfProp, access, ctx, ts.isPropertySignature(prop.valueDeclaration) ? Boolean(prop.valueDeclaration.questionToken) : false));        
+                    ctx.removePath();  
+                }
+                return checks;
+            },
+            condition: () => genTypeCmp(target, "object"),
+            error: () => ctx.error(t)
         };
+        }
     }
-    else if (isUtilityType(t, "CmpKey") && t.aliasTypeArguments) {
-        const objType = t.aliasTypeArguments![0];
-        const keyName = getStrFromType(t, 1)!;
-        const comparedTo = t.aliasTypeArguments![2]!;
-        if (!objType || !keyName || !comparedTo) throw new TypeError("Wrong parameters for utility type CmpKey.");
-        const verifyObject = isTrueType(t.aliasTypeArguments![3]);
-        const objValidator = verifyObject ? validateType(objType, target, ctx) : undefined;
-        const condition = () => {
-            const valNode = typeValueToNode(ctx.transform, comparedTo);
-            const propAccess = genPropAccess(target, keyName);
-            if (Array.isArray(valNode)) return genLogicalAND(...valNode.map(c => genCmp(propAccess, c)));
-            else return genCmp(propAccess, valNode);                
-        };
-        const error = () => {
-            ctx.addPath(target, keyName);
-            const err = ctx.error(t, [undefined, ` to be ${ctx.checker.typeToString(comparedTo)}.`]);
-            ctx.removePath();
-            return err;
-        };
-        return {
-            condition: verifyObject ? objValidator!.condition : condition,
-            error: verifyObject ? objValidator!.error : error,
-            other: verifyObject ? () => {
-                const all = [...objValidator!.other!(), genIf(condition(), error())];
-                return all;
-            } : undefined
-        };
-    }
-    else return {
-        other: () => {
-            const properties = t.getProperties();
-            const checks = [];
-            for (const prop of properties) {
-                if (!prop.valueDeclaration) continue;
-                const access = factory.createElementAccessExpression(target, genStr(prop.name));
-                ctx.addPath(target, prop.name);
-                const typeOfProp = ctx.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration);
-                checks.push(...validate(typeOfProp.isUnion() ? typeOfProp.getNonNullableType() : typeOfProp, access, ctx, ts.isPropertySignature(prop.valueDeclaration) ? Boolean(prop.valueDeclaration.questionToken) : false));        
-                ctx.removePath();  
-            }
-            return checks;
-        },
-        condition: () => genTypeCmp(target, "object"),
-        error: () => ctx.error(t)
-    };
 }
 
 export function validate(t: ts.Type, target: ts.Expression, ctx: ValidationContext, isOptional?: boolean) : Array<ts.Statement> {

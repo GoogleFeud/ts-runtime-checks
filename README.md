@@ -70,14 +70,15 @@ options: {
 Markers are typescript type aliases which are detected by the transformer. These types don't represent actual values, but they tell the transformer what code to generate. Think of them as functions! This transformer has two type of markers:
 
 - `Assertions` - Tell the transformer that the value associated with this type needs to be checked during runtime. These types can be used in either **function parameters** or in **type assertions**.
-    - `Assert`
-    - `EarlyReturn`
+    - `Assert<Type, ErrorType>`
+    - `EarlyReturn<Type, ReturnType>`
 - `Utility` - Types which perform additional checks. These types should be only used inside `Assertion` types.
     - `Range<min, max>` - Checks if a number are in the provided range.
     - `Matches<regex>` - Checks if a string matches a regex.
     - `NoCheck<Type>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
     - `CmpKey<Obj, key, value, fullCheck>` - Checks if `Obj[key] === value`. 
+    - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn` and `CmpKey` for example.
 
 #### Assert<Type, ErrorType>
 

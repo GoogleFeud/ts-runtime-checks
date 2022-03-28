@@ -2,7 +2,6 @@
 import ts from "typescript";
 import { Block } from "./block";
 import { Transformer } from "./transformer";
-import { typeValueToNode } from "./utils";
 import { validate, ValidationContext } from "./validation";
 import { genIdentifier, UNDEFINED } from "./validation/utils";
 
@@ -50,7 +49,7 @@ export const Markers: Record<string, MacroFn> = {
         }
     },
     EarlyReturn: (trans, { ctx, exp, block, parameters, optional}) => {
-        const returnType = parameters[1] ? typeValueToNode(trans.ctx, parameters[1], true) : UNDEFINED;
+        const returnType = parameters[1] ? trans.typeValueToNode(parameters[1], true) : UNDEFINED;
         if (ctx === MacroCallContext.Parameter) {
             block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
                 return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
@@ -126,9 +125,7 @@ function genValidateForProp(prop: ts.Expression|ts.BindingName,
  * }
  * ```
  */
-//@ts-expect-error Unused ErrorType
-//eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Assert<T, ErrorType = Error> = T | T & { __marker: "Assert" };
+export type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType> };
 
 /**
  * Makes sure the value matches the provided type by generating code which validates the value. Returns the provided
@@ -150,9 +147,7 @@ export type Assert<T, ErrorType = Error> = T | T & { __marker: "Assert" };
  * }
  * ```
  */
-//@ts-expect-error Unused ErrorType
-//eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type EarlyReturn<T, ReturnValue = undefined> = T | T & { __marker: "EarlyReturn" };
+export type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
 
 /**
  * Validates if the value is a number and if it's between the specified range.
@@ -179,14 +174,12 @@ export type EarlyReturn<T, ReturnValue = undefined> = T | T & { __marker: "Early
  * const someNum = __data;
  * ```
  */
-//@ts-expect-error Unused params
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Range<min extends number, max extends number> = number & { __marker?: "Range" }; 
+export type Range<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: Range<min, max> }; 
 
 /**
  * Does not validate the type inside the marker.
  */
-export type NoCheck<T> = T & { __marker?: "NoCheck" };
+export type NoCheck<T> = T & { __utility?: NoCheck<T> };
 
 /**
  * Validates if the provided value is a string and it matches the regex.
@@ -204,9 +197,7 @@ export type NoCheck<T> = T & { __marker?: "NoCheck" };
  * }
  * ```
  */
-//@ts-expect-error Unused params
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Matches<Regex extends string> = string & { __marker?: "Matches" };
+export type Matches<Regex extends string|Expr<"">> = string & { __utility?: Matches<Regex> };
 
 /**
  * Validates whether the value doesn't have any excessive properties.   
@@ -231,14 +222,12 @@ export type Matches<Regex extends string> = string & { __marker?: "Matches" };
  * }
  * ```
  */
-export type ExactProps<Obj extends object> = Obj & { __marker?: "ExactProps" };
+export type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
 
-export type Expr<Expression extends string> = Expression | Expression & { __marker?: "Expr" };
+export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 
 /**
  * Checks if `Obj`[`Key`] === `Value`. It does **not** check if any other properties of the object
  * are correct by default. You can provide set the `CorrectOthers` parameter to true to enable that.
  */
-//@ts-expect-error Unused params
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type CmpKey<Obj extends object, Key extends keyof Obj, Value, CorrectOthers extends boolean = false> = Obj & { __marker?: "CmpKey" }
+export type CmpKey<Obj extends object, Key extends string|Expr<"">, Value, CorrectOthers extends boolean = false> = Obj & { __utility?: CmpKey<Obj, Key, Value, CorrectOthers> };

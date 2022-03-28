@@ -70,8 +70,8 @@ export function genInstanceof(exp: ts.Expression, inst: string | ts.Identifier) 
     return factory.createBinaryExpression(exp, ts.SyntaxKind.InstanceOfKeyword, typeof inst === "string" ? factory.createIdentifier(inst) : inst);
 }
 
-export function genPropAccess(exp: ts.Expression, thing: string) : ts.Expression {
-    return factory.createPropertyAccessExpression(exp, thing);
+export function genPropAccess(exp: ts.Expression, thing: string|ts.Expression) : ts.Expression {
+    return typeof thing === "string" ? factory.createPropertyAccessExpression(exp, thing) : factory.createElementAccessExpression(exp, thing);
 }
 
 export function genForLoop(arr: ts.Expression, indName: ts.Identifier | string, body: ts.Expression | Array<ts.Statement>) : [loop: ts.Statement, index: ts.Expression] {

@@ -18,8 +18,7 @@ export type ValidationResultType = {
  */
 export class ValidationContext {
     errorTypeName: string;
-    checker: ts.TypeChecker;
-    transform: ts.TransformationContext;
+    transformer: Transformer;
     depth: Array<ValidationPath>;
     resultType: ValidationResultType;
     constructor(ctx: {
@@ -29,8 +28,7 @@ export class ValidationContext {
         propName: string | ts.Expression,
         resultType?: ValidationResultType
     }) {
-        this.checker = ctx.transformer.checker;
-        this.transform = ctx.transformer.ctx;
+        this.transformer = ctx.transformer;
         this.errorTypeName = ctx.errorTypeName || "Error";
         this.depth = ctx.depth;
         this.resultType = ctx.resultType || { throw: true };
@@ -43,9 +41,9 @@ export class ValidationContext {
     error(t: ts.Type, error?: [string?, string?]) : ts.Statement {
         if (this.resultType.return) return factory.createReturnStatement(this.resultType.return);
         const errPath = this.visualizeDepth();
-        if (typeof errPath === "string") return genThrow(genNew(this.errorTypeName, error?.[0] || "Expected " + errPath + (error?.[1] || ` to be ${this.checker.typeToString(t)}.`)));
+        if (typeof errPath === "string") return genThrow(genNew(this.errorTypeName, error?.[0] || "Expected " + errPath + (error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`)));
         else return genThrow(genNew(this.errorTypeName, [
-            genAdd(genAdd(genStr(error?.[0] || "Expected "), errPath), genStr(error?.[1] || ` to be ${this.checker.typeToString(t)}.`))
+            genAdd(genAdd(genStr(error?.[0] || "Expected "), errPath), genStr(error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`))
         ]));
     }
 

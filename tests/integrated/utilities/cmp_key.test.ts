@@ -10,7 +10,7 @@ describe("CmpKey", () => {
             }
 
             it("Throw when the key doesn't equal the value", () => {
-                expect(call(test, { a: 314 })).to.throw("Expected a.a to be 3.14.");
+                expect(call(test, { a: 314 })).to.throw("Expected a[a] to be 3.14.");
             });
 
             it("Not throw when the right value is provided", () => {
@@ -22,7 +22,7 @@ describe("CmpKey", () => {
             }
 
             it("Throw when the key doesn't equal any of the value's types", () => {
-                expect(call(test2, { a: "c" })).to.throw(/Expected a\.a to be ((123 \| "a" \| "b"\.)|("a" \| "b" \| 123\.))/);
+                expect(call(test2, { a: "c" })).to.throw(/Expected a\[a\] to be ((123 \| "a" \| "b"\.)|("a" \| "b" \| 123\.))/);
                 expect(call(test2, { a: 123 })).to.not.throw();
                 expect(call(test2, { a: "b" })).to.not.throw();
             });
@@ -34,7 +34,7 @@ describe("CmpKey", () => {
             }
 
             it("Throw when the property doesn't equal variable value", () => {
-                expect(call(test3, { b: 3002 })).to.throw("Expected a.b to be Expr<\"someVar\">.");
+                expect(call(test3, { b: 3002 })).to.throw("Expected a[b] to be Expr<\"someVar\">.");
             });
 
             function test4(a: Assert<CmpKey<{a: string, b: number}, "a", "abc", true>>) {

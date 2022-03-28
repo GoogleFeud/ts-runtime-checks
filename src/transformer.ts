@@ -1,7 +1,8 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { MacroCallContext, MacroFn, Markers } from "./markers";
-import { isFromThisLib, resolveAsChain } from "./utils";
+import { hasBit, resolveAsChain } from "./utils";
+import { UNDEFINED } from "./validation/utils";
 
 export class Transformer {
     checker: ts.TypeChecker;
@@ -57,11 +58,11 @@ export class Transformer {
 
     callMarkerFromParameterDecl(param: ts.ParameterDeclaration, block: Block.Block<unknown>) : void {
         if (!param.type || !ts.isTypeReferenceNode(param.type)) return;
-        const symbol = this.checker.getTypeAtLocation(param.type).aliasSymbol;
-        if (!symbol || !Markers[symbol.name] || !isFromThisLib(symbol)) return;
-        (Markers[symbol.name] as MacroFn)(this, {
+        const type = this.resolveActualType(this.checker.getTypeAtLocation(param.type));
+        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return;
+        (Markers[type.aliasSymbol.name] as MacroFn)(this, {
             block,
-            parameters: param.type.typeArguments ? param.type.typeArguments.map(t => this.checker.getTypeAtLocation(t)) : [],
+            parameters: type.aliasTypeArguments as Array<ts.Type> || param.type.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
             ctx: MacroCallContext.Parameter,
             exp: param.name,
             optional: Boolean(param.questionToken)
@@ -70,14 +71,76 @@ export class Transformer {
 
     callMarkerFromAsExpression(exp: ts.AsExpression, expOnly: ts.Expression, block: Block.Block<unknown>) : ts.Expression {
         if (!ts.isTypeReferenceNode(exp.type)) return exp;
-        const symbol = this.checker.getTypeAtLocation(exp.type).aliasSymbol;
-        if (!symbol || !Markers[symbol.name] || !isFromThisLib(symbol)) return exp;
-        return (Markers[symbol.name] as MacroFn)(this, {
+        const type = this.resolveActualType(this.checker.getTypeAtLocation(exp.type));
+        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return exp;
+        return (Markers[type.aliasSymbol.name] as MacroFn)(this, {
             block,
-            parameters: exp.type.typeArguments ? exp.type.typeArguments.map(t => this.checker.getTypeAtLocation(t)) : [],
+            parameters: type.aliasTypeArguments as Array<ts.Type> || exp.type.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
             ctx: MacroCallContext.As,
             exp: expOnly
         }) || exp;
+    }
+
+    resolveActualType(t: ts.Type) : ts.Type | undefined {
+        const prop = t.getProperty("__marker");
+        if (!prop || !prop.valueDeclaration) return;
+        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
+    }
+    
+    getUtilityType(type: ts.Type) : ts.Type|undefined {
+        const prop = type.getProperty("__utility");
+        if (!prop || !prop.valueDeclaration) return;
+        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
+    }
+    
+    getNodeFromType(t: ts.Type, argNum: number) : ts.Expression|undefined {
+        const arg = t.aliasTypeArguments?.[argNum];
+        if (!arg) return;
+        const val = this.typeValueToNode(arg, true);
+        if (ts.isIdentifier(val) && val.text === "undefined") return undefined;
+        return val;
+    }
+
+    typeValueToNode(t: ts.Type, firstOnly?: true) : ts.Expression;
+    typeValueToNode(t: ts.Type, firstOnly?: boolean) : ts.Expression|Array<ts.Expression> {
+        if (t.isStringLiteral()) return ts.factory.createStringLiteral(t.value);
+        else if (t.isNumberLiteral()) return ts.factory.createNumericLiteral(t.value);
+        else if (hasBit(t, ts.TypeFlags.BigIntLiteral)) {
+            const { value } = (t as ts.BigIntLiteralType);
+            return ts.factory.createBigIntLiteral(value);
+        }
+        else if (t.isUnion()) {
+            const res = t.types.map(t => this.typeValueToNode(t, true));
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            if (firstOnly) return res[0]!;
+            else return res;
+        }
+        //@ts-expect-error Private API
+        else if (t.intrinsicName === "false") return ts.factory.createFalse();
+        //@ts-expect-error Private API
+        else if (t.intrinsicName === "true") return ts.factory.createTrue();
+        //@ts-expect-error Private API
+        else if (t.intrinsicName === "null") return ts.factory.createNull();
+        else {
+            const utility = this.getUtilityType(t);
+            if (utility && utility.aliasSymbol?.name === "Expr") {
+                const strVal = t.aliasTypeArguments?.[0];
+                if (!strVal || !strVal.isStringLiteral()) return UNDEFINED;
+                return strVal ? this.stringToNode(strVal.value) : UNDEFINED;
+            }
+            else return UNDEFINED;
+        }
+    }
+
+    stringToNode(str: string) : ts.Expression {
+        const result = ts.createSourceFile("expr", str, ts.ScriptTarget.ESNext, false, ts.ScriptKind.JS);
+        const firstStmt = result.statements[0];
+        if (!firstStmt || !ts.isExpressionStatement(firstStmt)) return UNDEFINED;
+        const visitor = (node: ts.Node): ts.Node => {
+            if (ts.isIdentifier(node)) return ts.factory.createIdentifier(node.text);
+            return ts.visitEachChild(node, visitor, this.ctx);
+        };
+        return ts.visitNode(firstStmt.expression, visitor);
     }
 
 
