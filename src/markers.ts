@@ -233,9 +233,9 @@ export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
  * 
  * @example
  * ```ts
- * type AssertCmp =  Assert<Cmp<{a: number, b: string}, "$self.a === 123", true>>;
+ * type Assert123 = Assert<If<{a: number, b: string}, "$self.a === 123", true>>;
  *
- *  function test(a?: AssertCmp) {
+ *  function test(a?: Assert123) {
  *    return a;
  *  }
  * ```
@@ -245,10 +245,10 @@ export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
  *       if (typeof a !== "object") throw new Error("Expected a to be { a: number; b: string; }.");
  *       if (typeof a["a"] !== "number") throw new Error("Expected a.a to be number.");
  *       if (typeof a["b"] !== "string") throw new Error("Expected a.b to be string.");
- *       if (a.a !== 123) throw new Error("Expected a to satisfy self.a === 123.");
+ *       if (a.a !== 123) throw new Error("Expected a to satisfy `self.a === 123`.");
  *   }
  *   return a;
  * }
  * ```
  */
-export type Cmp<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: Cmp<Type, Expression, FullCheck> };
+export type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };

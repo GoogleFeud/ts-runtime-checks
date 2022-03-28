@@ -131,7 +131,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                 }
             };
         }
-        case "Cmp": {
+        case "If": {
             if (!utility.aliasTypeArguments) return;
             const type = utility.aliasTypeArguments[0];
             const exp = ctx.transformer.getStringFromType(utility, 1);

@@ -77,7 +77,7 @@ Markers are typescript type aliases which are detected by the transformer. These
     - `Matches<regex>` - Checks if a string matches a regex.
     - `NoCheck<Type>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
-    - `Cmp<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
+    - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
     - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Range` and `Matches` for example.
 
 #### Assert<Type, ErrorType>
@@ -116,5 +116,18 @@ function getType(element) {
 
 #### EarlyReturn<Type, ReturnValue>
 
-Same as `Assert`, except instead of throwing an error, it returns `ReturnValue`, or `undefined` if a return value is not provided.
+Same as `Assert`, except instead of throwing an error, it returns `ReturnValue`, or `undefined` if a return value is not provided:
+
+```ts
+function verifyUser({username, id}: EarlyReturn<{username: string, id: If<number, "$self < 100">}>) {
+    // Other code
+}
+
+// Transpiles to:
+function verifyUser({ username, id }) {
+    if (typeof username !== "string") return undefined;
+    if (id > 100) return undefined;
+    // Your code
+}
+```
 

@@ -1,11 +1,11 @@
-import type { Assert, Cmp } from "../../../dist/index";
+import type { Assert, If } from "../../../dist/index";
 import { call } from "../../utils";
 import { expect } from "chai";
 
-describe("Cmp", () => {
+describe("If", () => {
     describe("Assert", () => {
 
-        function test(a: Assert<Cmp<string, "$self.startsWith(\"Hello\")">>) {
+        function test(a: Assert<If<string, "$self.startsWith(\"Hello\")">>) {
             return a;
         }
 
@@ -17,7 +17,7 @@ describe("Cmp", () => {
             expect(call(test, "Hello!")).to.not.throw();
         });
 
-        function test2(b: Assert<Cmp<number, "$self === 5", true>>, c: Assert<Cmp<Array<string>, "$self.length > 10", true>>) {
+        function test2(b: Assert<If<number, "$self === 5", true>>, c: Assert<If<Array<string>, "$self.length > 10", true>>) {
             return [b, c];
         }
 
