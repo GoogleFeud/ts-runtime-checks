@@ -17,3 +17,4 @@ export function resolveAsChain(exp: ts.Expression) : ts.Expression {
     }
     return exp;
 }
+

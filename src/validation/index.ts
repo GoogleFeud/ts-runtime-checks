@@ -81,7 +81,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
     else if (type = isArrayType(ctx.transformer.checker, t)) return {
         condition: () => genNot(genInstanceof(target, "Array")),
         error: () => ctx.error(t),
-        other: () => {
+        other: !isNoCheck(ctx, type) ? () => {
             const index = factory.createUniqueName("i");
             const [Xdefinition, x] = genIdentifier("x", factory.createElementAccessExpression(target, index), ts.NodeFlags.Const);
             ctx.addPath(x, index);
@@ -94,7 +94,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                     ...validationOfChildren
                 ]
             )[0]];
-        }
+        } : undefined
     };
     else if (type = isTupleType(ctx.transformer.checker, t)) return {
         condition: () => genNot(genInstanceof(target, "Array")),
@@ -154,7 +154,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                 const properties = t.getProperties();
                 const checks = [];
                 for (const prop of properties) {
-                    if (!prop.valueDeclaration) continue;
+                    if (!prop.valueDeclaration || prop === t.aliasSymbol) continue;
                     const access = factory.createElementAccessExpression(target, genStr(prop.name));
                     ctx.addPath(target, prop.name);
                     const typeOfProp = ctx.transformer.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration);
@@ -196,6 +196,12 @@ export function isTupleType(checker: ts.TypeChecker, t: ts.Type) : ReadonlyArray
     if (!node) return;
     if (node.kind === ts.SyntaxKind.TupleType) return checker.getTypeArguments(t as ts.TypeReference);
     return;
+}
+
+export function isNoCheck(ctx: ValidationContext, t: ts.Type) : boolean {
+    const util = ctx.transformer.getUtilityType(t);
+    if (!util || !util.aliasSymbol || util.aliasSymbol.name !== "NoCheck") return false;
+    return true;
 }
 
 export {

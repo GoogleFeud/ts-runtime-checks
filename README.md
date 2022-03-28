@@ -131,3 +131,191 @@ function verifyUser({ username, id }) {
 }
 ```
 
+#### Range<min, max>
+
+Checks if a number is excluively between `min` and `max`. They must be either a numeric literal, an `Expr`, 
+
+```ts
+type AssertRange<min, max> = Assert<Range<min, max>>;
+
+const someNum = 50;
+function test(num1: AssertRange<1, 10>, num2: AssertRange<10, number>, num3: AssertRange<number, 10>, num4: AssertRange<Expr<"someNum">, 100>) {
+    // Your code
+}
+
+// Transpiles to:
+function test(num1, num2, num3, num4) {
+    if (typeof num1 !== "number" || (num1 < 1 || num1 > 10)) throw new Error("Expected num1 to be Range<1, 10>.");
+    if (typeof num2 !== "number" || num2 < 10) throw new Error("Expected num2 to be Range<10, number>.");
+    if (typeof num3 !== "number" || num3 > 10) throw new Error("Expected num3 to be Range<number, 10>.");
+    if (typeof num4 !== "number" || (num4 < someNum || num4 > 100)) throw new Error("Expected num4 to be Range<Expr<\"someNum\">, 100>.");
+}
+```
+
+#### Matches<regex>
+
+Checks if a string matches the given regex. 
+
+```ts
+function test(a: Assert<Matches<"/abc/">>) {
+   // Your code...
+}
+
+// Transpiles to:
+function test(a) {
+    if (typeof a !== "string" || !/abc/.test(a)) throw new Error("Expected a to be Matches<\"/abc/\">.");
+    // Your code...
+}
+```
+
+#### NoCheck<Type>
+
+Skips validating the value.
+
+```ts
+interface UserRequest {
+    name: string,
+    id: string,
+    value: NoCheck<unknown>
+}
+
+function test(req: Assert<UserRequest>) {
+    // Your code...
+}
+
+// Transpiles to:
+function test(req) {
+    if (typeof req !== "object") throw new Error("Expected req to be UserRequest.");
+    if (typeof req["name"] !== "string") throw new Error("Expected req.name to be string.");
+    if (typeof req["id"] !== "string") throw new Error("Expected req.id to be string.");
+}
+```
+
+#### ExactProps<Type> 
+
+Checks if an object has any "excessive" properties (properties which are not on the type but they are on the object). 
+
+```ts
+function test(req: unknown) {
+    return req as Assert<ExactProps<{a: string, b: number, c: [string, number]}>>;
+}
+
+// Transpiles to:
+function test(req) {
+    if (typeof req !== "object") throw new Error("Expected req to be { a: string; b: number; c: [string, number]; }.");
+    if (typeof req["a"] !== "string") throw new Error("Expected req.a to be string.");
+    if (typeof req["b"] !== "number") throw new Error("Expected req.b to be number.");
+    if (!(req["c"] instanceof Array)) throw new Error("Expected req.c to be [string, number].");
+    if (typeof req["c"][0] !== "string") throw new Error("Expected " + ("req.c[" + 0 + "]") + " to be string.");
+    if (typeof req["c"][1] !== "number") throw new Error("Expected " + ("req.c[" + 1 + "]") + " to be number.");
+    for (let name_1 in req) {
+        if (name_1 !== "a" && name_1 !== "b" && name_1 !== "c")
+            throw new Error("Property " + ("req[" + name_1 + "]") + " is excessive.");
+    }
+    return req;
+}
+```
+
+#### If<Type, Condition, FullCheck>
+
+Allows you to create custom comparisons by providing a string containing javascript code. You can use `$self` in the expression, it'll be replaced by the expression of the value that's currently being validated. 
+
+`FullCheck` is a boolean - if it's set to true, then validation code will be generated for `Type`, if it's set to false (which is the default), only the condition which you provide will be enough to validate it. 
+
+```ts
+// Creating a less flexible version of the Range marker
+type Range<min extends number, max extends number> = Assert<If<number, `$self < ${min} && $self > ${max}`>>;
+
+function test(num: Range<1, 5>) {
+    // Your code...
+}
+
+// Transpiles to:
+function test(num) {
+    if (!(num < 1 && num > 5)) throw new Error("Expected num to satisfy `$self < 1 && $self > 5`.");
+    // Your code...
+}
+```
+
+### Supported types and code generation
+
+- `string`s and string literals
+    - `typeof value === "string"` or `value === "literal"`
+- `number`s and number literals
+    - `typeof value === "number"` or `value === 420`
+- `boolean`
+    - `typeof value === "boolean"`
+- `symbol`
+    - `typeof value === "symbol"`
+- `bigint`
+    - `typeof value === "bigint"`
+- Tuples (`[a, b, c]`)
+    - `value instanceof Array`
+    - Each type in the tuple gets checked individually.
+- Arrays (`Array<a>`, `a[]`)
+    - `value instanceof Array`
+    - Each value in the array gets checked via a `for` loop.
+- Interfaces and object literals (`{a: b, c: d}`)
+    - `typeof value === "object"`
+    - Each property in the object gets checked individually.
+- Classes
+    - `value instanceof Class`
+- Unions (`a | b | c`)
+    - Unions get **partially** validated. If one of the types inside the union is a **compound** type (tuples, arrays, object literals, interfaces), then the validity of that type's members doesn't get checked.
+
+### Destructuring
+
+If a value is a destructured object / array, then only the deconstructed properties / elements will get validated.
+
+```ts
+function test({user: { skills: [skill1, skill2, skill3] }}: EarlyReturn<{
+    user: {
+        username: string,
+        password: string,
+        skills: [string, string?, string?]
+    }
+}>) {
+    // Your code
+}
+
+// Transpiles to:
+function test({
+    user: {
+        skills: [skill1, skill2, skill3]
+    }
+}) {
+    if (typeof skill1 !== "string") return undefined;
+    if (skill2 !== undefined && typeof skill2 !== "string") return undefined;
+    if (skill3 !== undefined && typeof skill3 !== "string") return undefined;
+}
+```
+
+### Complex types
+
+Markers **can** be used in type aliases, so you can easily create shortcuts to common patterns:
+
+```ts
+interface User {
+    name: string,
+    id: number,
+    age: number,
+    friends: Array<NoCheck<User>>
+}
+
+// You can prefix all your assertion types with a $.
+type $User = Assert<User, TypeError>;
+
+function test(a: $User) {
+    // your code..
+}
+
+// Transpiles to:
+
+function test(a) {
+    if (typeof a !== "object") throw new TypeError("Expected a to be User.");
+    if (typeof a["name"] !== "string") throw new TypeError("Expected a.name to be string.");
+    if (typeof a["id"] !== "number") throw new TypeError("Expected a.id to be number.");
+    if (typeof a["age"] !== "number") throw new TypeError("Expected a.age to be number.");
+    if (!(a["friends"] instanceof Array)) throw new TypeError("Expected a.friends to be NoCheck<User>[].");
+}
+```
