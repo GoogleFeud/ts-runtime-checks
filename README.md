@@ -308,7 +308,7 @@ const args = temp_1;
 
 ### `is<Type>(value)` utility function
 
-Utility function. Every call to this function gets replaced with an immidietly-invoked arrow function, which returns `true` if the value matches the type, `false` otherwise.
+Utility function. Every call to this function gets replaced with an immediately-invoked arrow function, which returns `true` if the value matches the type, `false` otherwise.
 
 ```ts
 const val = JSON.parse("[\"Hello\", \"World\"]");;

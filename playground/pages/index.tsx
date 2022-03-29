@@ -68,7 +68,7 @@ export default () => {
                 </div>
             </SplitPane>
             <footer className={styles.footer}>
-                <p>Made with ❤️ for the typescript community by <a href="https://github.com/GoogleFeud">GoogleFeud</a>.</p>
+                <p>Made with ❤️ by <a href="https://github.com/GoogleFeud">GoogleFeud</a>.</p>
             </footer>
         </div>
     );
