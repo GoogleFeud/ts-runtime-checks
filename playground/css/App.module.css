@@ -23,6 +23,14 @@
     width: 100%;
 }
 
+.copyLink {
+    margin: 15px;
+    background-color: #1e1e1e;
+    color: white;
+    border: solid 1px white;
+    cursor: pointer;
+}
+
 
 .header a, .header a:visited, .footer a, .footer a:visited {
     color: white !important;

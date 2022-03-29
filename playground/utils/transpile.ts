@@ -22,7 +22,10 @@ export const CompilerOptions: ts.CompilerOptions = {
     target: ts.ScriptTarget.ESNext     
 };
 
-export function transpile(str: string) {
+export function transpile(str: string) : {
+    code?: string,
+    error?: unknown
+} {
     const SourceFile = ts.createSourceFile("module.ts", Markers + str, CompilerOptions.target || ts.ScriptTarget.ESNext, true);
     let output = "";
     const CompilerHost: ts.CompilerHost = {
@@ -40,6 +43,10 @@ export function transpile(str: string) {
     };
 
     const program = ts.createProgram(["module.ts"], CompilerOptions, CompilerHost);
-    program.emit(undefined, undefined, undefined, undefined, { before: [ TsChecks(program) as unknown as ts.TransformerFactory<ts.SourceFile> ]});
-    return output;
+    try {
+        program.emit(undefined, undefined, undefined, undefined, { before: [ TsChecks(program) as unknown as ts.TransformerFactory<ts.SourceFile> ]});
+    } catch (err: unknown) {
+        return { error: err };
+    }
+    return { code: output };
 }

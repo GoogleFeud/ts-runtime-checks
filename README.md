@@ -36,7 +36,7 @@ Check out the [playground](https://googlefeud.github.io/ts-runtime-checks/) if y
 npm i --save-dev ts-runtime-checks
 ```
 
-`tsc` doesn't allow you to add custom transformers, so you must use a tool which adds them:
+Sadly, `tsc` doesn't allow you to add custom transformers, so you must use a tool which adds them:
 
 <details>
     <summary>Usage with ttypescript</summary>
