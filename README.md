@@ -286,7 +286,6 @@ interface Args {
 }
 
 const args = JSON.parse(process.argv[2] as Assert<string>) as Assert<Args>;
-}
 
 // Transpiles to:
 if (typeof process.argv[2] !== "string")
