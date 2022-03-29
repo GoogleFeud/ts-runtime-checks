@@ -46,7 +46,7 @@ export default () => {
                         if (!code) return;
                         navigator.permissions.query({name: "clipboard-write" as PermissionName}).then(result => {
                             if (result.state == "granted" || result.state == "prompt") {
-                                navigator.clipboard.writeText(location.href + `?code=${compressToEncodedURIComponent(code)}`);
+                                navigator.clipboard.writeText(location.origin + location.pathname + `?code=${compressToEncodedURIComponent(code)}`);
                             }
                         });
                     }}>Copy Link</button>
