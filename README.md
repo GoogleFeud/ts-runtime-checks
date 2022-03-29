@@ -304,6 +304,29 @@ if ("clusters" in temp_1 && typeof temp_1["clusters"] !== "number")
 const args = temp_1;
 ```
 
+### `is<Type>(value)` utility function
+
+Utility function. Every call to this function gets replaced with an immidietly-invoked arrow function, which returns `true` if the value matches the type, `false` otherwise.
+
+```ts
+const val = JSON.parse("[\"Hello\", \"World\"]");;
+if (is<[string, number]>(val)) {
+    // val is guaranteed to be [string, number]
+}
+
+// Transpiles to:
+
+const val = JSON.parse("[\"Hello\", \"World\"]");
+if ((() => {
+    if (!(val instanceof Array)) return false;
+    if (typeof val[0] !== "string") return false;
+    if (typeof val[1] !== "number") return false;
+    return true;
+})()) { 
+    // Your code...
+}
+```
+
 ### Destructuring
 
 If a value is a destructured object / array, then only the deconstructed properties / elements will get validated.

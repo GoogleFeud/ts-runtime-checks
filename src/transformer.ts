@@ -55,8 +55,26 @@ export class Transformer {
             else return;
         } else if (ts.isBlock(node)) {
             return ts.factory.createBlock(this.visitEach(node.statements, Block.createBlock(body)));
-        }
-        else return ts.visitEachChild(node, (node) => this.visitor(node, body), this.ctx);
+        } else if (ts.isCallExpression(node) && node.arguments[0]) {
+            const callee = node.expression;
+            if (ts.isIdentifier(callee) && callee.text === "is") {
+                const typeOfFn = this.checker.getTypeAtLocation(callee).getCallSignatures()[0]?.getTypeParameters();
+                if (typeOfFn && typeOfFn[0] && typeOfFn[1] && typeOfFn[1].getDefault()?.getProperty("__is")) {
+                    const block = Block.createBlock();
+                    (Markers["EarlyReturn"] as MacroFn)(this, {
+                        block,
+                        //@ts-expect-error Internal API
+                        parameters: [node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0], this.checker.getFalseType()],
+                        ctx: MacroCallContext.As,
+                        exp: node.arguments[0],
+                        optional: false
+                    });
+                    block.nodes.push(ts.factory.createReturnStatement(ts.factory.createTrue()));
+                    return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
+                } 
+            }
+        } 
+        return ts.visitEachChild(node, (node) => this.visitor(node, body), this.ctx);
     }
 
     callMarkerFromParameterDecl(param: ts.ParameterDeclaration, block: Block.Block<unknown>) : void {

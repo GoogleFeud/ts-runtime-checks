@@ -1,7 +1,7 @@
 {
   "name": "ts-runtime-checks",
   "version": "0.1.0",
-  "description": "Typescript transformer which adds runtime checks.",
+  "description": "A typescript transformer which automatically generates validation code from your types.",
   "main": "dist/index.js",
   "scripts": {
     "test": "tsc && cd ./tests && ttsc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index",

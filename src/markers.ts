@@ -252,3 +252,30 @@ export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
  * ```
  */
 export type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
+
+/**
+ * Utility function. It's calls get transpiled to a self-invoked arrow function which returns `true` if the value matches the type, `false` otherwise.
+ * This is basically a tiny wrapper of the `EarlyReturn` type.
+ * 
+ * @example
+ * ```ts
+ * interface Args {
+ *   name: string,
+ *   path: string,
+ *   output: string,
+ *   clusters?: number
+ *  }
+ *
+ * console.log(is<Range<1, 10>>(123));
+ * ```
+ * ```js
+ * console.log((() => {
+ *   const temp_1 = 123;
+ *   if (typeof temp_1 !== "number" || (temp_1 < 1 || temp_1 > 10))
+ *       return false;
+ *   return true;
+ * })());
+ * ```
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export declare function is<T, _M = { __is: true }>(prop: unknown) : prop is T;
