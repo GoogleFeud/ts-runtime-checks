@@ -75,7 +75,6 @@ export class Transformer {
     callMarkerFromAsExpression(exp: ts.AsExpression, expOnly: ts.Expression, block: Block.Block<unknown>) : ts.Expression {
         if (!ts.isTypeReferenceNode(exp.type)) return exp;
         const type = this.resolveActualType(this.checker.getTypeAtLocation(exp.type));
-        console.log(type && this.checker.typeToString(type), type?.aliasSymbol?.name);
         if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return exp;
         return (Markers[type.aliasSymbol.name] as MacroFn)(this, {
             block,
