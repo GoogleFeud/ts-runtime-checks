@@ -1,0 +1,18 @@
+
+
+.header {
+    background-color: #222;
+    color: white;
+    display: flex;
+    height: 55px;
+    justify-content: space-between;
+    align-items: center;
+    padding-left: 30px;
+    padding-right: 30px;
+}
+
+.header a, .header a:visited {
+    color: white !important;
+    text-decoration: none;
+}
+

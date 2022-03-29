@@ -1,4 +1,9 @@
 
+body {
+  overflow: hidden;
+  margin: 0;
+}
+
 .Resizer {
     background: #000;
     opacity: 0.2;
