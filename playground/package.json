@@ -5,7 +5,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "export": "next export"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.4.1",
