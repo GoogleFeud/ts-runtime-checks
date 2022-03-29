@@ -2,10 +2,11 @@
 import { transpile } from "../utils/transpile";
 import { useState } from "react";
 import { TextEditor } from "../components/Editor";
+import { Highlight } from "../components/Highlight";
 
 export default () => {
     const [code, setCode] = useState<string>();
-    const [compiledCode, setCompiled] = useState<string>();
+    const [compiledCode, setCompiled] = useState<string>("");
 
     return (
         <div>
@@ -14,11 +15,8 @@ export default () => {
                 setCode(code);
                 setCompiled(transpiled);
             }} />
-            <div style={{ position: "absolute", top: "15px", left: "55%"  }}>
-                 Compiled JS:
-                <br />
-                <br />
-                {compiledCode}
+            <div style={{ position: "absolute", top: "15px", left: "55%", width: "40%" }}>
+                <Highlight text={compiledCode} style={{height: "95vh", width: "100%" }} />
             </div>
         </div>
     );
