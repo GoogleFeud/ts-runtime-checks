@@ -3,14 +3,14 @@ import ts from "typescript";
 import TsChecks from "../../dist/index";
 
 export const Markers = `
-export type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType> };
-export type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
-export type Range<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: Range<min, max> }; 
-export type NoCheck<T> = T & { __utility?: NoCheck<T> };
-export type Matches<Regex extends string|Expr<"">> = string & { __utility?: Matches<Regex> };
-export type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
-export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
-export type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
+type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType> };
+type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
+type Range<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: Range<min, max> }; 
+type NoCheck<T> = T & { __utility?: NoCheck<T> };
+type Matches<Regex extends string|Expr<"">> = string & { __utility?: Matches<Regex> };
+type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
+type Expr<Expression extends string> = { __utility?: Expr<Expression> };
+type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
 
 `;
 

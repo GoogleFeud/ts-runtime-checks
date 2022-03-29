@@ -1,6 +1,7 @@
-import Editor from "@monaco-editor/react";
+
 import { transpile } from "../utils/transpile";
 import { useState } from "react";
+import { TextEditor } from "../components/Editor";
 
 export default () => {
     const [code, setCode] = useState<string>();
@@ -8,14 +9,15 @@ export default () => {
 
     return (
         <div>
-            <Editor height="100vh" width="45%" language="typescript" theme="vs-dark" value={code} onChange={(code) => {
+            <TextEditor code={code} onChange={(code) => {
                 const transpiled = transpile(code || "");
                 setCode(code);
                 setCompiled(transpiled);
-            } }>
-            </Editor>
-            <div style={{ position: "absolute", top: "15px", left: "45%"  }}>
-          Compiled JS:
+            }} />
+            <div style={{ position: "absolute", top: "15px", left: "55%"  }}>
+                 Compiled JS:
+                <br />
+                <br />
                 {compiledCode}
             </div>
         </div>
