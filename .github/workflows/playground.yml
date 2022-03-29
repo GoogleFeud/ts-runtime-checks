@@ -2,8 +2,8 @@ name: Deploy playground to github pages
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    paths:
+      - "playground/**"
 jobs:
   deploy-docs:
     runs-on: ubuntu-latest

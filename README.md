@@ -20,6 +20,8 @@ function greet(name, age) {
 }
 ```
 
+Check out the [interactive playground](googlefeud.github.io/ts-runtime-checks/)!
+
 ## Usage
 
 ```
@@ -319,3 +321,7 @@ function test(a) {
     if (!(a["friends"] instanceof Array)) throw new TypeError("Expected a.friends to be NoCheck<User>[].");
 }
 ```
+
+## Contributing
+
+`ts-runtime-checks` is being maintained by a single person. Contributions are welcome and appreciated. Feel free to open an issue or create a pull request at https://github.com/GoogleFeud/ts-runtime-checks
