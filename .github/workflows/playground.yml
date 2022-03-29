@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - "playground/**"
+  release:
+    branches:
+      - dev
 jobs:
   deploy-docs:
     runs-on: ubuntu-latest

@@ -43,7 +43,7 @@ export const Markers: Record<string, MacroFn> = {
                 errorTypeName: parameters[1]?.symbol?.name,
                 transformer: trans,
                 depth: [],
-                propName: callBy.getText()
+                propName: callBy.pos === -1 ? "value" : callBy.getText()
             })));
             return callBy;
         }
@@ -71,7 +71,7 @@ export const Markers: Record<string, MacroFn> = {
                 resultType: { return: returnType },
                 transformer: trans,
                 depth: [],
-                propName: callBy.getText()
+                propName: callBy.pos === -1 ? "value" : callBy.getText()
             })));
             return callBy;
         }

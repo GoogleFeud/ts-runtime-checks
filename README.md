@@ -285,10 +285,24 @@ interface Args {
     clusters?: number
 }
 
-function startProgram() {
-    const args = process.argsv[2] as Assert<Args>;
-    // Code...
+const args = JSON.parse(process.argv[2] as Assert<string>) as Assert<Args>;
 }
+
+// Transpiles to:
+if (typeof process.argv[2] !== "string")
+    throw new Error("Expected process.argv[2] to be string.");
+const temp_1 = JSON.parse(process.argv[2]);
+if (typeof temp_1 !== "object")
+    throw new Error("Expected value to be Args.");
+if (typeof temp_1["name"] !== "string")
+    throw new Error("Expected value.name to be string.");
+if (typeof temp_1["path"] !== "string")
+    throw new Error("Expected value.path to be string.");
+if (typeof temp_1["output"] !== "string")
+    throw new Error("Expected value.output to be string.");
+if ("clusters" in temp_1 && typeof temp_1["clusters"] !== "number")
+    throw new Error("Expected value.clusters to be number.");
+const args = temp_1;
 ```
 
 ### Destructuring

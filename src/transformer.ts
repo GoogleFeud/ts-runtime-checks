@@ -43,12 +43,13 @@ export class Transformer {
             else return ts.factory.createFunctionExpression(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
         }
         else if (ts.isAsExpression(node)) {
-            const expOnly = resolveAsChain(node);
+            let expOnly = resolveAsChain(node);
             const sym = this.checker.getSymbolAtLocation(expOnly);
             if (sym) {
                 if (Block.isInCache(sym, body)) return node;
                 body.cache.add(sym);
             }
+            expOnly = ts.visitEachChild(expOnly, (node) => this.visitor(node, body), this.ctx);
             const newIdent = this.callMarkerFromAsExpression(node, expOnly, body);
             if (!ts.isExpressionStatement(node.parent)) return newIdent;
             else return;
@@ -74,6 +75,7 @@ export class Transformer {
     callMarkerFromAsExpression(exp: ts.AsExpression, expOnly: ts.Expression, block: Block.Block<unknown>) : ts.Expression {
         if (!ts.isTypeReferenceNode(exp.type)) return exp;
         const type = this.resolveActualType(this.checker.getTypeAtLocation(exp.type));
+        console.log(type && this.checker.typeToString(type), type?.aliasSymbol?.name);
         if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return exp;
         return (Markers[type.aliasSymbol.name] as MacroFn)(this, {
             block,
