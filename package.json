@@ -5,6 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "tsc && cd ./tests && ttsc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index",
+    "build": "tsc",
+    "lint": "npx eslint",
     "mtest": "tsc && cd ./manualTests && ttsc"
   },
   "repository": {
