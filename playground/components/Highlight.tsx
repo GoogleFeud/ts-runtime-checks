@@ -15,6 +15,6 @@ export function Highlight(props: { text: string, style?: CSSProperties }) {
     }, [monaco, props.text]);
 
     return <div>
-        {highlighted && <div dangerouslySetInnerHTML={{__html: highlighted}} style={{backgroundColor: "#3c3c3c", ...(props.style || {})}}></div>}
+        {highlighted && <div dangerouslySetInnerHTML={{__html: highlighted}} style={{backgroundColor: "#1e1e1e", ...(props.style || {})}}></div>}
     </div>;
 }
