@@ -259,6 +259,8 @@ function test(num) {
     - `typeof value === "symbol"`
 - `bigint`
     - `typeof value === "bigint"`
+- `null`
+    - `value === null`
 - Tuples (`[a, b, c]`)
     - `value instanceof Array`
     - Each type in the tuple gets checked individually.

@@ -64,7 +64,7 @@ export class Transformer {
                     (Markers["EarlyReturn"] as MacroFn)(this, {
                         block,
                         //@ts-expect-error Internal API
-                        parameters: [node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0], this.checker.getFalseType()],
+                        parameters: [node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType(), this.checker.getFalseType()],
                         ctx: MacroCallContext.As,
                         exp: node.arguments[0],
                         optional: false

@@ -8,7 +8,8 @@
     "ci": "cd ./tests && ttsc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index force",
     "build": "tsc",
     "lint": "npx eslint",
-    "mtest": "tsc && cd ./manualTests && ttsc"
+    "mtest": "tsc && cd ./manualTests && ttsc",
+    "playground": "tsc && cd ./playground && npm run dev"
   },
   "repository": {
     "type": "git",
