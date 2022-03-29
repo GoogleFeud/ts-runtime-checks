@@ -1,18 +1,24 @@
 # ts-runtime-checks
 
-A typescript transformer which automatically generates validation code from your types! Here's a simple example:
+A typescript transformer which automatically generates validation code from your types. Think of it as a validation library like [ajv](https://ajv.js.org/guide/typescript.html) and [ts-runtime](https://github.com/fabiandev/ts-runtime), except it **completely** relies on the typescript compiler, and generates vanilla javascript code on demand. This comes with a lot of advantages:
+
+- It's just types - no extra configuration, boilerplate or schemas needed.
+- Only validate where you see fit.
+- Makes your app faster - code is generated during the transpilation phase, and can be easily optimized by V8.
+- Powerful - built on top of typescript's type system, which is turing-complete.
+
+Here is a very simple example:
 
 ```ts
 import type { Assert } from "ts-runtime-checks";
 
-function greet(name: Assert<string>, age: Assert<number>) : string {
+type AssertNum = Assert<number>;
+
+function greet(name: Assert<string>, age: AssertNum) : string {
     return `Hello ${name}! I'm ${age} too!`;
 }
-```
 
-transpiles to:
-
-```js
+// Transpiles to:
 function greet(name, age) {
     if (typeof name !== "string") throw new Error("Expected name to be string.");
     if (typeof age !== "number") throw new Error("Expected age to be number.");
@@ -20,7 +26,9 @@ function greet(name, age) {
 }
 ```
 
-Check out the [interactive playground](googlefeud.github.io/ts-runtime-checks/)!
+The special `Assert` type gets detected during transpilation, and replaced with appropriate validation checks.
+
+Check out the [playground](https://googlefeud.github.io/ts-runtime-checks/) if you want to play with the transformer without setting up an enviourment!
 
 ## Usage
 
@@ -59,7 +67,7 @@ const TsRuntimeChecks = require("ts-runtime-checks").default;
 
 options: {
       getCustomTransformers: program => {
-        before: [TsMacros(program)]
+        before: [TsRuntimeChecks(program)]
       }
 }
 ```
@@ -264,6 +272,24 @@ function test(num) {
     - `value instanceof Class`
 - Unions (`a | b | c`)
     - Unions get **partially** validated. If one of the types inside the union is a **compound** type (tuples, arrays, object literals, interfaces), then the validity of that type's members doesn't get checked.
+
+### `as` assertions
+
+You can use `as` type assertions to validate values in expressions. The transformer remembers what's safe to use, so you can't generate the same validation code twice.
+
+```ts
+interface Args {
+    name: string,
+    path: string,
+    output: string,
+    clusters?: number
+}
+
+function startProgram() {
+    const args = process.argsv[2] as Assert<Args>;
+    // Code...
+}
+```
 
 ### Destructuring
 
