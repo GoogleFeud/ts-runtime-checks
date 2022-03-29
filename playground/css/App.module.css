@@ -11,8 +11,19 @@
     padding-right: 30px;
 }
 
-.header a, .header a:visited {
-    color: white !important;
-    text-decoration: none;
+.footer {
+    background-color: #222;
+    color: white;
+    display: flex;
+    height: 55px;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
 }
 
+
+.header a, .header a:visited, .footer a, .footer a:visited {
+    color: white !important;
+}

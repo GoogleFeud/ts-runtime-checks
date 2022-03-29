@@ -17,12 +17,12 @@ export function TextEditor(props: {
             ...CompilerOptions as unknown as languages.typescript.CompilerOptions,
             allowNonTsExtensions: true
         });
-        const filename = "ts:filename/facts.d.ts";
+        const filename = "ts:ts-runtime-checks/index.d.ts";
         monaco.languages.typescript.javascriptDefaults.addExtraLib(Markers, filename);
         monaco.editor.createModel(Markers, "typescript", monaco.Uri.parse(filename));
     }, [monaco]);
 
-    return <Editor height="100vh" language="typescript" theme="vs-dark" value={props.code} onChange={props.onChange}>
+    return <Editor height="calc(90vh - 50px)" language="typescript" theme="vs-dark" value={props.code} onChange={props.onChange}>
 
     </Editor>;
 }

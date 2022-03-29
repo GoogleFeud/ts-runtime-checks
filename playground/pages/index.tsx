@@ -39,9 +39,12 @@ export default () => {
                     setCompiled(transpiled);
                 }} />
                 <div>
-                    <Highlight text={compiledCode} style={{height: "100vh"}} />
+                    <Highlight text={compiledCode} />
                 </div>
             </SplitPane>
+            <footer className={styles.footer}>
+                <p>Made with ❤️ for the typescript community by <a href="https://github.com/GoogleFeud">GoogleFeud</a></p>
+            </footer>
         </div>
     );
 };

@@ -1,7 +1,7 @@
 import { useMonaco } from "@monaco-editor/react";
-import { CSSProperties, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-export function Highlight(props: { text: string, style?: CSSProperties }) {
+export function Highlight(props: { text: string }) {
     const [highlighted, setHighlighted] = useState<string>();
     const monaco = useMonaco();
 
@@ -15,6 +15,12 @@ export function Highlight(props: { text: string, style?: CSSProperties }) {
     }, [monaco, props.text]);
 
     return <div>
-        {highlighted && <div dangerouslySetInnerHTML={{__html: highlighted}} style={{backgroundColor: "#1e1e1e", overflowY: "auto", overflowX: "hidden", ...(props.style || {})}}></div>}
+        {highlighted && <div dangerouslySetInnerHTML={{__html: highlighted}} style={{
+            backgroundColor: "#1e1e1e", 
+            overflowY: "auto", 
+            paddingLeft: "15px",
+            height: "calc(90vh - 50px)",
+            fontFamily: "monospace",
+            overflowX: "hidden"}}></div>}
     </div>;
 }
