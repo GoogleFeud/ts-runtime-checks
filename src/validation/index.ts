@@ -22,6 +22,7 @@ export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.
     else if (hasBit(t, TypeFlags.Boolean)) return genTypeCmp(target, "boolean");
     else if (hasBit(t, TypeFlags.ESSymbol)) return genTypeCmp(target, "symbol");
     else if (hasBit(t, TypeFlags.Null)) return genCmp(target, factory.createNull());
+    else if (hasBit(t, TypeFlags.Any) || hasBit(t, TypeFlags.Unknown)) return SKIP_SYM;
     else if (t.getCallSignatures().length === 1) return genTypeCmp(target, "function");
     else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
     else {

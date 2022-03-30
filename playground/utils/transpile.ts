@@ -44,6 +44,10 @@ export function transpile(str: string) : {
     };
 
     const program = ts.createProgram(["module.ts"], CompilerOptions, CompilerHost);
+    //@ts-expect-error Set globals
+    window.checker = program.getTypeChecker();
+    //@ts-expect-error Set globals
+    window.source = SourceFile;
     try {
         program.emit(undefined, undefined, undefined, undefined, { before: [ TsChecks(program) as unknown as ts.TransformerFactory<ts.SourceFile> ]});
     } catch (err: unknown) {
