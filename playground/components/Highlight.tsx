@@ -7,7 +7,6 @@ export function Highlight(props: { text: string }) {
 
     useEffect(() => {
         if (!monaco) return;
-
         (async () => {
             const colorized = await monaco.editor.colorize(props.text, "javascript", { tabSize: 4 });
             setHighlighted(colorized);

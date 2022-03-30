@@ -1,11 +1,13 @@
 
-import { transpile } from "../utils/transpile";
+import { genTranspile } from "../utils/transpile";
 import { useEffect, useState } from "react";
 import { TextEditor } from "../components/Editor";
 import { Highlight } from "../components/Highlight";
 import SplitPane from "react-split-pane";
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 import styles from "../css/App.module.css";
+import fs from "fs";
+import path from "path";
 
 const SetupCode = `
 // Interactive playground! Write in your code and see it getting transpiled on the left!
@@ -19,7 +21,7 @@ function validate(user: Assert<User>) {
 }
 `;
 
-export default () => {
+function Main({transpile}: { transpile: ReturnType<typeof genTranspile>}) {
     const [code, setCode] = useState<string|undefined>(SetupCode);
     const [compiledCode, setCompiled] = useState<string>("");
 
@@ -72,4 +74,17 @@ export default () => {
             </footer>
         </div>
     );
+}
+
+export default (props: { lib: string }) => {
+    const transpile = genTranspile(props.lib);
+    return <Main transpile={transpile} />;
 };
+
+export async function getStaticProps() {
+    return {
+        props: {
+            lib: fs.readFileSync(path.join(process.cwd(), "./node_modules/typescript/lib/lib.es5.d.ts"), "utf-8")
+        }, // will be passed to the page component as props
+    };
+}
