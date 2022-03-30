@@ -159,8 +159,10 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                     const access = factory.createElementAccessExpression(target, genStr(prop.name));
                     ctx.addPath(target, prop.name);
                     //@ts-expect-error Internal APIs
-                    const typeOfProp = ctx.transformer.checker.getTypeOfSymbol(prop) || ctx.transformer.checker.getNullType();
-                    checks.push(...validate(typeOfProp, access, ctx, false));        
+                    const typeOfProp = (ctx.transformer.checker.getTypeOfSymbol(prop) || ctx.transformer.checker.getNullType()) as ts.Type;
+                    // If it's not possible for the type to be undefined
+                    if (typeOfProp === typeOfProp.getNonNullableType()) checks.push(...validate(typeOfProp, access, ctx, false));
+                    else checks.push(...validate(typeOfProp.getNonNullableType(), access, ctx, true));
                     ctx.removePath();  
                 }
                 return checks;
