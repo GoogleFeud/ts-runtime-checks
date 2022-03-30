@@ -155,11 +155,12 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                 const properties = t.getProperties();
                 const checks = [];
                 for (const prop of properties) {
-                    if (!prop.valueDeclaration || prop === t.aliasSymbol) continue;
+                    if (prop === t.aliasSymbol) continue;
                     const access = factory.createElementAccessExpression(target, genStr(prop.name));
                     ctx.addPath(target, prop.name);
-                    const typeOfProp = ctx.transformer.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration);
-                    checks.push(...validate(typeOfProp.isUnion() ? typeOfProp.getNonNullableType() : typeOfProp, access, ctx, ts.isPropertySignature(prop.valueDeclaration) ? Boolean(prop.valueDeclaration.questionToken) : false));        
+                    //@ts-expect-error Internal APIs
+                    const typeOfProp = ctx.transformer.checker.getTypeOfSymbol(prop) || ctx.transformer.checker.getNullType();
+                    checks.push(...validate(typeOfProp, access, ctx, false));        
                     ctx.removePath();  
                 }
                 return checks;

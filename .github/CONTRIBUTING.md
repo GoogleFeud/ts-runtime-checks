@@ -38,6 +38,8 @@ When writing a feature request:
 
 Want to go straight into writing code? To get some inspiration you can look through the issues with the `bug` tag and find one you think you can tackle. If you are implementing a feature, please make sure an issue already exists for it before directly making a PR. If it doesn't, feel free to create one!
 
+All future changes are made in the `dev` branch, so make sure to work in that branch!
+
 #### Setup
 
 - Fork this repository
