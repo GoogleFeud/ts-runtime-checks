@@ -2,7 +2,7 @@
 import { genTranspile } from "../utils/transpile";
 import { useEffect, useState } from "react";
 import { TextEditor } from "../components/Editor";
-import { Highlight } from "../components/Highlight";
+import { Runnable } from "../components/Runnable";
 import SplitPane from "react-split-pane";
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 import styles from "../css/App.module.css";
@@ -44,7 +44,7 @@ function Main({transpile}: { transpile: ReturnType<typeof genTranspile>}) {
             <header className={styles.header}>
                 <div style={{display: "flex"}}>
                     <h2>Typescript runtime checks</h2>
-                    <button className={styles.copyLink} onClick={() => {
+                    <button className={styles.button} onClick={() => {
                         if (!code) return;
                         navigator.permissions.query({name: "clipboard-write" as PermissionName}).then(result => {
                             if (result.state == "granted" || result.state == "prompt") {
@@ -65,9 +65,7 @@ function Main({transpile}: { transpile: ReturnType<typeof genTranspile>}) {
                     const {code: transpiled, error} = transpile(code || "");
                     setCompiled(transpiled ? transpiled : "" + error);
                 }} />
-                <div>
-                    <Highlight text={compiledCode} />
-                </div>
+                <Runnable code={compiledCode} />
             </SplitPane>
             <footer className={styles.footer}>
                 <p>Made with ❤️ by <a href="https://github.com/GoogleFeud">GoogleFeud</a>.</p>

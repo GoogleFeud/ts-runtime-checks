@@ -18,7 +18,7 @@ export function Highlight(props: { text: string }) {
             backgroundColor: "#1e1e1e", 
             overflowY: "auto", 
             paddingLeft: "15px",
-            height: "calc(90vh - 50px)",
+            height: "calc(80vh - 50px)",
             fontFamily: "monospace",
             overflowX: "hidden"}}></div>}
     </div>;
