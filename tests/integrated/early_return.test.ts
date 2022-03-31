@@ -1,4 +1,4 @@
-import type { EarlyReturn, Expr } from "../../dist/index";
+import type { EarlyReturn, Expr, ErrorMsg } from "../../dist/index";
 import { call } from "../utils";
 import { expect } from "chai";
 
@@ -20,6 +20,15 @@ describe("Early return", () => {
     it("Return the custom return value", () => {
         expect(call(test2, {b: "abc"})()).to.be.equal("a");
         expect(call(test2, {b: "abc", a: 123})()).to.be.equal("c");
+    });
+
+    function test3(a: EarlyReturn<{a: [string, number, {b: number}?]}, ErrorMsg>) {
+        return true;
+    }
+
+    it("Return the error message if specified", () => {
+        expect(call(test3, {a: ["Hello", "World"]})()).to.be.equal("Expected a.a[1] to be number.");
+        expect(call(test3, {a: ["Hello", 123, { b: "World"}]})()).to.be.equal("Expected a.a[2].b to be number.");
     });
 
 });

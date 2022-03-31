@@ -21,14 +21,25 @@
     position: absolute;
     bottom: 0;
     width: 100%;
+    z-index: 10;
 }
 
-.copyLink {
+.button {
     margin: 15px;
     background-color: #1e1e1e;
     color: white;
     border: solid 1px white;
     cursor: pointer;
+}
+
+.runSection {
+    background-color: #1e1e1e;
+    color: white;
+    height: 100%;
+}
+
+.runSectionResult {
+    margin-left: 30px;
 }
 
 

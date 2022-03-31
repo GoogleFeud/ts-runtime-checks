@@ -22,6 +22,7 @@ export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.
     else if (hasBit(t, TypeFlags.Boolean)) return genTypeCmp(target, "boolean");
     else if (hasBit(t, TypeFlags.ESSymbol)) return genTypeCmp(target, "symbol");
     else if (hasBit(t, TypeFlags.Null)) return genCmp(target, factory.createNull());
+    else if (hasBit(t, TypeFlags.Any) || hasBit(t, TypeFlags.Unknown)) return SKIP_SYM;
     else if (t.getCallSignatures().length === 1) return genTypeCmp(target, "function");
     else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
     else {
@@ -102,10 +103,12 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         error: () => ctx.error(t),
         other: () => {
             const arr = [];
-            for (let i=0; i < (type as Array<ts.Type>).length; i++) {
+            const types = (type as Array<ts.Type>);
+            for (let i=0; i < types.length; i++) {
                 const access = factory.createElementAccessExpression(target, i);
                 ctx.addPath(access, factory.createNumericLiteral(i));
-                arr.push(...validate((type as Array<ts.Type>)[i]!, access, ctx, false));
+                if (types[i] !== types[i]!.getNonNullableType()) arr.push(...validate(types[i]!.getNonNullableType(), access, ctx, true));
+                else arr.push(...validate(types[i]!, access, ctx, false));
                 ctx.removePath();
             }
             return arr;
@@ -155,11 +158,14 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                 const properties = t.getProperties();
                 const checks = [];
                 for (const prop of properties) {
-                    if (!prop.valueDeclaration || prop === t.aliasSymbol) continue;
+                    if (prop === t.aliasSymbol) continue;
                     const access = factory.createElementAccessExpression(target, genStr(prop.name));
                     ctx.addPath(target, prop.name);
-                    const typeOfProp = ctx.transformer.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration);
-                    checks.push(...validate(typeOfProp.isUnion() ? typeOfProp.getNonNullableType() : typeOfProp, access, ctx, ts.isPropertySignature(prop.valueDeclaration) ? Boolean(prop.valueDeclaration.questionToken) : false));        
+                    //@ts-expect-error Internal APIs
+                    const typeOfProp = (ctx.transformer.checker.getTypeOfSymbol(prop) || ctx.transformer.checker.getNullType()) as ts.Type;
+                    // If it's not possible for the type to be undefined
+                    if (typeOfProp === typeOfProp.getNonNullableType()) checks.push(...validate(typeOfProp, access, ctx, false));
+                    else checks.push(...validate(typeOfProp.getNonNullableType(), access, ctx, true));
                     ctx.removePath();  
                 }
                 return checks;

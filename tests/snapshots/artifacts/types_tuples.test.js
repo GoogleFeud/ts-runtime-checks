@@ -12,7 +12,7 @@ describe("Tuple", () => {
             if (a[1] !== "123")
                 throw new Error("Expected " + ("a[" + 1 + "]") + " to be \"123\".");
             if (a[2] !== undefined && typeof a[2] !== "number")
-                throw new Error("Expected " + ("a[" + 2 + "]") + " to be number | undefined.");
+                throw new Error("Expected " + ("a[" + 2 + "]") + " to be number.");
             return a;
         }
         it("Throw when one of the values is undefined", () => {
@@ -22,7 +22,7 @@ describe("Tuple", () => {
             (0, chai_1.expect)((0, utils_1.call)(test)).to.throw("Expected a to be [string, \"123\", (number | undefined)?].");
         });
         it("Throw when one of the values has a wrong type", () => {
-            (0, chai_1.expect)((0, utils_1.call)(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be number | undefined.");
+            (0, chai_1.expect)((0, utils_1.call)(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be number.");
             (0, chai_1.expect)((0, utils_1.call)(test, ["abc", 123, "Hello"])).to.throw("Expected a[1] to be \"123\".");
             (0, chai_1.expect)((0, utils_1.call)(test, [Symbol(), 123, "Hello"])).to.throw("Expected a[0] to be string.");
         });

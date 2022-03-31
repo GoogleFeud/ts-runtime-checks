@@ -10,7 +10,8 @@ export interface ValidationPath {
 
 export type ValidationResultType = {
     throw?: boolean,
-    return?: ts.Expression
+    return?: ts.Expression,
+    returnErr?: boolean
 }
 
 /**
@@ -41,10 +42,9 @@ export class ValidationContext {
     error(t: ts.Type, error?: [string?, string?]) : ts.Statement {
         if (this.resultType.return) return factory.createReturnStatement(this.resultType.return);
         const errPath = this.visualizeDepth();
-        if (typeof errPath === "string") return genThrow(genNew(this.errorTypeName, error?.[0] || "Expected " + errPath + (error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`)));
-        else return genThrow(genNew(this.errorTypeName, [
-            genAdd(genAdd(genStr(error?.[0] || "Expected "), errPath), genStr(error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`))
-        ]));
+        const errMessage = typeof errPath === "string" ? genStr(error?.[0] || "Expected " + errPath + (error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`)) : genAdd(genAdd(genStr(error?.[0] || "Expected "), errPath), genStr(error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`));
+        if (this.resultType.returnErr) return factory.createReturnStatement(errMessage);
+        else return genThrow(genNew(this.errorTypeName, [errMessage]));
     }
 
     addPath(parent: ts.Expression, propName: string | ts.Expression) : void {
@@ -97,7 +97,7 @@ export class ValidationContext {
             }
         }
         if (res) {
-            if (resStr.length) return genAdd(res, genStr(`]${resStr.join(".")}`));
+            if (resStr.length) return genAdd(res, genStr(`].${resStr.join(".")}`));
             else return genAdd(res, genStr("]"));
         } else return resStr.join(".");
     }

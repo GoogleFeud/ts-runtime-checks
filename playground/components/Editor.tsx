@@ -14,8 +14,7 @@ export function TextEditor(props: {
     useEffect(() => {
         if (!monaco) return;
         monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-            ...CompilerOptions as unknown as languages.typescript.CompilerOptions,
-            allowNonTsExtensions: true
+            ...CompilerOptions as unknown as languages.typescript.CompilerOptions
         });
         const filename = "ts:ts-runtime-checks/index.d.ts";
         monaco.languages.typescript.javascriptDefaults.addExtraLib(Markers, filename);
