@@ -17,7 +17,7 @@ describe("Tuple", () => {
         });
     
         it("Throw when one of the values has a wrong type", () => {
-            expect(call(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be number | undefined.");
+            expect(call(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be number.");
             expect(call(test, ["abc", 123, "Hello"])).to.throw("Expected a[1] to be \"123\".");
             expect(call(test, [Symbol(), 123, "Hello"])).to.throw("Expected a[0] to be string.");
         });

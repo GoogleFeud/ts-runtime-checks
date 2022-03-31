@@ -141,6 +141,8 @@ function verifyUser({ username, id }) {
 }
 ```
 
+You can provide the `ErrorMsg` type to make it return the error strings.
+
 #### Range<min, max>
 
 Checks if a number is excluively between `min` and `max`. They must be either a numeric literal, an `Expr`, 

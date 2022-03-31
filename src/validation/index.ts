@@ -103,10 +103,12 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         error: () => ctx.error(t),
         other: () => {
             const arr = [];
-            for (let i=0; i < (type as Array<ts.Type>).length; i++) {
+            const types = (type as Array<ts.Type>);
+            for (let i=0; i < types.length; i++) {
                 const access = factory.createElementAccessExpression(target, i);
                 ctx.addPath(access, factory.createNumericLiteral(i));
-                arr.push(...validate((type as Array<ts.Type>)[i]!, access, ctx, false));
+                if (types[i] !== types[i]!.getNonNullableType()) arr.push(...validate(types[i]!.getNonNullableType(), access, ctx, true));
+                else arr.push(...validate(types[i]!, access, ctx, false));
                 ctx.removePath();
             }
             return arr;

@@ -2,6 +2,7 @@
 import ts from "typescript";
 import { Block } from "./block";
 import { Transformer } from "./transformer";
+import { isErrorMessage } from "./utils";
 import { validate, ValidationContext } from "./validation";
 import { genIdentifier, UNDEFINED } from "./validation/utils";
 
@@ -49,11 +50,11 @@ export const Markers: Record<string, MacroFn> = {
         }
     },
     EarlyReturn: (trans, { ctx, exp, block, parameters, optional}) => {
-        const returnType = parameters[1] ? trans.typeValueToNode(parameters[1], true) : UNDEFINED;
+        const resultType = parameters[1] ? isErrorMessage(parameters[1]) ? { returnErr: true } : { return: trans.typeValueToNode(parameters[1], true) } : { return: UNDEFINED };
         if (ctx === MacroCallContext.Parameter) {
             block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
                 return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
-                    resultType: { return: returnType },
+                    resultType,
                     transformer: trans,
                     depth: [],
                     propName: ts.isIdentifier(i) ? i.text : i
@@ -68,7 +69,7 @@ export const Markers: Record<string, MacroFn> = {
                 callBy = ident;
             }
             block.nodes.push(...validate(parameters[0]!, callBy, new ValidationContext({
-                resultType: { return: returnType },
+                resultType,
                 transformer: trans,
                 depth: [],
                 propName: callBy.pos === -1 ? "value" : callBy.getText()
@@ -129,7 +130,8 @@ export type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType>
 
 /**
  * Makes sure the value matches the provided type by generating code which validates the value. Returns the provided
- * `ReturnValue` (or `undefiend` if a return value is not provided) if the value doesn't match the type.
+ * `ReturnValue` (or `undefiend` if a return value is not provided) if the value doesn't match the type. 
+ * You can provide the `ErrorMsg` type to make it return the error strings.
  * 
  * This marker can be used in function parameters and in the the `as` expression.
  * 
@@ -148,6 +150,7 @@ export type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType>
  * ```
  */
 export type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
+export type ErrorMsg = { __error_msg: true }
 
 /**
  * Validates if the value is a number and if it's between the specified range.

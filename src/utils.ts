@@ -11,6 +11,10 @@ export function isTrueType(t: ts.Type|undefined) : boolean {
     return t.intrinsicName === "true";
 }
 
+export function isErrorMessage(t: ts.Type) : boolean {
+    return Boolean(t.getProperty("__error_msg"));
+}
+
 export function resolveAsChain(exp: ts.Expression) : ts.Expression {
     while (ts.isAsExpression(exp)) {
         exp = exp.expression;

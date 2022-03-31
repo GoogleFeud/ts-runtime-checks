@@ -27,4 +27,25 @@ describe("Early return", () => {
         (0, chai_1.expect)((0, utils_1.call)(test2, { b: "abc" })()).to.be.equal("a");
         (0, chai_1.expect)((0, utils_1.call)(test2, { b: "abc", a: 123 })()).to.be.equal("c");
     });
+    function test3(a) {
+        if (typeof a !== "object")
+            return "Expected a to be { a: [string, number, ({ b: number; } | undefined)?]; }.";
+        if (!(a["a"] instanceof Array))
+            return "Expected a.a to be [string, number, ({ b: number; } | undefined)?].";
+        if (typeof a["a"][0] !== "string")
+            return "Expected " + ("a.a[" + 0 + "]") + " to be string.";
+        if (typeof a["a"][1] !== "number")
+            return "Expected " + ("a.a[" + 1 + "]") + " to be number.";
+        if (a["a"][2] !== undefined) {
+            if (typeof a["a"][2] !== "object")
+                return "Expected " + ("a.a[" + 2 + "]") + " to be { b: number; }.";
+            if (typeof a["a"][2]["b"] !== "number")
+                return "Expected " + ("a.a[" + 2 + "].b") + " to be number.";
+        }
+        return true;
+    }
+    it("Return the error message if specified", () => {
+        (0, chai_1.expect)((0, utils_1.call)(test3, { a: ["Hello", "World"] })()).to.be.equal("Expected a.a[1] to be number.");
+        (0, chai_1.expect)((0, utils_1.call)(test3, { a: ["Hello", 123, { b: "World" }] })()).to.be.equal("Expected a.a[2].b to be number.");
+    });
 });
