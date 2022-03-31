@@ -24,13 +24,12 @@ export const CompilerOptions: ts.CompilerOptions = {
 };
 
 export function genTranspile(lib: string) : (str: string) => { code?: string, error?: unknown} {
-    const LibFile = ts.createSourceFile("lib.d.ts", lib, CompilerOptions.target || ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+    const LibFile = ts.createSourceFile("lib.d.ts", lib + Markers, CompilerOptions.target || ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
     return (str) => {
-        const SourceFile = ts.createSourceFile("module.ts", Markers + str, CompilerOptions.target || ts.ScriptTarget.ESNext, true);
+        const SourceFile = ts.createSourceFile("module.ts", str, CompilerOptions.target || ts.ScriptTarget.ESNext, true);
         let output = "";
         const CompilerHost: ts.CompilerHost = {
             getSourceFile: (fileName) => {
-                console.log(fileName);
                 if (fileName.endsWith(".d.ts")) return LibFile;
                 return SourceFile;
             },
