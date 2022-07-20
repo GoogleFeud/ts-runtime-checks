@@ -83,12 +83,12 @@ Markers are typescript type aliases which are detected by the transformer. These
     - `Assert<Type, ErrorType>`
     - `EarlyReturn<Type, ReturnType>`
 - `Utility` - Types which perform additional checks. These types should be only used inside `Assertion` types.
-    - `Range<min, max>` - Checks if a number are in the provided range.
+    - `NumRange<min, max>` - Checks if a number are in the provided range.
     - `Matches<regex>` - Checks if a string matches a regex.
     - `NoCheck<Type>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
     - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
-    - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Range` and `Matches` for example.
+    - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `NumRange` and `Matches` for example.
 
 #### Assert<Type, ErrorType>
 
@@ -143,12 +143,12 @@ function verifyUser({ username, id }) {
 
 You can provide the `ErrorMsg` type to make it return the error strings.
 
-#### Range<min, max>
+#### NumRange<min, max>
 
 Checks if a number is excluively between `min` and `max`. They must be either a numeric literal, an `Expr`, 
 
 ```ts
-type AssertRange<min, max> = Assert<Range<min, max>>;
+type AssertRange<min, max> = Assert<NumRange<min, max>>;
 
 const someNum = 50;
 function test(num1: AssertRange<1, 10>, num2: AssertRange<10, number>, num3: AssertRange<number, 10>, num4: AssertRange<Expr<"someNum">, 100>) {
@@ -157,10 +157,10 @@ function test(num1: AssertRange<1, 10>, num2: AssertRange<10, number>, num3: Ass
 
 // Transpiles to:
 function test(num1, num2, num3, num4) {
-    if (typeof num1 !== "number" || (num1 < 1 || num1 > 10)) throw new Error("Expected num1 to be Range<1, 10>.");
-    if (typeof num2 !== "number" || num2 < 10) throw new Error("Expected num2 to be Range<10, number>.");
-    if (typeof num3 !== "number" || num3 > 10) throw new Error("Expected num3 to be Range<number, 10>.");
-    if (typeof num4 !== "number" || (num4 < someNum || num4 > 100)) throw new Error("Expected num4 to be Range<Expr<\"someNum\">, 100>.");
+    if (typeof num1 !== "number" || (num1 < 1 || num1 > 10)) throw new Error("Expected num1 to be NumRange<1, 10>.");
+    if (typeof num2 !== "number" || num2 < 10) throw new Error("Expected num2 to be NumRange<10, number>.");
+    if (typeof num3 !== "number" || num3 > 10) throw new Error("Expected num3 to be NumRange<number, 10>.");
+    if (typeof num4 !== "number" || (num4 < someNum || num4 > 100)) throw new Error("Expected num4 to be NumRange<Expr<\"someNum\">, 100>.");
 }
 ```
 

@@ -157,7 +157,7 @@ export type ErrorMsg = { __error_msg: true }
  * 
  * @example
  * ```ts
- * const someNum = data.num as Assert<Range<1, 10>>;
+ * const someNum = data.num as Assert<NumRange<1, 10>>;
  * ```
  * 
  * ```js
@@ -168,7 +168,7 @@ export type ErrorMsg = { __error_msg: true }
  * ```
  * ```ts
  * //Sets only the max
- * const someNum = data.num as Assert<Range<number, 10>>;
+ * const someNum = data.num as Assert<NumRange<number, 10>>;
  * ```
  * ```js
  * // Generated code:
@@ -177,7 +177,7 @@ export type ErrorMsg = { __error_msg: true }
  * const someNum = __data;
  * ```
  */
-export type Range<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: Range<min, max> }; 
+export type NumRange<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: NumRange<min, max> }; 
 
 /**
  * Does not validate the type inside the marker.
@@ -262,13 +262,6 @@ export type If<Type, Expression extends string, FullCheck extends boolean = fals
  * 
  * @example
  * ```ts
- * interface Args {
- *   name: string,
- *   path: string,
- *   output: string,
- *   clusters?: number
- *  }
- *
  * console.log(is<Range<1, 10>>(123));
  * ```
  * ```js

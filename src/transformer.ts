@@ -119,13 +119,9 @@ export class Transformer {
         if (arg && arg.isStringLiteral()) return arg.value;
         return undefined;
     }
-    
-    getNodeFromType(t: ts.Type, argNum: number) : ts.Expression|undefined {
-        const arg = t.aliasTypeArguments?.[argNum];
-        if (!arg) return;
-        const val = this.typeValueToNode(arg, true);
-        if (ts.isIdentifier(val) && val.text === "undefined") return undefined;
-        return val;
+
+    getTypeArg(t: ts.Type, argNum: number) : ts.Type | undefined {
+        return t.aliasTypeArguments?.[argNum];
     }
 
     typeValueToNode(t: ts.Type, firstOnly?: true) : ts.Expression;
@@ -170,6 +166,16 @@ export class Transformer {
             return ts.visitEachChild(node, visitor, this.ctx);
         };
         return ts.visitNode(firstStmt.expression, visitor);
+    }
+
+    typeToString(type: ts.Type) : string {
+        if (type.isStringLiteral()) return type.value;
+        else if (type.isNumberLiteral()) return type.value.toString();
+        else {
+            const util = this.getUtilityType(type);
+            if (util && util.aliasSymbol?.name === "Expr") return this.getStringFromType(util, 0) || "";
+            return "";
+        }
     }
 
 

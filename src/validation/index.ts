@@ -13,35 +13,48 @@ export interface ValidatedType {
 
 const SKIP_SYM = Symbol("NoCheck");
 
-export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.Expression) : ts.Expression | typeof SKIP_SYM | undefined {
-    if (t.isStringLiteral()) return genCmp(target, factory.createStringLiteral(t.value));
-    else if (t.isNumberLiteral()) return genCmp(target, factory.createNumericLiteral(t.value));
-    else if (hasBit(t, TypeFlags.String)) return genTypeCmp(target, "string");
-    else if (hasBit(t, TypeFlags.BigInt)) return genTypeCmp(target, "bigint");
-    else if (hasBit(t, TypeFlags.Number)) return genTypeCmp(target, "number");
-    else if (hasBit(t, TypeFlags.Boolean)) return genTypeCmp(target, "boolean");
-    else if (hasBit(t, TypeFlags.ESSymbol)) return genTypeCmp(target, "symbol");
-    else if (hasBit(t, TypeFlags.Null)) return genCmp(target, factory.createNull());
+export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.Expression) : [ts.Expression, string?] | typeof SKIP_SYM | undefined {
+    if (t.isStringLiteral()) return [genCmp(target, factory.createStringLiteral(t.value))];
+    else if (t.isNumberLiteral()) return [genCmp(target, factory.createNumericLiteral(t.value))];
+    else if (hasBit(t, TypeFlags.String)) return [genTypeCmp(target, "string")];
+    else if (hasBit(t, TypeFlags.BigInt)) return [genTypeCmp(target, "bigint")];
+    else if (hasBit(t, TypeFlags.Number)) return [genTypeCmp(target, "number")];
+    else if (hasBit(t, TypeFlags.Boolean)) return [genTypeCmp(target, "boolean")];
+    else if (hasBit(t, TypeFlags.ESSymbol)) return [genTypeCmp(target, "symbol")];
+    else if (hasBit(t, TypeFlags.Null)) return [genCmp(target, factory.createNull())];
     else if (hasBit(t, TypeFlags.Any) || hasBit(t, TypeFlags.Unknown)) return SKIP_SYM;
-    else if (t.getCallSignatures().length === 1) return genTypeCmp(target, "function");
-    else if (t.isClass()) return genNot(genInstanceof(target, t.symbol.name));
+    else if (t.getCallSignatures().length === 1) return [genTypeCmp(target, "function")];
+    else if (t.isClass()) return [genNot(genInstanceof(target, t.symbol.name)), ` to be an instance of ${t.symbol?.name}.`];
     else {
         const utility = ctx.transformer.getUtilityType(t);
         if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) return;
         switch (utility.aliasSymbol.name) {
-        case "Range": {
-            const min = ctx.transformer.getNodeFromType(utility, 0);
-            const max = ctx.transformer.getNodeFromType(utility, 1);
+        case "NumRange": {
+            const minType = ctx.transformer.getTypeArg(utility, 0);
+            const maxType = ctx.transformer.getTypeArg(utility, 1);
             const checks = [];
-            if (min) checks.push(factory.createLessThan(target, min));
-            if (max) checks.push(factory.createGreaterThan(target, max));
-            if (!checks.length) return genTypeCmp(target, "number"); 
-            return genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(...checks));
+            if (minType && minType.isNumberLiteral()) checks.push(factory.createLessThan(target, ctx.transformer.typeValueToNode(minType, true)));
+            if (maxType && maxType.isNumberLiteral()) checks.push(factory.createGreaterThan(target, ctx.transformer.typeValueToNode(maxType)));
+            if (!checks.length) return [genTypeCmp(target, "number")]; 
+            let msg = "";
+            if (minType) {
+                const stringified = ctx.transformer.typeToString(minType);
+                if (stringified) msg += `more than ${stringified}`;
+            }
+            if (maxType) {
+                const stringified = ctx.transformer.typeToString(maxType);
+                if (stringified) {
+                    if (msg.length) msg += " and ";
+                    msg += `less than ${stringified}`;
+                }
+            }
+            return [genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(...checks)), ` to be ${msg}.`];
         }
         case "Matches": {
-            const regex = ctx.transformer.getNodeFromType(utility, 0);
-            if (!regex) return genTypeCmp(target, "string");
-            return genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(ts.isStringLiteral(regex) ? factory.createRegularExpressionLiteral(regex.text) : regex, "test"), undefined, [target])));
+            const regexType = ctx.transformer.getTypeArg(utility, 0);
+            if (!regexType || !regexType.isStringLiteral()) return [genTypeCmp(target, "string"), " to be string."];
+            const regex = ctx.transformer.typeValueToNode(regexType, true);
+            return [genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(ts.isStringLiteral(regex) ? factory.createRegularExpressionLiteral(regex.text) : regex, "test"), undefined, [target]))), ` to match "${ctx.transformer.typeToString(regexType)}".`];
         }
         case "NoCheck": return SKIP_SYM;
         }
@@ -51,11 +64,12 @@ export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.
 
 export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationContext) : ValidatedType | undefined {
     let type: ts.Type | ReadonlyArray<ts.Type> | ts.Expression | undefined | typeof SKIP_SYM; 
-    if (type = validateBaseType(ctx, t, target)) {
-        if (type === SKIP_SYM) return;
+    const simpleType = validateBaseType(ctx, t, target);
+    if (simpleType) {
+        if (simpleType === SKIP_SYM) return;
         return {
-            condition:() => type as ts.Expression,
-            error: () => ctx.error(t)
+            condition:() => simpleType[0],
+            error: () => ctx.error(t, [undefined, simpleType[1]])
         };
     }
     else if (t.isUnion()) return {

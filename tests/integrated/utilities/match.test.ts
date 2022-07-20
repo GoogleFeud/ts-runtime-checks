@@ -8,7 +8,7 @@ describe("Matches", () => {
             return a;
         }
         it("Throw when the regex doesn't match", () => {
-            expect(call(test, "hello")).to.throw("Expected a to be Matches<\"/foo*/g\">.");
+            expect(call(test, "hello")).to.throw("Expected a to match \"/foo*/g\".");
         });
     
         it("Not throw when the regex matches", () => {
@@ -16,8 +16,8 @@ describe("Matches", () => {
         });
     
         it("Throw when the provided value is not string", () => {
-            expect(call(test, 12)).to.throw("Expected a to be Matches<\"/foo*/g\">.");
-            expect(call(test)).to.throw("Expected a to be Matches<\"/foo*/g\">.");
+            expect(call(test, 12)).to.throw("Expected a to match \"/foo*/g\".");
+            expect(call(test)).to.throw("Expected a to match \"/foo*/g\".");
         });
     
         function test2(a: Assert<Matches<string>>) {
@@ -26,7 +26,7 @@ describe("Matches", () => {
     
         it("Check only if the parameter is a string, if regex is not provided", () => {
             expect(call(test2, "hello")).to.not.throw();
-            expect(call(test2, 123)).to.throw("Expected a to be Matches<string>.");
+            expect(call(test2, 123)).to.throw("Expected a to be string.");
         });
     
     });
