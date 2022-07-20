@@ -132,22 +132,11 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         const utility = ctx.transformer.getUtilityType(t);
         switch (utility?.aliasSymbol?.name) {
         case "ExactProps": {
-            const obj = utility.aliasTypeArguments?.[0];
+            const obj = ctx.transformer.getTypeArg(utility, 0);
             if (!obj) return;
+            if (isTrueType(ctx.transformer.getTypeArg(utility, 1))) ctx.exactProps = true;
             const validatedObj = validateType(obj, target, ctx);
-            if (!validatedObj || !validatedObj.other) return;
-            return {
-                ...validatedObj,
-                other: () => {
-                    const propName = factory.createUniqueName("name");
-                    ctx.addPath(target, propName);
-                    const error = ctx.error(utility, ["Property ", " is excessive."]);
-                    ctx.removePath();
-                    return [...validatedObj.other!(), genForInLoop(target, propName, 
-                        [genIf(genLogicalAND(...obj.getProperties().map(prop => genCmp(propName, genStr(prop.name)))), error)]
-                    )[0]];
-                }
-            };
+            return validatedObj;
         }
         case "If": {
             if (!utility.aliasTypeArguments) return;
@@ -171,6 +160,15 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
             other: () => {
                 const properties = t.getProperties();
                 const checks = [];
+                if (ctx.exactProps) {
+                    const propName = factory.createUniqueName("name");
+                    ctx.addPath(target, propName);
+                    const error = ctx.error(t, ["Property ", " is excessive."]);
+                    ctx.removePath();
+                    checks.push(genForInLoop(target, propName,
+                        [genIf(genLogicalAND(...properties.map(prop => genCmp(propName, genStr(prop.name)))), error)]
+                    )[0]);
+                }
                 for (const prop of properties) {
                     if (prop === t.aliasSymbol) continue;
                     const access = factory.createElementAccessExpression(target, genStr(prop.name));

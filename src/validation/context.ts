@@ -22,6 +22,7 @@ export class ValidationContext {
     transformer: Transformer;
     depth: Array<ValidationPath>;
     resultType: ValidationResultType;
+    exactProps?: boolean;
     constructor(ctx: {
         errorTypeName?: string,
         transformer: Transformer,

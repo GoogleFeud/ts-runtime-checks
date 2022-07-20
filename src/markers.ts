@@ -225,7 +225,7 @@ export type Matches<Regex extends string|Expr<"">> = string & { __utility?: Matc
  * }
  * ```
  */
-export type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
+export type ExactProps<Obj extends object, Recursive extends boolean = false> = Obj & { __utility?: ExactProps<Obj, Recursive> };
 
 export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 

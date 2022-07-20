@@ -2,10 +2,10 @@ import type { Assert, ExactProps } from "../../../dist/index";
 import { call } from "../../utils";
 import { expect } from "chai";
 
-describe("Matches", () => {
+describe("Exact Props", () => {
     describe("Assert", () => {
 
-        function test(a: Assert<ExactProps<{a: string, b: number, c?: string}>>) {
+        function test(a: Assert<ExactProps<{a: string, b: number, c?: string}, true>>) {
             return a;
         }
 
@@ -17,7 +17,7 @@ describe("Matches", () => {
             expect(call(test, {a: "a", b: 2345, c: "b"})).to.not.throw();
         });
     
-        function test2(a: Assert<ExactProps<{a: ExactProps<{b: string}>}>>) {
+        function test2(a: Assert<ExactProps<{a: {b: string}}, true>>) {
             return a;
         }
     
