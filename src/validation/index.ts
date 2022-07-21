@@ -162,7 +162,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                 const checks = [];
                 if (ctx.exactProps) {
                     const propName = factory.createUniqueName("name");
-                    ctx.addPath(target, propName);
+                    ctx.addPath(target, propName, true);
                     const error = ctx.error(t, ["Property ", " is excessive."]);
                     ctx.removePath();
                     checks.push(genForInLoop(target, propName,
