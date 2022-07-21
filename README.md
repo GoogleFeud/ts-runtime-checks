@@ -331,6 +331,26 @@ if ((() => {
 }
 ```
 
+### `check<Type>(value)` utility function
+
+Utility function. Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array with errors.
+
+```ts
+const [value, errors] = check<[string, number]>(JSON.parse("[\"Hello\", \"World\"]"));
+if (errors.length) console.log(errors);
+
+// Transpiles to:
+
+const [value, errors] = (() => {
+    const temp_1 = JSON.parse("[\"Hello\", \"World\"]");
+    const result_1 = [];
+    if (!(temp_1 instanceof Array)) nresult_1.push("Expected value to be [string, number].");
+    if (typeof temp_1[0] !== "string") result_1.push("Expected " + ("value[" + 0 + "]") + " to be string.");
+    if (typeof temp_1[1] !== "number") result_1.push("Expected " + ("value[" + 1 + "]") + " to be number.");
+    return [temp_1, result_1];
+})();
+```
+
 ### Destructuring
 
 If a value is a destructured object / array, then only the deconstructed properties / elements will get validated.
