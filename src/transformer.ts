@@ -1,8 +1,8 @@
 import ts from "typescript";
 import * as Block from "./block";
-import { MacroCallContext, MacroFn, Markers } from "./markers";
+import { FnCallFn, Functions, MacroCallContext, MarkerFn, Markers } from "./markers";
 import { hasBit, resolveAsChain } from "./utils";
-import { UNDEFINED } from "./validation/utils";
+import { UNDEFINED } from "./utils";
 
 export class Transformer {
     checker: ts.TypeChecker;
@@ -57,22 +57,25 @@ export class Transformer {
             return ts.factory.createBlock(this.visitEach(node.statements, Block.createBlock(body)));
         } else if (ts.isCallExpression(node) && node.arguments[0]) {
             const callee = node.expression;
-            if (ts.isIdentifier(callee) && callee.text === "is") {
-                const typeOfFn = this.checker.getTypeAtLocation(callee).getCallSignatures()[0]?.getTypeParameters();
-                if (typeOfFn && typeOfFn[0] && typeOfFn[1] && typeOfFn[1].getDefault()?.getProperty("__is")) {
-                    const block = Block.createBlock();
-                    (Markers["EarlyReturn"] as MacroFn)(this, {
-                        block,
-                        //@ts-expect-error Internal API
-                        parameters: [node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType(), this.checker.getFalseType()],
-                        ctx: MacroCallContext.As,
-                        exp: node.arguments[0],
-                        optional: false
-                    });
-                    block.nodes.push(ts.factory.createReturnStatement(ts.factory.createTrue()));
-                    return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
-                } 
-            }
+            const typeOfFn = this.checker.getTypeAtLocation(callee).getCallSignatures()[0]?.getTypeParameters();
+            if (typeOfFn && typeOfFn[0] && typeOfFn[1]) {
+                const fnName = typeOfFn[1].getDefault()?.getProperty("__marker");
+                if (fnName && fnName.valueDeclaration) {
+                    const name = this.checker.getTypeOfSymbolAtLocation(fnName, fnName.valueDeclaration);
+                    if (name.isStringLiteral()) {
+                        const block = Block.createBlock();
+                        (Functions[name.value] as FnCallFn)(this, {
+                            call: node,
+                            block,
+                            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                            //@ts-expect-error Internal API
+                            type: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType()
+                        });
+                        return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
+                    }
+                    
+                }
+            } 
         } 
         return ts.visitEachChild(node, (node) => this.visitor(node, body), this.ctx);
     }
@@ -81,7 +84,7 @@ export class Transformer {
         if (!param.type || !ts.isTypeReferenceNode(param.type)) return;
         const type = this.resolveActualType(this.checker.getTypeAtLocation(param.type));
         if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return;
-        (Markers[type.aliasSymbol.name] as MacroFn)(this, {
+        (Markers[type.aliasSymbol.name] as MarkerFn)(this, {
             block,
             parameters: type.aliasTypeArguments as Array<ts.Type> || param.type.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
             ctx: MacroCallContext.Parameter,
@@ -94,7 +97,7 @@ export class Transformer {
         if (!ts.isTypeReferenceNode(exp.type)) return exp;
         const type = this.resolveActualType(this.checker.getTypeAtLocation(exp.type));
         if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return exp;
-        return (Markers[type.aliasSymbol.name] as MacroFn)(this, {
+        return (Markers[type.aliasSymbol.name] as MarkerFn)(this, {
             block,
             parameters: type.aliasTypeArguments as Array<ts.Type> || exp.type.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
             ctx: MacroCallContext.As,
@@ -119,13 +122,9 @@ export class Transformer {
         if (arg && arg.isStringLiteral()) return arg.value;
         return undefined;
     }
-    
-    getNodeFromType(t: ts.Type, argNum: number) : ts.Expression|undefined {
-        const arg = t.aliasTypeArguments?.[argNum];
-        if (!arg) return;
-        const val = this.typeValueToNode(arg, true);
-        if (ts.isIdentifier(val) && val.text === "undefined") return undefined;
-        return val;
+
+    getTypeArg(t: ts.Type, argNum: number) : ts.Type | undefined {
+        return t.aliasTypeArguments?.[argNum];
     }
 
     typeValueToNode(t: ts.Type, firstOnly?: true) : ts.Expression;
@@ -170,6 +169,16 @@ export class Transformer {
             return ts.visitEachChild(node, visitor, this.ctx);
         };
         return ts.visitNode(firstStmt.expression, visitor);
+    }
+
+    typeToString(type: ts.Type) : string {
+        if (type.isStringLiteral()) return type.value;
+        else if (type.isNumberLiteral()) return type.value.toString();
+        else {
+            const util = this.getUtilityType(type);
+            if (util && util.aliasSymbol?.name === "Expr") return this.getStringFromType(util, 0) || "";
+            return "";
+        }
     }
 
 

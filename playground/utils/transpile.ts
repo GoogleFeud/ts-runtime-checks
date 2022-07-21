@@ -6,13 +6,14 @@ export const Markers = `
 type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType> };
 type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
 type ErrorMsg = { __error_msg: true };
-type Range<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: Range<min, max> }; 
+type NumRange<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: NumRange<min, max> }; 
 type NoCheck<T> = T & { __utility?: NoCheck<T> };
 type Matches<Regex extends string|Expr<"">> = string & { __utility?: Matches<Regex> };
 type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
 declare function is<T, _M = { __is: true }>(prop: unknown) : prop is T;
+declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
 
 `;
 

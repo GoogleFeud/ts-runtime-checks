@@ -17,7 +17,7 @@ describe("Class", () => {
         });
 
         it("Throw when wrong class is provided", () => {
-            expect(call(test, new Test2(), new Test())).to.throw("Expected a to be Test.");
+            expect(call(test, new Test2(), new Test())).to.throw("Expected a to be an instance of Test.");
         });
 
     });

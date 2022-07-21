@@ -1,17 +1,19 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts, { factory } from "typescript";
 import { Transformer } from "../transformer";
-import { genAdd, genCmp, genLogicalAND, genNew, genStr, genThrow, UNDEFINED } from "./utils";
+import { genAdd, genCmp, genLogicalAND, genNew, genStr, genThrow, UNDEFINED } from "../utils";
 
 export interface ValidationPath {
     parent?: ts.Expression,
-    propName: string | ts.Expression
+    propName: string | ts.Expression,
+    dotNotation?: boolean
 }
 
-export type ValidationResultType = {
+export interface ValidationResultType {
     throw?: boolean,
     return?: ts.Expression,
-    returnErr?: boolean
+    returnErr?: boolean,
+    custom?: (msg: ts.Expression) => ts.Statement
 }
 
 /**
@@ -22,18 +24,19 @@ export class ValidationContext {
     transformer: Transformer;
     depth: Array<ValidationPath>;
     resultType: ValidationResultType;
+    exactProps?: boolean;
     constructor(ctx: {
         errorTypeName?: string,
         transformer: Transformer,
         depth: Array<ValidationPath>,
-        propName: string | ts.Expression,
+        propName?: string | ts.Expression,
         resultType?: ValidationResultType
     }) {
         this.transformer = ctx.transformer;
         this.errorTypeName = ctx.errorTypeName || "Error";
         this.depth = ctx.depth;
         this.resultType = ctx.resultType || { throw: true };
-        this.depth.push({ propName: ctx.propName });
+        if (ctx.propName) this.depth.push({ propName: ctx.propName });
     }
 
     /**
@@ -44,11 +47,12 @@ export class ValidationContext {
         const errPath = this.visualizeDepth();
         const errMessage = typeof errPath === "string" ? genStr(error?.[0] || "Expected " + errPath + (error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`)) : genAdd(genAdd(genStr(error?.[0] || "Expected "), errPath), genStr(error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`));
         if (this.resultType.returnErr) return factory.createReturnStatement(errMessage);
+        if (this.resultType.custom) return this.resultType.custom(errMessage);
         else return genThrow(genNew(this.errorTypeName, [errMessage]));
     }
 
-    addPath(parent: ts.Expression, propName: string | ts.Expression) : void {
-        this.depth.push({ parent, propName });
+    addPath(parent: ts.Expression, propName: string | ts.Expression, dotNotation?: boolean) : void {
+        this.depth.push({ parent, propName, dotNotation });
     }
 
     removePath() : void {
@@ -81,24 +85,45 @@ export class ValidationContext {
         for (const depth of this.depth) {
             if (typeof depth.propName === "string") resStr.push(depth.propName);
             else {
-                if (res) {
-                    if (resStr.length) {
-                        res = genAdd(genAdd(res, genStr(`]${resStr.join(".")}[`)), depth.propName);
-                        resStr.length = 0;
+                if (depth.dotNotation) {
+                    if (res) {
+                        if (resStr.length) {
+                            res = genAdd(genAdd(res, genStr(`${resStr.join(".")}.`)), depth.propName);
+                            resStr.length = 0;
+                        }
+                        else res = genAdd(genAdd(res, genStr(".")), depth.propName);
+                    } else {
+                        if (resStr.length) {
+                            res = genAdd(genStr(`${resStr.join(".")}.`), depth.propName);
+                            resStr.length = 0;
+                        }
+                        else res = depth.propName;
                     }
-                    else res = genAdd(genAdd(res, genStr("][")), depth.propName);
                 } else {
-                    if (resStr.length) {
-                        res = genAdd(genStr(`${resStr.join(".")}[`), depth.propName);
-                        resStr.length = 0;
+                    if (res) {
+                        if (resStr.length) {
+                            res = genAdd(genAdd(res, genStr(`]${resStr.join(".")}[`)), depth.propName);
+                            resStr.length = 0;
+                        }
+                        else res = genAdd(genAdd(res, genStr("][")), depth.propName);
+                    } else {
+                        if (resStr.length) {
+                            res = genAdd(genStr(`${resStr.join(".")}[`), depth.propName);
+                            resStr.length = 0;
+                        }
+                        else res = depth.propName;
                     }
-                    else res = depth.propName;
                 }
             }
         }
         if (res) {
-            if (resStr.length) return genAdd(res, genStr(`].${resStr.join(".")}`));
-            else return genAdd(res, genStr("]"));
+            if (this.depth[this.depth.length - 1]?.dotNotation) {
+                if (resStr.length) return genAdd(res, genStr(resStr.join(".")));
+                else return res;
+            } else {
+                if (resStr.length) return genAdd(res, genStr(`].${resStr.join(".")}`));
+                else return genAdd(res, genStr("]"));
+            }
         } else return resStr.join(".");
     }
 

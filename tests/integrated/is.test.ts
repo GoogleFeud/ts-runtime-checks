@@ -1,15 +1,15 @@
-import type { Range  } from "../../dist/index";
+import type { NumRange } from "../../dist/index";
 import { expect } from "chai";
 
 // Only way to test it :/
-export declare function is<T, _M = { __is: true }>(prop: unknown) : prop is T;
+declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
 
 describe("Is function", () => {
     
     it("Return false when the value does not match the type", () => {
         expect(is<string>(123)).to.be.equal(false);
         expect(is<{a: number, b: string}>({a: "Hello", b: 3.14})).to.be.equal(false);
-        expect(is<Range<1, 100> | string>(-1)).to.be.equal(false);
+        expect(is<NumRange<1, 100> | string>(-1)).to.be.equal(false);
     });
 
     it("Return true when the value matches the type", () => {
