@@ -9,7 +9,7 @@ export interface ValidationPath {
     dotNotation?: boolean
 }
 
-export type ValidationResultType = {
+export interface ValidationResultType {
     throw?: boolean,
     return?: ts.Expression,
     returnErr?: boolean

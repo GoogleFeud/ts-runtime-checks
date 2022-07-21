@@ -134,9 +134,18 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         case "ExactProps": {
             const obj = ctx.transformer.getTypeArg(utility, 0);
             if (!obj) return;
-            if (isTrueType(ctx.transformer.getTypeArg(utility, 1))) ctx.exactProps = true;
+            if (ctx.exactProps) return validateType(obj, target, ctx);
+            ctx.exactProps = true;
             const validatedObj = validateType(obj, target, ctx);
-            return validatedObj;
+            if (!validatedObj) return;
+            return {
+                ...validatedObj,
+                other: () => {
+                    const res = validatedObj.other!();
+                    ctx.exactProps = false;
+                    return res;
+                }
+            };
         }
         case "If": {
             if (!utility.aliasTypeArguments) return;
@@ -156,35 +165,38 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                 } : undefined
             };
         }
-        default: return {
-            other: () => {
-                const properties = t.getProperties();
-                const checks = [];
-                if (ctx.exactProps) {
-                    const propName = factory.createUniqueName("name");
-                    ctx.addPath(target, propName, true);
-                    const error = ctx.error(t, ["Property ", " is excessive."]);
-                    ctx.removePath();
-                    checks.push(genForInLoop(target, propName,
-                        [genIf(genLogicalAND(...properties.map(prop => genCmp(propName, genStr(prop.name)))), error)]
-                    )[0]);
-                }
-                for (const prop of properties) {
-                    if (prop === t.aliasSymbol) continue;
-                    const access = factory.createElementAccessExpression(target, genStr(prop.name));
-                    ctx.addPath(target, prop.name);
-                    //@ts-expect-error Internal APIs
-                    const typeOfProp = (ctx.transformer.checker.getTypeOfSymbol(prop) || ctx.transformer.checker.getNullType()) as ts.Type;
-                    // If it's not possible for the type to be undefined
-                    if (typeOfProp === typeOfProp.getNonNullableType()) checks.push(...validate(typeOfProp, access, ctx, false));
-                    else checks.push(...validate(typeOfProp.getNonNullableType(), access, ctx, true));
-                    ctx.removePath();  
-                }
-                return checks;
-            },
-            condition: () => genTypeCmp(target, "object"),
-            error: () => ctx.error(t)
-        };
+        default: {
+            const exactProps = ctx.exactProps;
+            return {
+                other: () => {
+                    const properties = t.getProperties();
+                    const checks = [];
+                    if (exactProps) {
+                        const propName = factory.createUniqueName("name");
+                        ctx.addPath(target, propName, true);
+                        const error = ctx.error(t, ["Property ", " is excessive."]);
+                        ctx.removePath();
+                        checks.push(genForInLoop(target, propName,
+                            [genIf(genLogicalAND(...properties.map(prop => genCmp(propName, genStr(prop.name)))), error)]
+                        )[0]);
+                    }
+                    for (const prop of properties) {
+                        if (prop === t.aliasSymbol) continue;
+                        const access = factory.createElementAccessExpression(target, genStr(prop.name));
+                        ctx.addPath(target, prop.name);
+                        //@ts-expect-error Internal APIs
+                        const typeOfProp = (ctx.transformer.checker.getTypeOfSymbol(prop) || ctx.transformer.checker.getNullType()) as ts.Type;
+                        // If it's not possible for the type to be undefined
+                        if (typeOfProp === typeOfProp.getNonNullableType()) checks.push(...validate(typeOfProp, access, ctx, false));
+                        else checks.push(...validate(typeOfProp.getNonNullableType(), access, ctx, true));
+                        ctx.removePath();  
+                    }
+                    return checks;
+                },
+                condition: () => genTypeCmp(target, "object"),
+                error: () => ctx.error(t)
+            };
+        }
         }
     }
 }

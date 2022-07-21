@@ -48,5 +48,26 @@ describe("Exact Props", () => {
         it("Not throw when there are excessive nested properties", () => {
             (0, chai_1.expect)((0, utils_1.call)(test2, { a: { b: "c2" } })).to.not.throw();
         });
+        function test3(a) {
+            if (typeof a !== "object")
+                throw new Error("Expected a to be { a: string; b: ExactProps<{ c: number; }>; }.");
+            if (typeof a["a"] !== "string")
+                throw new Error("Expected a.a to be string.");
+            if (typeof a["b"] !== "object")
+                throw new Error("Expected a.b to be { c: number; }.");
+            for (let name_4 in a["b"]) {
+                if (name_4 !== "c")
+                    throw new Error("Property " + ("a.b." + name_4) + " is excessive.");
+            }
+            if (typeof a["b"]["c"] !== "number")
+                throw new Error("Expected a.b.c to be number.");
+            return a;
+        }
+        it("Not throw when there are excessive properties", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test3, { a: "123", d: 123, b: { c: 123 } })).to.not.throw();
+        });
+        it("Throw when there are excessive properties", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test3, { a: "123", d: 123, b: { d: 32 } })).to.throw("Property a.b.d is excessive.");
+        });
     });
 });
