@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts, { factory } from "typescript";
 import { Transformer } from "../transformer";
-import { genAdd, genCmp, genLogicalAND, genNew, genStr, genThrow, UNDEFINED } from "./utils";
+import { genAdd, genCmp, genLogicalAND, genNew, genStr, genThrow, UNDEFINED } from "../utils";
 
 export interface ValidationPath {
     parent?: ts.Expression,
@@ -12,7 +12,8 @@ export interface ValidationPath {
 export interface ValidationResultType {
     throw?: boolean,
     return?: ts.Expression,
-    returnErr?: boolean
+    returnErr?: boolean,
+    custom?: (msg: ts.Expression) => ts.Statement
 }
 
 /**
@@ -28,14 +29,14 @@ export class ValidationContext {
         errorTypeName?: string,
         transformer: Transformer,
         depth: Array<ValidationPath>,
-        propName: string | ts.Expression,
+        propName?: string | ts.Expression,
         resultType?: ValidationResultType
     }) {
         this.transformer = ctx.transformer;
         this.errorTypeName = ctx.errorTypeName || "Error";
         this.depth = ctx.depth;
         this.resultType = ctx.resultType || { throw: true };
-        this.depth.push({ propName: ctx.propName });
+        if (ctx.propName) this.depth.push({ propName: ctx.propName });
     }
 
     /**
@@ -46,6 +47,7 @@ export class ValidationContext {
         const errPath = this.visualizeDepth();
         const errMessage = typeof errPath === "string" ? genStr(error?.[0] || "Expected " + errPath + (error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`)) : genAdd(genAdd(genStr(error?.[0] || "Expected "), errPath), genStr(error?.[1] || ` to be ${this.transformer.checker.typeToString(t)}.`));
         if (this.resultType.returnErr) return factory.createReturnStatement(errMessage);
+        if (this.resultType.custom) return this.resultType.custom(errMessage);
         else return genThrow(genNew(this.errorTypeName, [errMessage]));
     }
 

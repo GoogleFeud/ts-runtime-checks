@@ -13,7 +13,7 @@ export type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj>
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
 declare function is<T, _M = { __is: true }>(prop: unknown) : prop is T;
-
+declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
 `;
 
 export const CompilerOptions: ts.CompilerOptions = {

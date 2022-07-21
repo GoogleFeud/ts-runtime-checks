@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genPropAccess, genStr, genTypeCmp } from "./utils";
+import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genPropAccess, genStr, genTypeCmp } from "../utils";
 import { hasBit, isTrueType } from "../utils";
 import { ValidationContext } from "./context";
 

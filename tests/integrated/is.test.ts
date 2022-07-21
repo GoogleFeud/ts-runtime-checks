@@ -2,7 +2,7 @@ import type { NumRange } from "../../dist/index";
 import { expect } from "chai";
 
 // Only way to test it :/
-export declare function is<T, _M = { __is: true }>(prop: unknown) : prop is T;
+declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
 
 describe("Is function", () => {
     

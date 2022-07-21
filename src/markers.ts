@@ -2,9 +2,10 @@
 import ts from "typescript";
 import { Block } from "./block";
 import { Transformer } from "./transformer";
-import { isErrorMessage } from "./utils";
+import { genArrayPush, isErrorMessage } from "./utils";
 import { validate, ValidationContext } from "./validation";
-import { genIdentifier, UNDEFINED } from "./validation/utils";
+import { ValidationResultType } from "./validation/context";
+import { genIdentifier, UNDEFINED } from "./utils";
 
 export const enum MacroCallContext {
     As,
@@ -16,12 +17,20 @@ export interface MarkerCallData {
     block: Block<unknown>,
     ctx: MacroCallContext,
     optional?: boolean,
-    exp: ts.Expression | ts.BindingName
+    exp: ts.Expression | ts.BindingName,
+    resultType?: ValidationResultType
 }
 
-export type MacroFn = (transformer: Transformer, data: MarkerCallData) => ts.Expression|undefined;
+export interface FnCallData {
+    block: Block<unknown>,
+    call: ts.CallExpression,
+    type: ts.Type
+}
 
-export const Markers: Record<string, MacroFn> = {
+export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Expression|undefined;
+export type FnCallFn = (transformer: Transformer, data: FnCallData) => void;
+
+export const Markers: Record<string, MarkerFn> = {
     Assert: (trans, {ctx, exp, block, parameters, optional}) => {
         if (ctx === MacroCallContext.Parameter) {
             block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
@@ -29,7 +38,7 @@ export const Markers: Record<string, MacroFn> = {
                     errorTypeName: parameters[1]?.symbol?.name,
                     transformer: trans,
                     depth: [],
-                    propName: ts.isIdentifier(i) ? i.text : i
+                    propName: ts.isIdentifier(i) ? i.text : i,
                 }), optional);
             }));
             return undefined;
@@ -76,6 +85,39 @@ export const Markers: Record<string, MacroFn> = {
             })));
             return callBy;
         }
+    }
+};
+
+export const Functions: Record<string, FnCallFn> = {
+    is: (transformer, data) => {
+        let arg = data.call.arguments[0]!;
+        if (!ts.isIdentifier(arg)) {
+            const [stmt, newArg] = genIdentifier("temp", arg, ts.NodeFlags.Const);
+            arg = newArg;
+            data.block.nodes.push(stmt);
+        }
+        data.block.nodes.push(...validate(data.type, arg, new ValidationContext({
+            resultType: { return: ts.factory.createFalse() },
+            transformer,
+            depth: [],
+            propName: arg.pos === -1 ? "value" : arg.getText()
+        })), ts.factory.createReturnStatement(ts.factory.createTrue()));
+    },
+    check: (transformer, data) => {
+        let arg = data.call.arguments[0]!;
+        if (!ts.isIdentifier(arg)) {
+            const [stmt, newArg] = genIdentifier("temp", arg, ts.NodeFlags.Const);
+            arg = newArg;
+            data.block.nodes.push(stmt);
+        }
+        const [arrDecl, arrVar] = genIdentifier("result", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
+        data.block.nodes.push(arrDecl);
+        data.block.nodes.push(...validate(data.type, arg, new ValidationContext({
+            resultType: { custom: (msg) => ts.factory.createExpressionStatement(genArrayPush(arrVar, msg)) },
+            transformer,
+            depth: [],
+            propName: arg.pos === -1 ? "value" : arg.getText()
+        })), ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([arg, arrVar])));
     }
 };
 
@@ -274,4 +316,10 @@ export type If<Type, Expression extends string, FullCheck extends boolean = fals
  * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export declare function is<T, _M = { __is: true }>(prop: unknown) : prop is T;
+export declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
+
+/**
+ * Utility function which gets transpiled to a self-invoked arrow function which returns an array with all the found errors.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
