@@ -199,32 +199,11 @@ export type Str<Settings extends {
     matches?: string|Expr<"">
 }> = string & { __utility: Str<Settings> };
 
-/**
- * Validates if the value is a number and if it's between the specified range.
- * 
- * @example
- * ```ts
- * const someNum = data.num as Assert<NumRange<1, 10>>;
- * ```
- * 
- * ```js
- * // Generated code:
- * const __data = data.num;
- * if (typeof __data !== "number" || (c < 1 || c > 10)) throw new Error("Expected data.num to be Range<1, 10>.");
- * const someNum = __data;
- * ```
- * ```ts
- * //Sets only the max
- * const someNum = data.num as Assert<NumRange<number, 10>>;
- * ```
- * ```js
- * // Generated code:
- * const __data = data.num;
- * if (typeof __data !== "number" || c > 10) throw new Error("Expected data.num to be Range<number, 10>.");
- * const someNum = __data;
- * ```
- */
-export type NumRange<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: NumRange<min, max> }; 
+export type Num<Settings extends {
+    min?: number|Expr<"">,
+    max?: number|Expr<"">,
+    type?: "int" | "float"
+}> = number & { __utility?: Num<Settings> }; 
 
 /**
  * Does not validate the type inside the marker.

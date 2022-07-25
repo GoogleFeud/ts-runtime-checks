@@ -186,7 +186,7 @@ export function getObjectFromType(checker: ts.TypeChecker, t: ts.Type, argNum: n
     if (!arg) return {};
     for (const prop of arg.getProperties()) {
         //@ts-expect-error Internal APIs
-        res[prop.name] = prop.valueDeclaration ? checker.getTypeAtLocation(prop.valueDeclaration) : checker.getTypeOfSymbol(prop);
+        res[prop.name] = checker.getTypeOfSymbol(prop);
     }
     return res;
 }
@@ -201,7 +201,6 @@ export function createListOfStr(strings: Array<string>) : string {
 export function getTypeArg(t: ts.Type, argNum: number) : ts.Type | undefined {
     return t.aliasTypeArguments?.[argNum];
 }
-
 
 
 export const UNDEFINED = factory.createIdentifier("undefined");

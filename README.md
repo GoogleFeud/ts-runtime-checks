@@ -83,8 +83,8 @@ Markers are typescript type aliases which are detected by the transformer. These
     - `Assert<Type, ErrorType>`
     - `EarlyReturn<Type, ReturnType>`
 - `Utility` - Types which perform additional checks. These types should be only used inside `Assertion` types.
-    - `NumRange<min, max>` - Checks if a number are in the provided range.
-    - `Str<{matches?, length?}>` - More detailed string requirements.
+    - `Num<{min, max, type}>` - More detailed number requirements.
+    - `Str<{matches, length}>` - More detailed string requirements.
     - `NoCheck<Type>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
     - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
@@ -143,25 +143,33 @@ function verifyUser({ username, id }) {
 
 You can provide the `ErrorMsg` type to make it return the error strings.
 
-#### NumRange<min, max>
+#### Num<{min, max, type}>
 
-Checks if a number is excluively between `min` and `max`. They must be either a numeric literal, an `Expr`, 
+More detailed number requirements. Allows you to check if the number is greater than / less than an amount, or if it's a floating point or an integer.
 
 ```ts
-type AssertRange<min, max> = Assert<NumRange<min, max>>;
-
 const someNum = 50;
-function test(num1: AssertRange<1, 10>, num2: AssertRange<10, number>, num3: AssertRange<number, 10>, num4: AssertRange<Expr<"someNum">, 100>) {
+
+type AssertRange<min> = Num<{
+    type: "int",
+    min: min,
+    max: Expr<"someNum">
+}>
+
+function test(num1: AssertRange<1>, num2: AssertRange<10>, num3: AssertRange<number>, num4: AssertRange<Expr<"someNum">>) {
     // Your code
 }
 
 // Transpiles to:
-function test(num1, num2, num3, num4) {
-    if (typeof num1 !== "number" || (num1 < 1 || num1 > 10)) throw new Error("Expected num1 to be NumRange<1, 10>.");
-    if (typeof num2 !== "number" || num2 < 10) throw new Error("Expected num2 to be NumRange<10, number>.");
-    if (typeof num3 !== "number" || num3 > 10) throw new Error("Expected num3 to be NumRange<number, 10>.");
-    if (typeof num4 !== "number" || (num4 < someNum || num4 > 100)) throw new Error("Expected num4 to be NumRange<Expr<\"someNum\">, 100>.");
+function test(num1, num2, num3) {
+    if (typeof num1 !== "number" || num1 % 1 !== 0 || num1 < 1 || num1 > someNum)
+        throw new Error("Expected num1 to be an integer, to be greater than 1 and to be less than someNum.");
+    if (typeof num2 !== "number" || num2 % 1 !== 0 || num2 < 10 || num2 > someNum)
+        throw new Error("Expected num2 to be an integer, to be greater than 10 and to be less than someNum.");
+    if (typeof num3 !== "number" || num3 % 1 !== 0 || num3 < someNum || num3 > someNum)
+        throw new Error("Expected num3 to be an integer, to be greater than someNum and to be less than someNum.");
 }
+
 ```
 
 #### Str<settings>

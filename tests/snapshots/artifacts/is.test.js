@@ -21,7 +21,7 @@ describe("Is function", () => {
         })()).to.be.equal(false);
         (0, chai_1.expect)((() => {
             const temp_3 = -1;
-            if (typeof temp_3 !== "string" && (typeof temp_3 !== "number" || (temp_3 < 1 || temp_3 > 100)))
+            if (typeof temp_3 !== "string" && (typeof temp_3 !== "number" || temp_3 < 1 || temp_3 > 100))
                 return false;
             return true;
         })()).to.be.equal(false);

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { createListOfStr, genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genPropAccess, genStr, genTypeCmp, getObjectFromType, getStringFromType, getTypeArg } from "../utils";
+import { createListOfStr, genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genNum, genPropAccess, genStr, genTypeCmp, getObjectFromType, getStringFromType, getTypeArg } from "../utils";
 import { hasBit, isTrueType } from "../utils";
 import { ValidationContext } from "./context";
 
@@ -29,26 +29,33 @@ export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.
         const utility = ctx.transformer.getUtilityType(t);
         if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) return;
         switch (utility.aliasSymbol.name) {
-        case "NumRange": {
-            const minType = getTypeArg(utility, 0);
-            const maxType = getTypeArg(utility, 1);
-            const checks = [];
-            if (minType && minType.isNumberLiteral()) checks.push(factory.createLessThan(target, ctx.transformer.typeValueToNode(minType, true)));
-            if (maxType && maxType.isNumberLiteral()) checks.push(factory.createGreaterThan(target, ctx.transformer.typeValueToNode(maxType)));
-            if (!checks.length) return [genTypeCmp(target, "number")]; 
-            let msg = "";
-            if (minType) {
-                const stringified = ctx.transformer.typeToString(minType);
-                if (stringified) msg += `more than ${stringified}`;
-            }
-            if (maxType) {
-                const stringified = ctx.transformer.typeToString(maxType);
-                if (stringified) {
-                    if (msg.length) msg += " and ";
-                    msg += `less than ${stringified}`;
+        case "Num": {
+            const settings = getObjectFromType(ctx.transformer.checker, utility, 0);
+            const checks = [genTypeCmp(target, "number")];
+            const errMessage = [];
+            if (settings.type) {
+                const val = ctx.transformer.typeToString(settings.type);
+                if (val === "int") {
+                    checks.push(genCmp(factory.createBinaryExpression(target, ts.SyntaxKind.PercentToken, genNum(1)), genNum(0), true));
+                    errMessage.push(" to be an integer");
+                } else if (val === "float") {
+                    checks.push(genCmp(factory.createBinaryExpression(target, ts.SyntaxKind.PercentToken, genNum(1)), genNum(0)));
+                    errMessage.push(" to be a float");
                 }
+            } else {
+                errMessage.push(" to be a number");
             }
-            return [genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(...checks)), ` to be ${msg}.`];
+            if (settings.min) {
+                const type = ctx.transformer.typeValueToNode(settings.min);
+                checks.push(factory.createLessThan(target, type));
+                errMessage.push(`to be greater than ${ctx.transformer.typeToString(settings.min)}`);
+            }
+            if (settings.max) {
+                const type = ctx.transformer.typeValueToNode(settings.max);
+                checks.push(factory.createGreaterThan(target, type));
+                errMessage.push(`to be less than ${ctx.transformer.typeToString(settings.max)}`);
+            }
+            return [genLogicalOR(...checks), createListOfStr(errMessage)];
         }
         case "Str": {
             const settings = getObjectFromType(ctx.transformer.checker, utility, 0);
