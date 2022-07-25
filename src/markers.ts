@@ -194,6 +194,11 @@ export type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType>
 export type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
 export type ErrorMsg = { __error_msg: true }
 
+export type Str<Settings extends {
+    length?: number|Expr<"">,
+    matches?: string|Expr<"">
+}> = string & { __utility: Str<Settings> };
+
 /**
  * Validates if the value is a number and if it's between the specified range.
  * 
@@ -225,24 +230,6 @@ export type NumRange<min extends number|Expr<"">, max extends number|Expr<"">> =
  * Does not validate the type inside the marker.
  */
 export type NoCheck<T> = T & { __utility?: NoCheck<T> };
-
-/**
- * Validates if the provided value is a string and it matches the regex.
- * 
- * @example
- * ```ts
- * function test(a: Assert<Matches<"/abc/">>) {
- *   // Your code...
- * }
- * ```
- * ```js
- * function test(a) {
- *    if (typeof a !== "string" || !/abc/.test(a)) throw new Error("Expected a to be Matches<\"/abc/\">.");
- *    // Your code...
- * }
- * ```
- */
-export type Matches<Regex extends string|Expr<"">> = string & { __utility?: Matches<Regex> };
 
 /**
  * Validates whether the value doesn't have any excessive properties.   

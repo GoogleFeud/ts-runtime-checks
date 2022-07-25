@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genPropAccess, genStr, genTypeCmp } from "../utils";
+import { createListOfStr, genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genPropAccess, genStr, genTypeCmp, getObjectFromType, getStringFromType, getTypeArg } from "../utils";
 import { hasBit, isTrueType } from "../utils";
 import { ValidationContext } from "./context";
 
@@ -30,8 +30,8 @@ export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.
         if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) return;
         switch (utility.aliasSymbol.name) {
         case "NumRange": {
-            const minType = ctx.transformer.getTypeArg(utility, 0);
-            const maxType = ctx.transformer.getTypeArg(utility, 1);
+            const minType = getTypeArg(utility, 0);
+            const maxType = getTypeArg(utility, 1);
             const checks = [];
             if (minType && minType.isNumberLiteral()) checks.push(factory.createLessThan(target, ctx.transformer.typeValueToNode(minType, true)));
             if (maxType && maxType.isNumberLiteral()) checks.push(factory.createGreaterThan(target, ctx.transformer.typeValueToNode(maxType)));
@@ -50,11 +50,23 @@ export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.
             }
             return [genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(...checks)), ` to be ${msg}.`];
         }
-        case "Matches": {
-            const regexType = ctx.transformer.getTypeArg(utility, 0);
-            if (!regexType || !regexType.isStringLiteral()) return [genTypeCmp(target, "string"), " to be string."];
-            const regex = ctx.transformer.typeValueToNode(regexType, true);
-            return [genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(ts.isStringLiteral(regex) ? factory.createRegularExpressionLiteral(regex.text) : regex, "test"), undefined, [target]))), ` to match "${ctx.transformer.typeToString(regexType)}".`];
+        case "Str": {
+            const settings = getObjectFromType(ctx.transformer.checker, utility, 0);
+            const checks = [genTypeCmp(target, "string")];
+            const errMessage = [" to be a string"];
+            if (settings.length) {
+                const lenType = ctx.transformer.typeValueToNode(settings.length, true);
+                checks.push(genCmp(genPropAccess(target, "length"), lenType, true));
+                errMessage.push(`to have a length of ${ctx.transformer.typeToString(settings.length)}`);
+            }
+            if (settings.matches) {
+                const regex = ctx.transformer.typeValueToNode(settings.matches, true);
+                if (ts.isStringLiteral(regex) && regex.text !== "") {
+                    checks.push(genNot(factory.createCallExpression(genPropAccess(ts.isStringLiteral(regex) ? factory.createRegularExpressionLiteral(regex.text) : regex, "test"), undefined, [target])));
+                    errMessage.push(`to match ${ctx.transformer.typeToString(settings.matches)}`);
+                }
+            }
+            return [genLogicalOR(...checks), createListOfStr(errMessage)];
         }
         case "NoCheck": return SKIP_SYM;
         }
@@ -132,7 +144,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         const utility = ctx.transformer.getUtilityType(t);
         switch (utility?.aliasSymbol?.name) {
         case "ExactProps": {
-            const obj = ctx.transformer.getTypeArg(utility, 0);
+            const obj = getTypeArg(utility, 0);
             if (!obj) return;
             if (ctx.exactProps) return validateType(obj, target, ctx);
             ctx.exactProps = true;
@@ -150,7 +162,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         case "If": {
             if (!utility.aliasTypeArguments) return;
             const type = utility.aliasTypeArguments[0];
-            const exp = ctx.transformer.getStringFromType(utility, 1);
+            const exp = getStringFromType(utility, 1);
             const fullCheck = isTrueType(utility.aliasTypeArguments[2]!);
             if (!type || !exp) return;
             const objValidator = fullCheck ? validateType(type, target, ctx) : undefined;

@@ -174,4 +174,34 @@ export function genArrayPush(arr: ts.Expression, item: ts.Expression) : ts.Expre
     );
 }
 
+export function getStringFromType(t: ts.Type, argNum: number) : string|undefined {
+    const arg = t.aliasTypeArguments?.[argNum];
+    if (arg && arg.isStringLiteral()) return arg.value;
+    return undefined;
+}
+
+export function getObjectFromType(checker: ts.TypeChecker, t: ts.Type, argNum: number) : Record<string, ts.Type> {
+    const res = {};
+    const arg = t.aliasTypeArguments?.[argNum];
+    if (!arg) return {};
+    for (const prop of arg.getProperties()) {
+        //@ts-expect-error Internal APIs
+        res[prop.name] = prop.valueDeclaration ? checker.getTypeAtLocation(prop.valueDeclaration) : checker.getTypeOfSymbol(prop);
+    }
+    return res;
+}
+
+export function createListOfStr(strings: Array<string>) : string {
+    if (strings.length === 1) return strings[0] + ".";
+    const clone = [...strings];
+    const last = clone.pop();
+    return `${clone.join(", ")} and ${last}.`;
+}
+
+export function getTypeArg(t: ts.Type, argNum: number) : ts.Type | undefined {
+    return t.aliasTypeArguments?.[argNum];
+}
+
+
+
 export const UNDEFINED = factory.createIdentifier("undefined");

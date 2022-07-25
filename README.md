@@ -84,7 +84,7 @@ Markers are typescript type aliases which are detected by the transformer. These
     - `EarlyReturn<Type, ReturnType>`
 - `Utility` - Types which perform additional checks. These types should be only used inside `Assertion` types.
     - `NumRange<min, max>` - Checks if a number are in the provided range.
-    - `Matches<regex>` - Checks if a string matches a regex.
+    - `Str<{matches?, length?}>` - More detailed string requirements.
     - `NoCheck<Type>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
     - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
@@ -164,18 +164,21 @@ function test(num1, num2, num3, num4) {
 }
 ```
 
-#### Matches<regex>
+#### Str<settings>
 
-Checks if a string matches the given regex. 
+More detailed string requirements. Allows you to check whether the string matches a regex, or whether it's a certain length.
 
 ```ts
-function test(a: Assert<Matches<"/abc/">>) {
+function test(a: Assert<Str<{
+    matches: "/abc/",
+    length: 12
+}>>) {
    // Your code...
 }
 
 // Transpiles to:
 function test(a) {
-    if (typeof a !== "string" || !/abc/.test(a)) throw new Error("Expected a to be Matches<\"/abc/\">.");
+    if (typeof a !== "string" || a.length !== 12 || !/abc/.test(a)) throw new Error("Expected a to be a string, to have a length of 12 and to match /abc/.");
     // Your code...
 }
 ```

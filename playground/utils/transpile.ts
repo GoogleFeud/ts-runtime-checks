@@ -8,7 +8,10 @@ type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, R
 type ErrorMsg = { __error_msg: true };
 type NumRange<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: NumRange<min, max> }; 
 type NoCheck<T> = T & { __utility?: NoCheck<T> };
-type Matches<Regex extends string|Expr<"">> = string & { __utility?: Matches<Regex> };
+type Str<Settings extends {
+    length?: number|Expr<"">,
+    matches?: string|Expr<"">
+}> = string & { __utility: Str<Settings> };
 type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
