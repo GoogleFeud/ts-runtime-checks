@@ -150,6 +150,40 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
     else {
         const utility = ctx.transformer.getUtilityType(t);
         switch (utility?.aliasSymbol?.name) {
+        case "Arr": {
+            const type = getTypeArg(utility, 0)!;
+            const settings = getObjectFromType(ctx.transformer.checker, utility, 1);
+            return {
+                condition: () => {
+                    const checks = [genNot(genInstanceof(target, "Array"))];
+                    if (settings.length) checks.push(genCmp(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.length), true));
+                    if (settings.minLen) checks.push(factory.createLessThan(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.minLen)));
+                    if (settings.maxLen) checks.push(factory.createGreaterThan(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.maxLen)));
+                    return checks.length === 1 ? checks[0]! : genLogicalOR(...checks);
+                },
+                error: () => {
+                    const errors = [" to be an Array"];
+                    if (settings.length) errors.push(`to have a length of ${ctx.transformer.typeToString(settings.length)}`);
+                    if (settings.minLen) errors.push(`to have a minimum length of ${ctx.transformer.typeToString(settings.minLen)}`);
+                    if (settings.maxLen) errors.push(`to have a maximum length of ${ctx.transformer.typeToString(settings.maxLen)}`);
+                    return ctx.error(type, [undefined, createListOfStr(errors)]);
+                },
+                other: () => {
+                    const index = factory.createUniqueName("i");
+                    const [Xdefinition, x] = genIdentifier("x", factory.createElementAccessExpression(target, index), ts.NodeFlags.Const);
+                    ctx.addPath(x, index);
+                    const validationOfChildren = validate(type as ts.Type, x, ctx);
+                    ctx.removePath();
+                    return [genForLoop(
+                        target, index,
+                        [
+                            Xdefinition,
+                            ...validationOfChildren
+                        ]
+                    )[0]];
+                }
+            };
+        }
         case "ExactProps": {
             const obj = getTypeArg(utility, 0);
             if (!obj) return;

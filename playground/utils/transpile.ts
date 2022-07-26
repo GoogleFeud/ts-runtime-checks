@@ -16,6 +16,11 @@ type Str<Settings extends {
     length?: number|Expr<"">,
     matches?: string|Expr<"">
 }> = string & { __utility: Str<Settings> };
+type Arr<T, Settings extends {
+    length?: number|Expr<"">,
+    minLen?: number|Expr<"">,
+    maxLen?: number|Expr<"">
+}> = Array<T> & { __utility?: Arr<T, Settings> };
 type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };

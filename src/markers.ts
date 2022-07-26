@@ -197,13 +197,19 @@ export type ErrorMsg = { __error_msg: true }
 export type Str<Settings extends {
     length?: number|Expr<"">,
     matches?: string|Expr<"">
-}> = string & { __utility: Str<Settings> };
+}> = string & { __utility?: Str<Settings> };
 
 export type Num<Settings extends {
     min?: number|Expr<"">,
     max?: number|Expr<"">,
     type?: "int" | "float"
-}> = number & { __utility?: Num<Settings> }; 
+}> = number & { __utility?: Num<Settings> };
+
+export type Arr<T, Settings extends {
+    length?: number|Expr<"">,
+    minLen?: number|Expr<"">,
+    maxLen?: number|Expr<"">
+}> = Array<T> & { __utility?: Arr<T, Settings> };
 
 /**
  * Does not validate the type inside the marker.

@@ -85,6 +85,7 @@ Markers are typescript type aliases which are detected by the transformer. These
 - `Utility` - Types which perform additional checks. These types should be only used inside `Assertion` types.
     - `Num<{min, max, type}>` - More detailed number requirements.
     - `Str<{matches, length}>` - More detailed string requirements.
+    - `Arr<{length, minLen, maxLen}>` - More detailed array requirements.
     - `NoCheck<Type>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
     - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
@@ -145,7 +146,7 @@ You can provide the `ErrorMsg` type to make it return the error strings.
 
 #### Num<{min, max, type}>
 
-More detailed number requirements. Allows you to check if the number is greater than / less than an amount, or if it's a floating point or an integer.
+Allows you to check if the number is greater than / less than an amount, or if it's a floating point or an integer.
 
 ```ts
 const someNum = 50;
@@ -156,7 +157,7 @@ type AssertRange<min> = Num<{
     max: Expr<"someNum">
 }>
 
-function test(num1: AssertRange<1>, num2: AssertRange<10>, num3: AssertRange<number>, num4: AssertRange<Expr<"someNum">>) {
+function test(num1: AssertRange<1>, num2: AssertRange<10>, num3: AssertRange<Expr<"someNum">>) {
     // Your code
 }
 
@@ -174,7 +175,7 @@ function test(num1, num2, num3) {
 
 #### Str<settings>
 
-More detailed string requirements. Allows you to check whether the string matches a regex, or whether it's a certain length.
+Allows you to check whether the string matches a regex, or whether it's a certain length.
 
 ```ts
 function test(a: Assert<Str<{
@@ -189,6 +190,32 @@ function test(a) {
     if (typeof a !== "string" || a.length !== 12 || !/abc/.test(a)) throw new Error("Expected a to be a string, to have a length of 12 and to match /abc/.");
     // Your code...
 }
+```
+
+#### Arr<Type, settings>
+
+Allows you to validate the array's length.
+
+```ts
+function test(a: Assert<Arr<number, {
+    // length: 10,
+    minLen: 1,
+    maxLen: 10
+}>>) {
+   // Your code...
+}
+
+// Transpiles to:
+function test(a) {
+    if (!(a instanceof Array) || a.length < 1 || a.length > 10)
+        throw new Error("Expected a to be an Array, to have a minimum length of 1 and to have a maximum length of 10.");
+    for (let i_1 = 0; i_1 < a.length; i_1++) {
+        const x_1 = a[i_1];
+        if (typeof x_1 !== "number")
+            throw new Error("Expected " + ("a[" + i_1 + "]") + " to be number.");
+    }
+}
+
 ```
 
 #### NoCheck<Type>
