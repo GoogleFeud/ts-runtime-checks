@@ -62,9 +62,16 @@ export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.
             const checks = [genTypeCmp(target, "string")];
             const errMessage = [" to be a string"];
             if (settings.length) {
-                const lenType = ctx.transformer.typeValueToNode(settings.length, true);
-                checks.push(genCmp(genPropAccess(target, "length"), lenType, true));
+                checks.push(genCmp(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.length, true), true));
                 errMessage.push(`to have a length of ${ctx.transformer.typeToString(settings.length)}`);
+            }
+            if (settings.minLen) {
+                checks.push(factory.createLessThan(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.minLen, true)));
+                errMessage.push(`to have a minimum length of ${ctx.transformer.typeToString(settings.minLen)}`);
+            }
+            if (settings.maxLen) {
+                checks.push(factory.createGreaterThan(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.maxLen, true)));
+                errMessage.push(`to have a maximum length of ${ctx.transformer.typeToString(settings.maxLen)}`);
             }
             if (settings.matches) {
                 const regex = ctx.transformer.typeValueToNode(settings.matches, true);

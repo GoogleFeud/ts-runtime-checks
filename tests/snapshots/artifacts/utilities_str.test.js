@@ -55,4 +55,30 @@ describe("Str", () => {
             (0, chai_1.expect)((0, utils_1.call)(test, "foo".repeat(4))).to.not.throw();
         });
     });
+    describe("Str<{minLen}>", () => {
+        function test(a) {
+            if (typeof a !== "string" || a.length < 6)
+                throw new Error("Expected a to be a string and to have a minimum length of 6.");
+            return a;
+        }
+        it("Throw when the correct length is not provided", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, "abede")).to.throw("Expected a to be a string and to have a minimum length of 6.");
+        });
+        it("Not throw when the correct length is provided", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, "abcdewdwdw")).to.not.throw();
+        });
+    });
+    describe("Str<{maxLen}>", () => {
+        function test(a) {
+            if (typeof a !== "string" || a.length > 9)
+                throw new Error("Expected a to be a string and to have a maximum length of 9.");
+            return a;
+        }
+        it("Throw when the correct length is not provided", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, "abwdwdwdwdwdwdwdwdwdwdwdwdwd")).to.throw("Expected a to be a string and to have a maximum length of 9.");
+        });
+        it("Not throw when the correct length is provided", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test, "abcde")).to.not.throw();
+        });
+    });
 });

@@ -196,6 +196,8 @@ export type ErrorMsg = { __error_msg: true }
 
 export type Str<Settings extends {
     length?: number|Expr<"">,
+    minLen?: number|Expr<"">,
+    maxLen?: number|Expr<"">,
     matches?: string|Expr<"">
 }> = string & { __utility?: Str<Settings> };
 

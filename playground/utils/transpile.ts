@@ -14,8 +14,10 @@ type Num<Settings extends {
 type NoCheck<T> = T & { __utility?: NoCheck<T> };
 type Str<Settings extends {
     length?: number|Expr<"">,
+    minLen?: number|Expr<"">,
+    maxLen?: number|Expr<"">,
     matches?: string|Expr<"">
-}> = string & { __utility: Str<Settings> };
+}> = string & { __utility?: Str<Settings> };
 type Arr<T, Settings extends {
     length?: number|Expr<"">,
     minLen?: number|Expr<"">,

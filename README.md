@@ -180,15 +180,17 @@ Allows you to check whether the string matches a regex, or whether it's a certai
 ```ts
 function test(a: Assert<Str<{
     matches: "/abc/",
-    length: 12
+    //length: 12,
+    minLen: 3,
+    maxLen: 100
 }>>) {
    // Your code...
 }
 
 // Transpiles to:
 function test(a) {
-    if (typeof a !== "string" || a.length !== 12 || !/abc/.test(a)) throw new Error("Expected a to be a string, to have a length of 12 and to match /abc/.");
-    // Your code...
+    if (typeof a !== "string" || a.length < 3 || a.length > 100 || !/abc/.test(a))
+        throw new Error("Expected a to be a string, to have a minimum length of 3, to have a maximum length of 100 and to match /abc/.");
 }
 ```
 

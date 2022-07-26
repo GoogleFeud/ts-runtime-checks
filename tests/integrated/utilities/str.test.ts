@@ -69,4 +69,38 @@ describe("Str", () => {
         });
     
     });
+
+    describe("Str<{minLen}>", () => {
+        function test(a: Assert<Str<{
+            minLen: 6
+        }>>) {
+            return a;
+        }
+
+        it("Throw when the correct length is not provided", () => {
+            expect(call(test, "abede")).to.throw("Expected a to be a string and to have a minimum length of 6.");
+        });
+
+        it("Not throw when the correct length is provided", () => {
+            expect(call(test, "abcdewdwdw")).to.not.throw();
+        });
+    
+    });
+
+    describe("Str<{maxLen}>", () => {
+        function test(a: Assert<Str<{
+            maxLen: 9
+        }>>) {
+            return a;
+        }
+
+        it("Throw when the correct length is not provided", () => {
+            expect(call(test, "abwdwdwdwdwdwdwdwdwdwdwdwdwd")).to.throw("Expected a to be a string and to have a maximum length of 9.");
+        });
+
+        it("Not throw when the correct length is provided", () => {
+            expect(call(test, "abcde")).to.not.throw();
+        });
+    
+    });
 });
