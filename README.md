@@ -86,7 +86,7 @@ Markers are typescript type aliases which are detected by the transformer. These
     - `Num<{min, max, type}>` - More detailed number requirements.
     - `Str<{matches, length}>` - More detailed string requirements.
     - `Arr<{length, minLen, maxLen}>` - More detailed array requirements.
-    - `NoCheck<Type>`- Doesn't generate checks for the provided type.
+    - `NoCheck<Type, removeExtra>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
     - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
     - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `NumRange` and `Matches` for example.
