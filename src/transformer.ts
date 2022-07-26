@@ -24,6 +24,7 @@ export class Transformer {
             if (!res) continue;
             if (Array.isArray(res)) block.nodes.push(...res as Array<T>);
             else block.nodes.push(res as T);
+            Block.runEvents(block);
         }
         return block.nodes;
     } 
@@ -67,6 +68,7 @@ export class Transformer {
                         (Functions[name.value] as FnCallFn)(this, {
                             call: node,
                             block,
+                            prevBlock: body,
                             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                             //@ts-expect-error Internal API
                             type: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType()

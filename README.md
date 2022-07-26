@@ -243,9 +243,11 @@ function test(req) {
 }
 ```
 
-#### ExactProps<Type> 
+#### ExactProps<Type, removeExtra> 
 
-Checks if an object has any "excessive" properties (properties which are not on the type but they are on the object). 
+Checks if an object has any "excessive" properties (properties which are not on the type but they are on the object).
+
+If `removeExtra` is true, then instead of an error getting thrown, any excessive properties will be deleted **in place** from the object.
 
 ```ts
 function test(req: unknown) {
@@ -314,6 +316,7 @@ function test(num) {
     - Each property in the object gets checked individually.
 - Classes
     - `value instanceof Class`
+- Enums
 - Unions (`a | b | c`)
     - Unions get **partially** validated. If one of the types inside the union is a **compound** type (tuples, arrays, object literals, interfaces), then the validity of that type's members doesn't get checked.
 
@@ -373,7 +376,7 @@ if ((() => {
 
 ### `check<Type>(value)` utility function
 
-Utility function. Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array with errors.
+Utility function. Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array of errors.
 
 ```ts
 const [value, errors] = check<[string, number]>(JSON.parse("[\"Hello\", \"World\"]"));
@@ -381,14 +384,12 @@ if (errors.length) console.log(errors);
 
 // Transpiles to:
 
-const [value, errors] = (() => {
-    const temp_1 = JSON.parse("[\"Hello\", \"World\"]");
-    const result_1 = [];
-    if (!(temp_1 instanceof Array)) nresult_1.push("Expected value to be [string, number].");
-    if (typeof temp_1[0] !== "string") result_1.push("Expected " + ("value[" + 0 + "]") + " to be string.");
-    if (typeof temp_1[1] !== "number") result_1.push("Expected " + ("value[" + 1 + "]") + " to be number.");
-    return [temp_1, result_1];
-})();
+const value = JSON.parse("[\"Hello\", \"World\"]");
+const errors = [];
+if (!(value instanceof Array)) errors.push("Expected value to be [string, number].");
+if (typeof value[0] !== "string") errors.push("Expected " + ("value[" + 0 + "]") + " to be string.");
+if (typeof value[1] !== "number") errors.push("Expected " + ("value[" + 1 + "]") + " to be number.");
+if (errors.length) console.log(errors);
 ```
 
 ### Destructuring

@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
-import { Block } from "./block";
+import * as Block from "./block";
 import { Transformer } from "./transformer";
 import { genArrayPush, isErrorMessage } from "./utils";
 import { validate, ValidationContext } from "./validation";
 import { ValidationResultType } from "./validation/context";
 import { genIdentifier, UNDEFINED } from "./utils";
+
 
 export const enum MacroCallContext {
     As,
@@ -14,7 +15,7 @@ export const enum MacroCallContext {
 
 export interface MarkerCallData {
     parameters: Array<ts.Type>,
-    block: Block<unknown>,
+    block: Block.Block<unknown>,
     ctx: MacroCallContext,
     optional?: boolean,
     exp: ts.Expression | ts.BindingName,
@@ -22,7 +23,8 @@ export interface MarkerCallData {
 }
 
 export interface FnCallData {
-    block: Block<unknown>,
+    block: Block.Block<unknown>,
+    prevBlock: Block.Block<unknown>,
     call: ts.CallExpression,
     type: ts.Type
 }
@@ -104,20 +106,44 @@ export const Functions: Record<string, FnCallFn> = {
         })), ts.factory.createReturnStatement(ts.factory.createTrue()));
     },
     check: (transformer, data) => {
-        let arg = data.call.arguments[0]!;
-        if (!ts.isIdentifier(arg)) {
-            const [stmt, newArg] = genIdentifier("temp", arg, ts.NodeFlags.Const);
-            arg = newArg;
-            data.block.nodes.push(stmt);
+        let dataVariable: ts.Identifier;
+        let arrVariable: ts.Identifier;
+        let dataInitialize, arrIntitialize;
+        let block = data.block;
+        if (ts.isVariableDeclaration(data.call.parent) && ts.isArrayBindingPattern(data.call.parent.name)) {
+            const name = data.call.parent.name;
+            if (name.elements[0] && ts.isBindingElement(name.elements[0]) && ts.isIdentifier(name.elements[0].name)) {
+                dataVariable = name.elements[0].name;
+                dataInitialize = genIdentifier(dataVariable, data.call.arguments[0], ts.NodeFlags.Const)[0];
+            }
+            else {
+                if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = genIdentifier("temp", data.call.arguments[0], ts.NodeFlags.Const);
+                else dataVariable = data.call.arguments[0]!;
+            }
+            if (name.elements[1] && ts.isBindingElement(name.elements[1]) && ts.isIdentifier(name.elements[1].name)) {
+                arrVariable = name.elements[1].name;
+                arrIntitialize = genIdentifier(arrVariable!, ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const)[0];
+            } else {
+                [arrIntitialize, arrVariable] = genIdentifier("temp", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
+            }
+            block = data.prevBlock;
+            Block.listen(block, () => block.nodes.pop());
+        } else {
+            if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = genIdentifier("temp", data.call.arguments[0], ts.NodeFlags.Const);
+            else dataVariable = data.call.arguments[0]!;
+            [arrIntitialize, arrVariable] = genIdentifier("temp", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
         }
-        const [arrDecl, arrVar] = genIdentifier("result", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
-        data.block.nodes.push(arrDecl);
-        data.block.nodes.push(...validate(data.type, arg, new ValidationContext({
-            resultType: { custom: (msg) => ts.factory.createExpressionStatement(genArrayPush(arrVar, msg)) },
+        if (dataInitialize) block.nodes.push(dataInitialize);
+        block.nodes.push(arrIntitialize);
+        block.nodes.push(...validate(data.type, dataVariable, new ValidationContext({
+            resultType: {
+                custom: (msg) => ts.factory.createExpressionStatement(genArrayPush(arrVariable, msg))
+            },
             transformer,
             depth: [],
-            propName: arg.pos === -1 ? "value" : arg.getText()
-        })), ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([arg, arrVar])));
+            propName: dataVariable.pos === -1 ? "value" : dataVariable.getText()
+        })));
+        if (block === data.block) block.nodes.push(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable]));
     }
 };
 
@@ -241,7 +267,7 @@ export type NoCheck<T> = T & { __utility?: NoCheck<T> };
  * }
  * ```
  */
-export type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
+export type ExactProps<Obj extends object, removeExcessive extends boolean = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive> };
 
 export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 
@@ -272,28 +298,8 @@ export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
  */
 export type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
 
-/**
- * Utility function. It's calls get transpiled to a self-invoked arrow function which returns `true` if the value matches the type, `false` otherwise.
- * This is basically a tiny wrapper of the `EarlyReturn` type.
- * 
- * @example
- * ```ts
- * console.log(is<Range<1, 10>>(123));
- * ```
- * ```js
- * console.log((() => {
- *   const temp_1 = 123;
- *   if (typeof temp_1 !== "number" || (temp_1 < 1 || temp_1 > 10))
- *       return false;
- *   return true;
- * })());
- * ```
- */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
 
-/**
- * Utility function which gets transpiled to a self-invoked arrow function which returns an array with all the found errors.
- */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];

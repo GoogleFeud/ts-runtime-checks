@@ -23,10 +23,10 @@ type Arr<T, Settings extends {
     minLen?: number|Expr<"">,
     maxLen?: number|Expr<"">
 }> = Array<T> & { __utility?: Arr<T, Settings> };
-type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
+type ExactProps<Obj extends object, removeExcessive extends boolean = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive> };
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
-declare function is<T, _M = { __is: true }>(prop: unknown) : prop is T;
+declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
 
 `;

@@ -3,7 +3,7 @@
 import ts, { TypeFlags, factory } from "typescript";
 import { createListOfStr, genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genNum, genPropAccess, genStr, genTypeCmp, getObjectFromType, getStringFromType, getTypeArg } from "../utils";
 import { hasBit, isTrueType } from "../utils";
-import { ValidationContext } from "./context";
+import { ExactPropsInfo, ValidationContext } from "./context";
 
 export interface ValidatedType {
     condition: () => ts.Expression,
@@ -122,7 +122,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
     };
     else if (type = isArrayType(ctx.transformer.checker, t)) return {
         condition: () => genNot(genInstanceof(target, "Array")),
-        error: () => ctx.error(t),
+        error: () => ctx.error(t, undefined),
         other: !isNoCheck(ctx, type) ? () => {
             const index = factory.createUniqueName("i");
             const [Xdefinition, x] = genIdentifier("x", factory.createElementAccessExpression(target, index), ts.NodeFlags.Const);
@@ -140,7 +140,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
     };
     else if (type = isTupleType(ctx.transformer.checker, t)) return {
         condition: () => genNot(genInstanceof(target, "Array")),
-        error: () => ctx.error(t),
+        error: () => ctx.error(t, undefined),
         other: () => {
             const arr = [];
             const types = (type as Array<ts.Type>);
@@ -195,14 +195,15 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
             const obj = getTypeArg(utility, 0);
             if (!obj) return;
             if (ctx.exactProps) return validateType(obj, target, ctx);
-            ctx.exactProps = true;
+            if (isTrueType(getTypeArg(utility, 1))) ctx.exactProps = ExactPropsInfo.RemoveExtra;
+            else ctx.exactProps = ExactPropsInfo.RaiseError;
             const validatedObj = validateType(obj, target, ctx);
             if (!validatedObj) return;
             return {
                 ...validatedObj,
                 other: () => {
                     const res = validatedObj.other!();
-                    ctx.exactProps = false;
+                    delete ctx.exactProps;
                     return res;
                 }
             };
@@ -237,7 +238,10 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                         const error = ctx.error(t, ["Property ", " is excessive."]);
                         ctx.removePath();
                         checks.push(genForInLoop(target, propName,
-                            [genIf(genLogicalAND(...properties.map(prop => genCmp(propName, genStr(prop.name)))), error)]
+                            [genIf(genLogicalAND(...properties.map(prop => genCmp(propName, genStr(prop.name)))), 
+                                ctx.exactProps === ExactPropsInfo.RemoveExtra ? 
+                                    factory.createExpressionStatement(factory.createDeleteExpression(genPropAccess(target, propName)))
+                                    : error)]
                         )[0]);
                     }
                     for (const prop of properties) {
@@ -254,7 +258,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                     return checks;
                 },
                 condition: () => genTypeCmp(target, "object"),
-                error: () => ctx.error(t)
+                error: () => ctx.error(t, undefined)
             };
         }
         }

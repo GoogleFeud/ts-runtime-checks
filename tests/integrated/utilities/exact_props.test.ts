@@ -3,7 +3,7 @@ import { call } from "../../utils";
 import { expect } from "chai";
 
 describe("Exact Props", () => {
-    describe("Assert", () => {
+    describe("Raise Error", () => {
 
         function test(a: Assert<ExactProps<{a: string, b: number, c?: string}>>) {
             return a;
@@ -41,6 +41,19 @@ describe("Exact Props", () => {
             expect(call(test3, {a: "123", d: 123, b: { d: 32 }})).to.throw("Property a.b.d is excessive.");
         });
     
+    });
+
+    describe("Remove excessive", () => {
+
+        it("Should remove extra properties", () => {
+            function test(a: Assert<ExactProps<{a: string, b: number, c?: string}, true>>) {
+                //@ts-expect-error For testing
+                expect(a.d).to.be(undefined);
+                return a;
+            }
+
+            call(test, { a: "abc", b: 123, d: 456 });
+        });
     });
         
 });
