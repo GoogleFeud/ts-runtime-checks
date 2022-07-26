@@ -83,9 +83,10 @@ Markers are typescript type aliases which are detected by the transformer. These
     - `Assert<Type, ErrorType>`
     - `EarlyReturn<Type, ReturnType>`
 - `Utility` - Types which perform additional checks. These types should be only used inside `Assertion` types.
-    - `NumRange<min, max>` - Checks if a number are in the provided range.
-    - `Matches<regex>` - Checks if a string matches a regex.
-    - `NoCheck<Type>`- Doesn't generate checks for the provided type.
+    - `Num<{min, max, type}>` - More detailed number requirements.
+    - `Str<{matches, length}>` - More detailed string requirements.
+    - `Arr<{length, minLen, maxLen}>` - More detailed array requirements.
+    - `NoCheck<Type, removeExtra>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
     - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
     - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `NumRange` and `Matches` for example.
@@ -143,41 +144,80 @@ function verifyUser({ username, id }) {
 
 You can provide the `ErrorMsg` type to make it return the error strings.
 
-#### NumRange<min, max>
+#### Num<{min, max, type}>
 
-Checks if a number is excluively between `min` and `max`. They must be either a numeric literal, an `Expr`, 
+Allows you to check if the number is greater than / less than an amount, or if it's a floating point or an integer.
 
 ```ts
-type AssertRange<min, max> = Assert<NumRange<min, max>>;
-
 const someNum = 50;
-function test(num1: AssertRange<1, 10>, num2: AssertRange<10, number>, num3: AssertRange<number, 10>, num4: AssertRange<Expr<"someNum">, 100>) {
+
+type AssertRange<min> = Num<{
+    type: "int",
+    min: min,
+    max: Expr<"someNum">
+}>
+
+function test(num1: AssertRange<1>, num2: AssertRange<10>, num3: AssertRange<Expr<"someNum">>) {
     // Your code
 }
 
 // Transpiles to:
-function test(num1, num2, num3, num4) {
-    if (typeof num1 !== "number" || (num1 < 1 || num1 > 10)) throw new Error("Expected num1 to be NumRange<1, 10>.");
-    if (typeof num2 !== "number" || num2 < 10) throw new Error("Expected num2 to be NumRange<10, number>.");
-    if (typeof num3 !== "number" || num3 > 10) throw new Error("Expected num3 to be NumRange<number, 10>.");
-    if (typeof num4 !== "number" || (num4 < someNum || num4 > 100)) throw new Error("Expected num4 to be NumRange<Expr<\"someNum\">, 100>.");
+function test(num1, num2, num3) {
+    if (typeof num1 !== "number" || num1 % 1 !== 0 || num1 < 1 || num1 > someNum)
+        throw new Error("Expected num1 to be an integer, to be greater than 1 and to be less than someNum.");
+    if (typeof num2 !== "number" || num2 % 1 !== 0 || num2 < 10 || num2 > someNum)
+        throw new Error("Expected num2 to be an integer, to be greater than 10 and to be less than someNum.");
+    if (typeof num3 !== "number" || num3 % 1 !== 0 || num3 < someNum || num3 > someNum)
+        throw new Error("Expected num3 to be an integer, to be greater than someNum and to be less than someNum.");
 }
+
 ```
 
-#### Matches<regex>
+#### Str<settings>
 
-Checks if a string matches the given regex. 
+Allows you to check whether the string matches a regex, or whether it's a certain length.
 
 ```ts
-function test(a: Assert<Matches<"/abc/">>) {
+function test(a: Assert<Str<{
+    matches: "/abc/",
+    //length: 12,
+    minLen: 3,
+    maxLen: 100
+}>>) {
    // Your code...
 }
 
 // Transpiles to:
 function test(a) {
-    if (typeof a !== "string" || !/abc/.test(a)) throw new Error("Expected a to be Matches<\"/abc/\">.");
-    // Your code...
+    if (typeof a !== "string" || a.length < 3 || a.length > 100 || !/abc/.test(a))
+        throw new Error("Expected a to be a string, to have a minimum length of 3, to have a maximum length of 100 and to match /abc/.");
 }
+```
+
+#### Arr<Type, settings>
+
+Allows you to validate the array's length.
+
+```ts
+function test(a: Assert<Arr<number, {
+    // length: 10,
+    minLen: 1,
+    maxLen: 10
+}>>) {
+   // Your code...
+}
+
+// Transpiles to:
+function test(a) {
+    if (!(a instanceof Array) || a.length < 1 || a.length > 10)
+        throw new Error("Expected a to be an Array, to have a minimum length of 1 and to have a maximum length of 10.");
+    for (let i_1 = 0; i_1 < a.length; i_1++) {
+        const x_1 = a[i_1];
+        if (typeof x_1 !== "number")
+            throw new Error("Expected " + ("a[" + i_1 + "]") + " to be number.");
+    }
+}
+
 ```
 
 #### NoCheck<Type>
@@ -203,9 +243,11 @@ function test(req) {
 }
 ```
 
-#### ExactProps<Type> 
+#### ExactProps<Type, removeExtra> 
 
-Checks if an object has any "excessive" properties (properties which are not on the type but they are on the object). 
+Checks if an object has any "excessive" properties (properties which are not on the type but they are on the object).
+
+If `removeExtra` is true, then instead of an error getting thrown, any excessive properties will be deleted **in place** from the object.
 
 ```ts
 function test(req: unknown) {
@@ -274,6 +316,7 @@ function test(num) {
     - Each property in the object gets checked individually.
 - Classes
     - `value instanceof Class`
+- Enums
 - Unions (`a | b | c`)
     - Unions get **partially** validated. If one of the types inside the union is a **compound** type (tuples, arrays, object literals, interfaces), then the validity of that type's members doesn't get checked.
 
@@ -333,7 +376,7 @@ if ((() => {
 
 ### `check<Type>(value)` utility function
 
-Utility function. Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array with errors.
+Utility function. Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array of errors.
 
 ```ts
 const [value, errors] = check<[string, number]>(JSON.parse("[\"Hello\", \"World\"]"));
@@ -341,14 +384,12 @@ if (errors.length) console.log(errors);
 
 // Transpiles to:
 
-const [value, errors] = (() => {
-    const temp_1 = JSON.parse("[\"Hello\", \"World\"]");
-    const result_1 = [];
-    if (!(temp_1 instanceof Array)) nresult_1.push("Expected value to be [string, number].");
-    if (typeof temp_1[0] !== "string") result_1.push("Expected " + ("value[" + 0 + "]") + " to be string.");
-    if (typeof temp_1[1] !== "number") result_1.push("Expected " + ("value[" + 1 + "]") + " to be number.");
-    return [temp_1, result_1];
-})();
+const value = JSON.parse("[\"Hello\", \"World\"]");
+const errors = [];
+if (!(value instanceof Array)) errors.push("Expected value to be [string, number].");
+if (typeof value[0] !== "string") errors.push("Expected " + ("value[" + 0 + "]") + " to be string.");
+if (typeof value[1] !== "number") errors.push("Expected " + ("value[" + 1 + "]") + " to be number.");
+if (errors.length) console.log(errors);
 ```
 
 ### Destructuring

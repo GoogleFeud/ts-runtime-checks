@@ -1,7 +1,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { FnCallFn, Functions, MacroCallContext, MarkerFn, Markers } from "./markers";
-import { hasBit, resolveAsChain } from "./utils";
+import { getStringFromType, hasBit, resolveAsChain } from "./utils";
 import { UNDEFINED } from "./utils";
 
 export class Transformer {
@@ -24,6 +24,7 @@ export class Transformer {
             if (!res) continue;
             if (Array.isArray(res)) block.nodes.push(...res as Array<T>);
             else block.nodes.push(res as T);
+            Block.runEvents(block);
         }
         return block.nodes;
     } 
@@ -67,6 +68,7 @@ export class Transformer {
                         (Functions[name.value] as FnCallFn)(this, {
                             call: node,
                             block,
+                            prevBlock: body,
                             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                             //@ts-expect-error Internal API
                             type: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType()
@@ -117,16 +119,6 @@ export class Transformer {
         return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
     }
 
-    getStringFromType(t: ts.Type, argNum: number) : string|undefined {
-        const arg = t.aliasTypeArguments?.[argNum];
-        if (arg && arg.isStringLiteral()) return arg.value;
-        return undefined;
-    }
-
-    getTypeArg(t: ts.Type, argNum: number) : ts.Type | undefined {
-        return t.aliasTypeArguments?.[argNum];
-    }
-
     typeValueToNode(t: ts.Type, firstOnly?: true) : ts.Expression;
     typeValueToNode(t: ts.Type, firstOnly?: boolean) : ts.Expression|Array<ts.Expression> {
         if (t.isStringLiteral()) return ts.factory.createStringLiteral(t.value);
@@ -150,7 +142,7 @@ export class Transformer {
         else {
             const utility = this.getUtilityType(t);
             if (utility && utility.aliasSymbol?.name === "Expr") {
-                const strVal = this.getStringFromType(t, 0);
+                const strVal = getStringFromType(t, 0);
                 return strVal ? this.stringToNode(strVal) : UNDEFINED;
             }
             else return UNDEFINED;
@@ -176,7 +168,7 @@ export class Transformer {
         else if (type.isNumberLiteral()) return type.value.toString();
         else {
             const util = this.getUtilityType(type);
-            if (util && util.aliasSymbol?.name === "Expr") return this.getStringFromType(util, 0) || "";
+            if (util && util.aliasSymbol?.name === "Expr") return getStringFromType(util, 0) || "";
             return "";
         }
     }

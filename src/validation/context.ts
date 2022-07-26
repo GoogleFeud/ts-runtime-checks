@@ -16,6 +16,11 @@ export interface ValidationResultType {
     custom?: (msg: ts.Expression) => ts.Statement
 }
 
+export const enum ExactPropsInfo {
+    RaiseError = 1,
+    RemoveExtra
+}
+
 /**
  * Helper class which handles most data used by the validator.
  */
@@ -24,18 +29,20 @@ export class ValidationContext {
     transformer: Transformer;
     depth: Array<ValidationPath>;
     resultType: ValidationResultType;
-    exactProps?: boolean;
+    exactProps?: ExactPropsInfo;
     constructor(ctx: {
         errorTypeName?: string,
         transformer: Transformer,
         depth: Array<ValidationPath>,
         propName?: string | ts.Expression,
-        resultType?: ValidationResultType
+        resultType?: ValidationResultType,
+        exactProps?: ExactPropsInfo,
     }) {
         this.transformer = ctx.transformer;
         this.errorTypeName = ctx.errorTypeName || "Error";
         this.depth = ctx.depth;
         this.resultType = ctx.resultType || { throw: true };
+        this.exactProps = ctx.exactProps;
         if (ctx.propName) this.depth.push({ propName: ctx.propName });
     }
 

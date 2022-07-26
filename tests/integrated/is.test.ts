@@ -1,4 +1,4 @@
-import type { NumRange } from "../../dist/index";
+import type { Num } from "../../dist/index";
 import { expect } from "chai";
 
 // Only way to test it :/
@@ -9,7 +9,7 @@ describe("Is function", () => {
     it("Return false when the value does not match the type", () => {
         expect(is<string>(123)).to.be.equal(false);
         expect(is<{a: number, b: string}>({a: "Hello", b: 3.14})).to.be.equal(false);
-        expect(is<NumRange<1, 100> | string>(-1)).to.be.equal(false);
+        expect(is<Num<{min: 1, max: 100}> | string>(-1)).to.be.equal(false);
     });
 
     it("Return true when the value matches the type", () => {

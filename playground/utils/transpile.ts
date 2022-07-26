@@ -6,13 +6,27 @@ export const Markers = `
 type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType> };
 type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
 type ErrorMsg = { __error_msg: true };
-type NumRange<min extends number|Expr<"">, max extends number|Expr<"">> = number & { __utility?: NumRange<min, max> }; 
+type Num<Settings extends {
+    min?: number|Expr<"">,
+    max?: number|Expr<"">,
+    type?: "int" | "float"
+}> = number & { __utility?: Num<Settings> };
 type NoCheck<T> = T & { __utility?: NoCheck<T> };
-type Matches<Regex extends string|Expr<"">> = string & { __utility?: Matches<Regex> };
-type ExactProps<Obj extends object> = Obj & { __utility?: ExactProps<Obj> };
+type Str<Settings extends {
+    length?: number|Expr<"">,
+    minLen?: number|Expr<"">,
+    maxLen?: number|Expr<"">,
+    matches?: string|Expr<"">
+}> = string & { __utility?: Str<Settings> };
+type Arr<T, Settings extends {
+    length?: number|Expr<"">,
+    minLen?: number|Expr<"">,
+    maxLen?: number|Expr<"">
+}> = Array<T> & { __utility?: Arr<T, Settings> };
+type ExactProps<Obj extends object, removeExcessive extends boolean = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive> };
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
-declare function is<T, _M = { __is: true }>(prop: unknown) : prop is T;
+declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
 
 `;

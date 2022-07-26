@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("../../utils");
 const chai_1 = require("chai");
 describe("Exact Props", () => {
-    describe("Assert", () => {
+    describe("Raise Error", () => {
         function test(a) {
             if (typeof a !== "object")
                 throw new Error("Expected a to be { a: string; b: number; c?: string | undefined; }.");
@@ -50,7 +50,7 @@ describe("Exact Props", () => {
         });
         function test3(a) {
             if (typeof a !== "object")
-                throw new Error("Expected a to be { a: string; b: ExactProps<{ c: number; }>; }.");
+                throw new Error("Expected a to be { a: string; b: ExactProps<{ c: number; }, false>; }.");
             if (typeof a["a"] !== "string")
                 throw new Error("Expected a.a to be string.");
             if (typeof a["b"] !== "object")
@@ -68,6 +68,27 @@ describe("Exact Props", () => {
         });
         it("Throw when there are excessive properties", () => {
             (0, chai_1.expect)((0, utils_1.call)(test3, { a: "123", d: 123, b: { d: 32 } })).to.throw("Property a.b.d is excessive.");
+        });
+    });
+    describe("Remove excessive", () => {
+        it("Should remove extra properties", () => {
+            function test(a) {
+                if (typeof a !== "object")
+                    throw new Error("Expected a to be { a: string; b: number; c?: string | undefined; }.");
+                for (let name_5 in a) {
+                    if (name_5 !== "a" && name_5 !== "b" && name_5 !== "c")
+                        delete a[name_5];
+                }
+                if (typeof a["a"] !== "string")
+                    throw new Error("Expected a.a to be string.");
+                if (typeof a["b"] !== "number")
+                    throw new Error("Expected a.b to be number.");
+                if ("c" in a && typeof a["c"] !== "string")
+                    throw new Error("Expected a.c to be string.");
+                (0, chai_1.expect)(a.d).to.be(undefined);
+                return a;
+            }
+            (0, utils_1.call)(test, { a: "abc", b: 123, d: 456 });
         });
     });
 });

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-cond-assign */
 import ts, { TypeFlags, factory } from "typescript";
-import { genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genPropAccess, genStr, genTypeCmp } from "../utils";
+import { createListOfStr, genCmp, genForInLoop, genForLoop, genIdentifier, genIf, genInstanceof, genLogicalAND, genLogicalOR, genNegate, genNot, genNum, genPropAccess, genStr, genTypeCmp, getObjectFromType, getStringFromType, getTypeArg } from "../utils";
 import { hasBit, isTrueType } from "../utils";
-import { ValidationContext } from "./context";
+import { ExactPropsInfo, ValidationContext } from "./context";
 
 export interface ValidatedType {
     condition: () => ts.Expression,
@@ -29,32 +29,58 @@ export function validateBaseType(ctx: ValidationContext, t: ts.Type, target: ts.
         const utility = ctx.transformer.getUtilityType(t);
         if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) return;
         switch (utility.aliasSymbol.name) {
-        case "NumRange": {
-            const minType = ctx.transformer.getTypeArg(utility, 0);
-            const maxType = ctx.transformer.getTypeArg(utility, 1);
-            const checks = [];
-            if (minType && minType.isNumberLiteral()) checks.push(factory.createLessThan(target, ctx.transformer.typeValueToNode(minType, true)));
-            if (maxType && maxType.isNumberLiteral()) checks.push(factory.createGreaterThan(target, ctx.transformer.typeValueToNode(maxType)));
-            if (!checks.length) return [genTypeCmp(target, "number")]; 
-            let msg = "";
-            if (minType) {
-                const stringified = ctx.transformer.typeToString(minType);
-                if (stringified) msg += `more than ${stringified}`;
+        case "Num": {
+            const settings = getObjectFromType(ctx.transformer.checker, utility, 0);
+            const checks = [genTypeCmp(target, "number")];
+            const errMessage = [];
+            if (settings.type) {
+                const val = ctx.transformer.typeToString(settings.type);
+                if (val === "int") {
+                    checks.push(genCmp(factory.createBinaryExpression(target, ts.SyntaxKind.PercentToken, genNum(1)), genNum(0), true));
+                    errMessage.push(" to be an integer");
+                } else if (val === "float") {
+                    checks.push(genCmp(factory.createBinaryExpression(target, ts.SyntaxKind.PercentToken, genNum(1)), genNum(0)));
+                    errMessage.push(" to be a float");
+                }
+            } else {
+                errMessage.push(" to be a number");
             }
-            if (maxType) {
-                const stringified = ctx.transformer.typeToString(maxType);
-                if (stringified) {
-                    if (msg.length) msg += " and ";
-                    msg += `less than ${stringified}`;
+            if (settings.min) {
+                const type = ctx.transformer.typeValueToNode(settings.min);
+                checks.push(factory.createLessThan(target, type));
+                errMessage.push(`to be greater than ${ctx.transformer.typeToString(settings.min)}`);
+            }
+            if (settings.max) {
+                const type = ctx.transformer.typeValueToNode(settings.max);
+                checks.push(factory.createGreaterThan(target, type));
+                errMessage.push(`to be less than ${ctx.transformer.typeToString(settings.max)}`);
+            }
+            return [genLogicalOR(...checks), createListOfStr(errMessage)];
+        }
+        case "Str": {
+            const settings = getObjectFromType(ctx.transformer.checker, utility, 0);
+            const checks = [genTypeCmp(target, "string")];
+            const errMessage = [" to be a string"];
+            if (settings.length) {
+                checks.push(genCmp(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.length, true), true));
+                errMessage.push(`to have a length of ${ctx.transformer.typeToString(settings.length)}`);
+            }
+            if (settings.minLen) {
+                checks.push(factory.createLessThan(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.minLen, true)));
+                errMessage.push(`to have a minimum length of ${ctx.transformer.typeToString(settings.minLen)}`);
+            }
+            if (settings.maxLen) {
+                checks.push(factory.createGreaterThan(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.maxLen, true)));
+                errMessage.push(`to have a maximum length of ${ctx.transformer.typeToString(settings.maxLen)}`);
+            }
+            if (settings.matches) {
+                const regex = ctx.transformer.typeValueToNode(settings.matches, true);
+                if (ts.isStringLiteral(regex) && regex.text !== "") {
+                    checks.push(genNot(factory.createCallExpression(genPropAccess(ts.isStringLiteral(regex) ? factory.createRegularExpressionLiteral(regex.text) : regex, "test"), undefined, [target])));
+                    errMessage.push(`to match ${ctx.transformer.typeToString(settings.matches)}`);
                 }
             }
-            return [genLogicalOR(genTypeCmp(target, "number"), genLogicalOR(...checks)), ` to be ${msg}.`];
-        }
-        case "Matches": {
-            const regexType = ctx.transformer.getTypeArg(utility, 0);
-            if (!regexType || !regexType.isStringLiteral()) return [genTypeCmp(target, "string"), " to be string."];
-            const regex = ctx.transformer.typeValueToNode(regexType, true);
-            return [genLogicalOR(genTypeCmp(target, "string"), genNot(factory.createCallExpression(genPropAccess(ts.isStringLiteral(regex) ? factory.createRegularExpressionLiteral(regex.text) : regex, "test"), undefined, [target]))), ` to match "${ctx.transformer.typeToString(regexType)}".`];
+            return [genLogicalOR(...checks), createListOfStr(errMessage)];
         }
         case "NoCheck": return SKIP_SYM;
         }
@@ -96,7 +122,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
     };
     else if (type = isArrayType(ctx.transformer.checker, t)) return {
         condition: () => genNot(genInstanceof(target, "Array")),
-        error: () => ctx.error(t),
+        error: () => ctx.error(t, undefined),
         other: !isNoCheck(ctx, type) ? () => {
             const index = factory.createUniqueName("i");
             const [Xdefinition, x] = genIdentifier("x", factory.createElementAccessExpression(target, index), ts.NodeFlags.Const);
@@ -114,7 +140,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
     };
     else if (type = isTupleType(ctx.transformer.checker, t)) return {
         condition: () => genNot(genInstanceof(target, "Array")),
-        error: () => ctx.error(t),
+        error: () => ctx.error(t, undefined),
         other: () => {
             const arr = [];
             const types = (type as Array<ts.Type>);
@@ -131,18 +157,53 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
     else {
         const utility = ctx.transformer.getUtilityType(t);
         switch (utility?.aliasSymbol?.name) {
+        case "Arr": {
+            const type = getTypeArg(utility, 0)!;
+            const settings = getObjectFromType(ctx.transformer.checker, utility, 1);
+            return {
+                condition: () => {
+                    const checks = [genNot(genInstanceof(target, "Array"))];
+                    if (settings.length) checks.push(genCmp(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.length), true));
+                    if (settings.minLen) checks.push(factory.createLessThan(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.minLen)));
+                    if (settings.maxLen) checks.push(factory.createGreaterThan(genPropAccess(target, "length"), ctx.transformer.typeValueToNode(settings.maxLen)));
+                    return checks.length === 1 ? checks[0]! : genLogicalOR(...checks);
+                },
+                error: () => {
+                    const errors = [" to be an Array"];
+                    if (settings.length) errors.push(`to have a length of ${ctx.transformer.typeToString(settings.length)}`);
+                    if (settings.minLen) errors.push(`to have a minimum length of ${ctx.transformer.typeToString(settings.minLen)}`);
+                    if (settings.maxLen) errors.push(`to have a maximum length of ${ctx.transformer.typeToString(settings.maxLen)}`);
+                    return ctx.error(type, [undefined, createListOfStr(errors)]);
+                },
+                other: () => {
+                    const index = factory.createUniqueName("i");
+                    const [Xdefinition, x] = genIdentifier("x", factory.createElementAccessExpression(target, index), ts.NodeFlags.Const);
+                    ctx.addPath(x, index);
+                    const validationOfChildren = validate(type as ts.Type, x, ctx);
+                    ctx.removePath();
+                    return [genForLoop(
+                        target, index,
+                        [
+                            Xdefinition,
+                            ...validationOfChildren
+                        ]
+                    )[0]];
+                }
+            };
+        }
         case "ExactProps": {
-            const obj = ctx.transformer.getTypeArg(utility, 0);
+            const obj = getTypeArg(utility, 0);
             if (!obj) return;
             if (ctx.exactProps) return validateType(obj, target, ctx);
-            ctx.exactProps = true;
+            if (isTrueType(getTypeArg(utility, 1))) ctx.exactProps = ExactPropsInfo.RemoveExtra;
+            else ctx.exactProps = ExactPropsInfo.RaiseError;
             const validatedObj = validateType(obj, target, ctx);
             if (!validatedObj) return;
             return {
                 ...validatedObj,
                 other: () => {
                     const res = validatedObj.other!();
-                    ctx.exactProps = false;
+                    delete ctx.exactProps;
                     return res;
                 }
             };
@@ -150,7 +211,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
         case "If": {
             if (!utility.aliasTypeArguments) return;
             const type = utility.aliasTypeArguments[0];
-            const exp = ctx.transformer.getStringFromType(utility, 1);
+            const exp = getStringFromType(utility, 1);
             const fullCheck = isTrueType(utility.aliasTypeArguments[2]!);
             if (!type || !exp) return;
             const objValidator = fullCheck ? validateType(type, target, ctx) : undefined;
@@ -177,7 +238,10 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                         const error = ctx.error(t, ["Property ", " is excessive."]);
                         ctx.removePath();
                         checks.push(genForInLoop(target, propName,
-                            [genIf(genLogicalAND(...properties.map(prop => genCmp(propName, genStr(prop.name)))), error)]
+                            [genIf(genLogicalAND(...properties.map(prop => genCmp(propName, genStr(prop.name)))), 
+                                ctx.exactProps === ExactPropsInfo.RemoveExtra ? 
+                                    factory.createExpressionStatement(factory.createDeleteExpression(genPropAccess(target, propName)))
+                                    : error)]
                         )[0]);
                     }
                     for (const prop of properties) {
@@ -194,7 +258,7 @@ export function validateType(t: ts.Type, target: ts.Expression, ctx: ValidationC
                     return checks;
                 },
                 condition: () => genTypeCmp(target, "object"),
-                error: () => ctx.error(t)
+                error: () => ctx.error(t, undefined)
             };
         }
         }
