@@ -142,4 +142,8 @@ export class Validator {
         return false;
     }
 
+    toString() : string {
+        return this.path();
+    }
+
 }

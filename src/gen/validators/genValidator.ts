@@ -1,7 +1,7 @@
 import ts from "typescript";
 import { NumberTypes, TypeDataKinds, Validator, ValidatorTargetName } from "./validator";
-import { getObjectFromType, getStringFromType, getTypeArg, hasBit, isTrueType } from "../utils";
-import { Transformer } from "../transformer";
+import { getObjectFromType, getStringFromType, getTypeArg, hasBit, isTrueType } from "../../utils";
+import { Transformer } from "../../transformer";
 
 export function genValidator(transformer: Transformer, type: ts.Type | undefined, name: ValidatorTargetName, exp?: ts.Expression, parent?: Validator) : Validator | undefined {
     if (!type) return;

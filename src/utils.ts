@@ -49,19 +49,10 @@ export function genIfElseChain(checks: Array<[ts.Expression, Array<ts.Node>]>, l
     return chain;
 }
 
-/**
- * Compares the two expressions (strict equality).
- */
 export function genCmp(a: ts.Expression, b: ts.Expression, not = true) : ts.Expression {
     return factory.createBinaryExpression(a, not ? ts.SyntaxKind.ExclamationEqualsEqualsToken : ts.SyntaxKind.EqualsEqualsEqualsToken, b);
 }
 
-/**
- * Compares the type of the expression with `type`:
- * ```
- * typeof exp === "type"
- * ```
- */
 export function genTypeCmp(a: ts.Expression, type: string, not = true) : ts.Expression {
     return factory.createBinaryExpression(factory.createTypeOfExpression(a), 
         not ? ts.SyntaxKind.ExclamationEqualsEqualsToken : ts.SyntaxKind.EqualsEqualsEqualsToken, factory.createStringLiteral(type));
