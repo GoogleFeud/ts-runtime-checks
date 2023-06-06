@@ -22,6 +22,16 @@ export function resolveAsChain(exp: ts.Expression) : ts.Expression {
     return exp;
 }
 
+export function isArrayType(checker: ts.TypeChecker, t: ts.Type) : boolean {
+    const node = checker.typeToTypeNode(t, undefined, undefined);
+    return !node || node.kind === ts.SyntaxKind.ArrayType;
+}
+
+export function isTupleType(checker: ts.TypeChecker, t: ts.Type) : boolean {
+    const node = checker.typeToTypeNode(t, undefined, undefined);
+    return !node || node.kind === ts.SyntaxKind.TupleType;
+}
+
 export function genIf(condition: ts.Expression, action: ts.Node | Array<ts.Node>, otherwise?: ts.Node | Array<ts.Node>) : ts.IfStatement {
     return factory.createIfStatement(condition, 
         genStmt(action),

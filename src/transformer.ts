@@ -39,7 +39,7 @@ export class Transformer {
                 const exp = ts.visitNode(node.body, (node) => this.visitor(node, fnBody));
                 fnBody.nodes.push(ts.factory.createReturnStatement(exp));
             }
-            if (ts.isFunctionDeclaration(node)) return ts.factory.createFunctionDeclaration(node.decorators, node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
+            if (ts.isFunctionDeclaration(node)) return ts.factory.createFunctionDeclaration(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
             else if (ts.isArrowFunction(node)) return ts.factory.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, ts.factory.createBlock(fnBody.nodes, true));
             else return ts.factory.createFunctionExpression(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
         }
@@ -70,7 +70,6 @@ export class Transformer {
                             block,
                             prevBlock: body,
                             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                            //@ts-expect-error Internal API
                             type: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType()
                         });
                         return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
