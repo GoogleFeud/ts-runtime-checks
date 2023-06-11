@@ -4,8 +4,10 @@ import * as Block from "./block";
 import { Transformer } from "./transformer";
 import { genArrayPush, isErrorMessage } from "./utils";
 import { validate, ValidationContext } from "./validation";
+import { validateType } from "./gen/nodes";
 import { ValidationResultType } from "./validation/context";
 import { genIdentifier, UNDEFINED } from "./utils";
+import { genValidator } from "./gen/validators";
 
 
 export const enum MacroCallContext {
@@ -33,15 +35,15 @@ export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Ex
 export type FnCallFn = (transformer: Transformer, data: FnCallData) => void;
 
 export const Markers: Record<string, MarkerFn> = {
-    Assert: (trans, {ctx, exp, block, parameters, optional}) => {
+    Assert: (trans, {ctx, exp, block, parameters}) => {
         if (ctx === MacroCallContext.Parameter) {
             block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
-                return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
-                    errorTypeName: parameters[1]?.symbol?.name,
-                    transformer: trans,
-                    depth: [],
-                    propName: ts.isIdentifier(i) ? i.text : i,
-                }), optional);
+                const validator = genValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i);
+                if (!validator) return [];
+                return validateType(validator, {
+                    errorTypeName: parameters[1]?.symbol?.name || "Error",
+                    resultType: { throw: true }
+                });
             }));
             return undefined;
         } else {

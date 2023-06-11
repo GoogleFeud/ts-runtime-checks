@@ -8,8 +8,8 @@ export function _block(stmts: BlockLike) : ts.Block {
     else return stmts;
 }
 
-export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse: BlockLike) : ts.IfStatement {
-    return factory.createIfStatement(condition, _block(ifTrue), _block(ifFalse));
+export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse?: BlockLike) : ts.IfStatement {
+    return factory.createIfStatement(condition, _block(ifTrue), ifFalse ? _block(ifFalse) : undefined);
 }
 
 export function _ident(name: ts.Identifier | string, initializer?: ts.Expression, flag = ts.NodeFlags.Let) : [ts.VariableStatement, ts.Identifier] {
@@ -27,7 +27,7 @@ export function _typeof_cmp(left: ts.Expression, type: string, op: ts.BinaryOper
     return factory.createBinaryExpression(factory.createTypeOfExpression(left), op, factory.createStringLiteral(type));
 }
 
-export function _bin_chain(exps: Array<ts.Expression>, op: ts.BinaryOperator) : ts.Expression {
+export function _bin_chain(exps: ts.Expression[], op: ts.BinaryOperator) : ts.Expression {
     if (exps.length === 1) return exps[0] as ts.Expression;
     let start = factory.createBinaryExpression(exps[0] as ts.Expression, op, exps[1] as ts.Expression);
     for (let i=2; i < exps.length; i++) {
@@ -36,11 +36,11 @@ export function _bin_chain(exps: Array<ts.Expression>, op: ts.BinaryOperator) : 
     return start;
 }
 
-export function _and(...exps: Array<ts.Expression>) : ts.Expression {
+export function _and(...exps: ts.Expression[]) : ts.Expression {
     return _bin_chain(exps, ts.SyntaxKind.AmpersandAmpersandToken);
 }
 
-export function _or(...exps: Array<ts.Expression>) : ts.Expression {
+export function _or(...exps: ts.Expression[]) : ts.Expression {
     return _bin_chain(exps, ts.SyntaxKind.BarBarToken);
 }
 
