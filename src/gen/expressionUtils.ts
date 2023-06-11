@@ -1,15 +1,48 @@
-
 import ts, { factory } from "typescript";
 
-export type BlockLike = ts.Block | Array<ts.Statement>;
+export type Stringifyable = string | ts.Expression;
+export type BlockLike = ts.Expression | ts.Statement | ts.Block | Array<ts.Statement>;
 
-export function _block(stmts: BlockLike) : ts.Block {
-    if (Array.isArray(stmts)) return factory.createBlock(stmts);
-    else return stmts;
+export function concat(strings: TemplateStringsArray, ...elements: Stringifyable[]) : ts.Expression[] {
+    const finalElements: Stringifyable[] = [];
+    for (let i=0; i < strings.length; i++) {
+        finalElements.push(strings[i] as string);
+        if (i < elements.length) finalElements.push(elements[i] as Stringifyable);
+    }
+    return joinElements(finalElements);
+}
+
+export function joinElements(elements: Stringifyable[], separator = "") : ts.Expression[] {
+    const output: ts.Expression[] = [];
+    for (const element of elements) {
+        const lastElement = output[output.length - 1];
+        const currentElementText = typeof element === "string" ? element : ts.isStringLiteral(element) || ts.isNumericLiteral(element) ? element.text : undefined;
+        if (currentElementText === "") continue;
+        if (lastElement && (ts.isStringLiteral(lastElement) || ts.isNumericLiteral(lastElement))) {
+            if (currentElementText !== undefined) output[output.length - 1] = _str(lastElement.text + separator + currentElementText);
+            else output.push(element as ts.Expression);
+        } else {
+            if (currentElementText !== undefined) output.push(_str(lastElement ? separator + currentElementText : "" + currentElementText));
+            else output.push(element as ts.Expression);
+        }
+    }
+    return output;
+}
+
+export function _stmt(stmt: BlockLike) : ts.Statement {
+    if (Array.isArray(stmt)) return factory.createBlock(stmt);
+    if (stmt.kind > ts.SyntaxKind.EmptyStatement && stmt.kind < ts.SyntaxKind.DebuggerStatement) return stmt as ts.Statement;
+    else return factory.createExpressionStatement(stmt as ts.Expression);
 }
 
 export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse?: BlockLike) : ts.IfStatement {
-    return factory.createIfStatement(condition, _block(ifTrue), ifFalse ? _block(ifFalse) : undefined);
+    return factory.createIfStatement(condition, _stmt(ifTrue), ifFalse ? _stmt(ifFalse) : undefined);
+}
+
+export function _if_chain(ind: number, check: Array<[ts.Expression, BlockLike]>, last?: ts.Statement) : ts.Statement | undefined {
+    if (ind >= check.length) return;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return factory.createIfStatement(check[ind]![0], _stmt(check[ind]![1]), _if_chain(ind + 1, check, last) || last);
 }
 
 export function _ident(name: ts.Identifier | string, initializer?: ts.Expression, flag = ts.NodeFlags.Let) : [ts.VariableStatement, ts.Identifier] {
@@ -36,11 +69,11 @@ export function _bin_chain(exps: ts.Expression[], op: ts.BinaryOperator) : ts.Ex
     return start;
 }
 
-export function _and(...exps: ts.Expression[]) : ts.Expression {
+export function _and(exps: ts.Expression[]) : ts.Expression {
     return _bin_chain(exps, ts.SyntaxKind.AmpersandAmpersandToken);
 }
 
-export function _or(...exps: ts.Expression[]) : ts.Expression {
+export function _or(exps: ts.Expression[]) : ts.Expression {
     return _bin_chain(exps, ts.SyntaxKind.BarBarToken);
 }
 
@@ -98,3 +131,15 @@ export function _access(exp: ts.Expression, key: string | number | ts.Expression
     if (typeof key === "string") return ts.factory.createPropertyAccessExpression(exp, key);
     else return ts.factory.createElementAccessExpression(exp, key);
 }
+
+export function _for(arr: ts.Expression, indName: ts.Identifier | string, body: BlockLike) : [loop: ts.Statement, index: ts.Expression] {
+    const [initializerCreate, initializer] = _ident(indName, factory.createNumericLiteral(0));
+    return [factory.createForStatement(
+        initializerCreate.declarationList,
+        factory.createBinaryExpression(initializer, ts.SyntaxKind.LessThanToken, factory.createPropertyAccessExpression(arr, "length")),
+        factory.createPostfixIncrement(initializer),
+        _stmt(body)
+    ), initializer];
+}
+
+export const UNDEFINED = factory.createIdentifier("undefined");

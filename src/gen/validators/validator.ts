@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { _access, Stringifyable } from "../expressionUtils";
 
 export const enum TypeDataKinds {
     Number,
@@ -8,6 +9,7 @@ export const enum TypeDataKinds {
     Symbol,
     BigInt,
     Null,
+    Undefined,
     Tuple,
     Object,
     Class,
@@ -38,6 +40,10 @@ export interface BigIntTypeData {
 
 export interface NullTypeData {
     kind: TypeDataKinds.Null
+}
+
+export interface UndefinedTypeData {
+    kind: TypeDataKinds.Undefined
 }
 
 export interface TupleTypeData {
@@ -97,39 +103,61 @@ export interface IfTypeData {
     expression: string
 }
 
-export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | IfTypeData;
+export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | IfTypeData | UndefinedTypeData;
 
-export type ValidatorTargetName = string | number;
+export type ValidatorTargetName = string | number | ts.Identifier;
 
 export class Validator {
     _original: ts.Type;
-    expression: ts.Expression;
+    private _exp?: ts.Expression;
+    private customExp?: ts.Expression;
     name: ValidatorTargetName;
-    typeData: TypeData;
     parent?: Validator;
+    typeData: TypeData;
     children: Validator[];
     constructor(original: ts.Type, targetName: ValidatorTargetName, data: TypeData, exp?: ts.Expression, parent?: Validator, children?: Validator[]) {
         this._original = original;
         this.name = targetName;
         this.typeData = data;
-        this.parent = parent;
+        this.customExp = exp;
         this.children = children || [];
+        if (parent) this.setParent(parent);
         for (const child of this.children) {
-            child.parent = this;
+            child.setParent(this);
         }
-
-        if (exp) this.expression = exp;
-        else if (this.parent) {
-            if (typeof this.name === "string") this.expression = ts.factory.createPropertyAccessExpression(this.parent.expression, this.name);
-            else this.expression = ts.factory.createElementAccessExpression(this.parent.expression, ts.factory.createNumericLiteral(this.name)); 
-        }
-        else this.expression = ts.factory.createNull();
     }
 
-    path() : string {
-        if (!this.parent) return this.name.toString();
-        if (typeof this.name === "string") return this.parent.path() + `.${this.name}`;
-        else return this.parent.path() + `[${this.name}]`;
+    nameAsExpression() : ts.Expression {
+        if (typeof this.name === "string") return ts.factory.createStringLiteral(this.name);
+        else if (typeof this.name === "number") return ts.factory.createNumericLiteral(this.name);
+        else return this.name;
+    }
+
+    path() : Stringifyable[] {
+        if (!this.parent) return [this.nameAsExpression()];
+        const parentPath = this.parent.path();
+        if (this.name === "") return parentPath;
+        if (typeof this.name === "string") parentPath.push(`.${this.name}`);
+        else if (typeof this.name === "number") parentPath.push(`[${this.name}]`);
+        else parentPath.push("[", this.name, "]");
+        return parentPath;
+    }
+
+    expression() : ts.Expression {
+        if (this.customExp) return this.customExp;
+        if (this._exp) return this._exp;
+        if (!this.parent) return ts.factory.createNull();
+        return this._exp = _access(this.parent.expression(), this.name);
+    }
+
+    setParent(parent: Validator) {
+        this.parent = parent;
+        delete this._exp;
+    }
+
+    setName(name: ValidatorTargetName) {
+        this.name = name;
+        delete this._exp;
     }
 
     exactProps() : boolean {
@@ -142,8 +170,31 @@ export class Validator {
         return false;
     }
 
-    toString() : string {
-        return this.path();
+    /*
+    getTypeName() : string {
+        switch (this.typeData.kind) {
+        case TypeDataKinds.String: {
+            if (this.typeData.literal) return `"${this.typeData.literal}"`;
+            else return "string";
+        }
+        case TypeDataKinds.Number: {
+            if (this.typeData.literal) return this.typeData.literal.toString();
+            else return "number";
+        }
+        case TypeDataKinds.Boolean: return "boolean";
+        case TypeDataKinds.Array: return `${(this.children[0] as Validator).getTypeName()}[]`;
+        case TypeDataKinds.Class: return this.name.toString();
+        case TypeDataKinds.BigInt: return "BigInt";
+        case TypeDataKinds.Symbol: return "symbol";
+        case TypeDataKinds.Tuple: return `[${this.children.map(c => c.getTypeName()).join(", ")}]`;
+        case TypeDataKinds.Function: return "function";
+        case TypeDataKinds.Object: return "object";
+        case TypeDataKinds.Undefined: return "undefined";
+        case TypeDataKinds.Null: return "null";
+        case TypeDataKinds.If: return `to satisfy "${this.typeData.expression}"`;
+        case TypeDataKinds.Union: return ``
+        }
     }
+    */
 
 }

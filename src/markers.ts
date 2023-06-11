@@ -35,15 +35,16 @@ export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Ex
 export type FnCallFn = (transformer: Transformer, data: FnCallData) => void;
 
 export const Markers: Record<string, MarkerFn> = {
-    Assert: (trans, {ctx, exp, block, parameters}) => {
+    Assert: (trans, {ctx, exp, block, parameters, optional}) => {
         if (ctx === MacroCallContext.Parameter) {
             block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
                 const validator = genValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i);
                 if (!validator) return [];
                 return validateType(validator, {
                     errorTypeName: parameters[1]?.symbol?.name || "Error",
-                    resultType: { throw: true }
-                });
+                    resultType: { throw: true },
+                    transformer: trans
+                }, optional);
             }));
             return undefined;
         } else {

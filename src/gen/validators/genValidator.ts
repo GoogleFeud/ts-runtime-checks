@@ -13,20 +13,27 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     else if (hasBit(type, ts.TypeFlags.Boolean)) return new Validator(type, name, { kind: TypeDataKinds.Boolean }, exp, parent);
     else if (hasBit(type, ts.TypeFlags.ESSymbol)) return new Validator(type, name, { kind: TypeDataKinds.Symbol }, exp, parent);
     else if (hasBit(type, ts.TypeFlags.Null)) return new Validator(type, name, { kind: TypeDataKinds.Null }, exp, parent);
+    else if (hasBit(type, ts.TypeFlags.Undefined)) return new Validator(type, name, { kind: TypeDataKinds.Undefined }, exp, parent);
     else if (type.getCallSignatures().length === 1) return new Validator(type, name, { kind: TypeDataKinds.Function }, exp, parent);
     else if (type.isClass()) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
-    else if (type.isUnion()) return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, type.types.map((t, i) => genValidator(transformer, t, i, undefined)).filter(t => t) as Validator[]);
+    else if (type.isUnion()) return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, type.types.map(t => genValidator(transformer, t, "", exp)).filter(t => t) as Validator[]);
     else if (transformer.checker.isTupleType(type)) {
         const innerValidator = genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], 0);
-        return new Validator(type, name, { kind: TypeDataKinds.Array }, exp, parent, innerValidator ? [innerValidator] : []);
+        return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, innerValidator ? [innerValidator] : []);
     }
     else if (transformer.checker.isArrayType(type)) {
         const validators = transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i)).filter(t => t) as Validator[];
-        return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, validators);
+        return new Validator(type, name, { kind: TypeDataKinds.Array }, exp, parent, validators);
     }
     else {
         const utility = transformer.getUtilityType(type);
-        if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) return;
+        if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) {
+            const properties = type.getProperties().map(sym => {
+                const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
+                return genValidator(transformer, typeOfProp, sym.name);
+            }).filter(p => p) as Validator[];
+            return new Validator(type, name, { kind: TypeDataKinds.Object }, exp, parent, properties);
+        }
         switch (utility.aliasSymbol.name) { 
         case "Num": {
             const settings = getObjectFromType(transformer.checker, utility, 0);
@@ -89,13 +96,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 exact
             }, exp, parent, [obj]);
         }
-        default: {
-            const properties = type.getProperties().map(sym => {
-                const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
-                return genValidator(transformer, typeOfProp, sym.name);
-            }).filter(p => p) as Validator[];
-            return new Validator(type, name, { kind: TypeDataKinds.Object }, exp, parent, properties);
-        }
+        default: return undefined;
         }
     }
 }
