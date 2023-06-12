@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -48,8 +48,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             condition: _bin(validator.expression(), _num(validator.typeData.literal), ts.SyntaxKind.EqualsEqualsEqualsToken),
             error: [validator.path(), concat`to be equal to ${validator.typeData.literal.toString()}`]
         };
-        const errorMessages = [];
-        const checks: ts.Expression[] = [_typeof_cmp(validator.expression(), "number", ts.SyntaxKind.ExclamationEqualsEqualsToken)];
+        const errorMessages = [], checks: ts.Expression[] = [_typeof_cmp(validator.expression(), "number", ts.SyntaxKind.ExclamationEqualsEqualsToken)];
         if (validator.typeData.type === NumberTypes.Integer) {
             checks.push(_bin(_bin(validator.expression(), _num(1), ts.SyntaxKind.PercentToken), _num(0), ts.SyntaxKind.ExclamationEqualsEqualsToken));
             errorMessages.push("to be an integer");
@@ -61,14 +60,47 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             errorMessages.push("to be a number");
         }
 
-        if (validator.typeData.min !== undefined) {
+        if (validator.typeData.min) {
             checks.push(_bin(validator.expression(), validator.typeData.min, ts.SyntaxKind.LessThanToken));
             errorMessages.push(...concat`to be greater than ${validator.typeData.min}`);
         }
 
-        if (validator.typeData.max !== undefined) {
+        if (validator.typeData.max) {
             checks.push(_bin(validator.expression(), validator.typeData.max, ts.SyntaxKind.GreaterThanToken));
             errorMessages.push(...concat`to be less than ${validator.typeData.max}`);
+        }
+
+        return {
+            condition: _or(checks),
+            error: [validator.path(), joinElements(errorMessages, ", ")]
+        };
+    }
+    case TypeDataKinds.String: {
+        if (validator.typeData.literal) return {
+            condition: _bin(validator.expression(), _str(validator.typeData.literal), ts.SyntaxKind.EqualsEqualsEqualsToken),
+            error: [validator.path(), concat`to be equal to ${validator.typeData.literal}`]
+        };
+
+        const errorMessages: Stringifyable[] = ["to be a string"], checks: ts.Expression[] = [_typeof_cmp(validator.expression(), "string", ts.SyntaxKind.ExclamationEqualsEqualsToken)];
+
+        if (validator.typeData.length) {
+            checks.push(_bin(_access(validator.expression(), "length"), validator.typeData.length, ts.SyntaxKind.ExclamationEqualsEqualsToken));
+            errorMessages.push(...concat`to have a length of ${validator.typeData.length}`);
+        }
+
+        if (validator.typeData.matches) {
+            checks.push(_call(_access(validator.expression(), "matches"), [validator.typeData.matches]));
+            errorMessages.push(...concat`to match ${validator.typeData.matches}`);
+        }
+
+        if (validator.typeData.minLen) {
+            checks.push(_bin(validator.expression(), validator.typeData.minLen, ts.SyntaxKind.LessThanToken));
+            errorMessages.push(...concat`to have a length greater than ${validator.typeData.minLen}`);
+        }
+
+        if (validator.typeData.maxLen) {
+            checks.push(_bin(validator.expression(), validator.typeData.maxLen, ts.SyntaxKind.GreaterThanToken));
+            errorMessages.push(...concat`to have a length less than ${validator.typeData.maxLen}`);
         }
 
         return {
@@ -94,9 +126,14 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             }
             typeNames.push(ctx.transformer.checker.typeToString(child._original));
         }
-        return {
+
+        if (!compoundTypes.length) return {
             condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
-            ifTrue: compoundTypes.length ? _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]])) : undefined
+            error: [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]
+        };
+        else return {
+            condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
+            ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]))
         };
     }
     case TypeDataKinds.Array: {

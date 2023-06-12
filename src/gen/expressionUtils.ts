@@ -135,7 +135,11 @@ export function _not(exp: ts.Expression) : ts.Expression {
 
 export function _access(exp: ts.Expression, key: string | number | ts.Expression) : ts.Expression {
     if (typeof key === "string") return ts.factory.createPropertyAccessExpression(exp, key);
-    else return ts.factory.createElementAccessExpression(exp, key);
+    else return factory.createElementAccessExpression(exp, key);
+}
+
+export function _call(exp: ts.Expression, args: ts.Expression[]) : ts.Expression {
+    return factory.createCallExpression(exp, undefined, args);
 }
 
 export function _for(arr: ts.Expression, indName: ts.Identifier | string, body: BlockLike) : [loop: ts.Statement, index: ts.Expression] {

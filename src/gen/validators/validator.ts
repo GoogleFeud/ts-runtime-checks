@@ -147,6 +147,7 @@ export class Validator {
         if (this.customExp) return this.customExp;
         if (this._exp) return this._exp;
         if (!this.parent) return ts.factory.createNull();
+        if (this.name === "") return this.parent.expression();
         return this._exp = _access(this.parent.expression(), this.name);
     }
 
