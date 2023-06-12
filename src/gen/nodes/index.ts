@@ -179,13 +179,29 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.Array: {
-        // TDB: Handle array limitations
+        const checks = [_not(_instanceof(validator.expression(), "Array"))], errorMessages: Stringifyable[] = ["to be an array"];
+
+        if (validator.typeData.length) {
+            checks.push(_bin(_access(validator.expression(), "length"), validator.typeData.length, ts.SyntaxKind.ExclamationEqualsEqualsToken));
+            errorMessages.push(...concat`to have a length of ${validator.typeData.length}`);
+        }
+    
+        if (validator.typeData.minLen) {
+            checks.push(_bin(_access(validator.expression(), "length"), validator.typeData.minLen, ts.SyntaxKind.LessThanToken));
+            errorMessages.push(...concat`to have a length greater than ${validator.typeData.minLen}`);
+        }
+    
+        if (validator.typeData.maxLen) {
+            checks.push(_bin(_access(validator.expression(), "length"), validator.typeData.maxLen, ts.SyntaxKind.GreaterThanToken));
+            errorMessages.push(...concat`to have a length less than ${validator.typeData.maxLen}`);
+        }
+
         const index = ts.factory.createUniqueName("i");
         const childType = validator.children[0] as Validator;
         childType.setName(index);
         return {
-            condition: _not(_instanceof(validator.expression(), "Array")),
-            error: [validator.path(), [_str("to be an array")]],
+            condition: _or(checks),
+            error: [validator.path(), joinElements(errorMessages, ", ")],
             extra: [_for(validator.expression(), index, validateType(childType, ctx))[0]]
         };
     }
@@ -220,7 +236,7 @@ export function generateStatements(results: GenResult[], ctx: NodeGenContext) : 
 
 export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean) : ts.Statement[] {
     const node = genNode(validator, ctx);
-    // TBD: Handle nodes which procuce multiple statement (via .extra)
+    // TBD: Handle nodes which produce multiple statement (via .extra)
     return generateStatements([isOptional ? {
         ...node,
         condition: _and([isNullableNode(validator), node.condition])
