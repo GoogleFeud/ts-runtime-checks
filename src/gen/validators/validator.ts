@@ -92,13 +92,8 @@ export interface ObjectTypeData {
     exact?: boolean
 }
 
-/**
- * Here the inner type is stored in the type data instead of in children,
- * because a validator may not be needed.
- */
 export interface IfTypeData {
     kind: TypeDataKinds.If,
-    innerType: ts.Type,
     fullCheck: boolean,
     expression: string
 }

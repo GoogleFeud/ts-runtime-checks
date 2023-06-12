@@ -80,12 +80,12 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             const stringifiedExp = getStringFromType(utility, 1);
             const fullCheck = isTrueType(utility.aliasTypeArguments[2]);
             if (!innerType || !stringifiedExp) return;
+            const innerTypeValidator = genValidator(transformer, innerType, "");
             return new Validator(type, name, {
                 kind: TypeDataKinds.If,
                 expression: stringifiedExp,
-                innerType,
                 fullCheck,
-            }, exp, parent);
+            }, exp, parent, innerTypeValidator ? [innerTypeValidator] : undefined);
         }
         case "ExactProps": {
             const obj = genValidator(transformer, getTypeArg(utility, 0), name, exp, parent);

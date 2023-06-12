@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { NumberTypes, TypeDataKinds, Validator } from "../validators";
+import { NumberTypes, TypeDataKinds, Validator, genValidator } from "../validators";
 import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
@@ -107,6 +107,41 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             condition: _or(checks),
             error: [validator.path(), joinElements(errorMessages, ", ")]
         };
+    }
+    case TypeDataKinds.Boolean: return { 
+        condition: _typeof_cmp(validator.expression(), "boolean", ts.SyntaxKind.ExclamationEqualsEqualsToken),
+        error: [validator.path(), [_str("to be a boolean")]]
+    };
+    case TypeDataKinds.BigInt: return {
+        condition: _typeof_cmp(validator.expression(), "bigint", ts.SyntaxKind.ExclamationEqualsEqualsToken),
+        error: [validator.path(), [_str("to be a BigInt")]]
+    };
+    case TypeDataKinds.Symbol: return {
+        condition: _typeof_cmp(validator.expression(), "symbol", ts.SyntaxKind.ExclamationEqualsEqualsToken),
+        error: [validator.path(), [_str("to be a symbol")]]
+    };
+    case TypeDataKinds.Class: return {
+        condition: _instanceof(validator.expression(), validator._original.symbol.name),
+        error: [validator.path(), [_str(`to be ${validator._original.symbol.name}`)]]
+    };
+    case TypeDataKinds.Function: return {
+        condition: _typeof_cmp(validator.expression(), "function", ts.SyntaxKind.ExclamationEqualsEqualsToken),
+        error: [validator.path(), [_str("to be a function")]]
+    };
+    case TypeDataKinds.Null: return {
+        condition: _bin(validator.expression(), ts.factory.createNull(), ts.SyntaxKind.ExclamationEqualsEqualsToken),
+        error: [validator.path(), [_str("to be null")]]
+    };
+    case TypeDataKinds.Undefined: return {
+        condition: _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken),
+        error: [validator.path(), [_str("to be undefined")]]
+    };
+    case TypeDataKinds.If: {
+        if (validator.typeData.fullCheck) {
+            
+        }
+
+        return emptyGenResult();
     }
     case TypeDataKinds.Union: {
         const compoundTypes = [], normalTypeConditions: ts.Expression[] = [], normalTypeErrors: ts.Expression[] = [], typeNames = [];
