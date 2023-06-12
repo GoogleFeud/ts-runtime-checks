@@ -39,10 +39,16 @@ export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse?: Block
     return factory.createIfStatement(condition, _stmt(ifTrue), ifFalse ? _stmt(ifFalse) : undefined);
 }
 
-export function _if_chain(ind: number, check: Array<[ts.Expression, BlockLike]>, last?: ts.Statement) : ts.Statement | undefined {
-    if (ind >= check.length) return;
+export function _if_chain(ind: number, check: [ts.Expression, BlockLike][], last?: ts.Statement) : ts.Statement | undefined {
+    if (ind >= check.length) return last;
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return factory.createIfStatement(check[ind]![0], _stmt(check[ind]![1]), _if_chain(ind + 1, check, last) || last);
+    return factory.createIfStatement(check[ind]![0], _stmt(check[ind]![1]), _if_chain(ind + 1, check, last));
+}
+
+export function _if_nest(ind: number, check: [ts.Expression, BlockLike][], last: ts.Statement) : ts.Statement {
+    if (ind >= check.length) return last;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return factory.createIfStatement(check[ind]![0], _if_nest(ind + 1, check, last), _stmt(check[ind]![1]));
 }
 
 export function _ident(name: ts.Identifier | string, initializer?: ts.Expression, flag = ts.NodeFlags.Let) : [ts.VariableStatement, ts.Identifier] {

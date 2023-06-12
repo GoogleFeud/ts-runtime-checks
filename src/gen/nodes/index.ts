@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_chain } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -84,7 +84,9 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                 isNullable = true;
                 continue;
             }
-            else if (child.children.length) compoundTypes.push(genNode(child, ctx));
+            else if (child.children.length) {
+                compoundTypes.push(genNode(child, ctx));
+            }
             else {
                 const node = genNode(child, ctx);
                 normalTypeConditions.push(node.condition);
@@ -94,8 +96,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
         return {
             condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
-            error: [validator.path(), joinElements(normalTypeErrors, " or ")],
-            ifFalse: compoundTypes.length ? _if_chain(0, compoundTypes.map(t => [_not(t.condition), t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]])) : undefined
+            ifTrue: compoundTypes.length ? _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]])) : undefined
         };
     }
     case TypeDataKinds.Array: {
@@ -104,7 +105,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         const childType = validator.children[0] as Validator;
         childType.setName(index);
         return {
-            condition: _typeof_cmp(validator.expression(), "Array", ts.SyntaxKind.ExclamationEqualsEqualsToken),
+            condition: _not(_instanceof(validator.expression(), "Array")),
             error: [validator.path(), [_str("to be an array")]],
             extra: [_for(validator.expression(), index, validateType(childType, ctx))[0]]
         };
