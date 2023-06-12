@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { NumberTypes, TypeDataKinds, Validator, genValidator } from "../validators";
+import { NumberTypes, TypeDataKinds, Validator } from "../validators";
 import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
@@ -94,12 +94,12 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
 
         if (validator.typeData.minLen) {
-            checks.push(_bin(validator.expression(), validator.typeData.minLen, ts.SyntaxKind.LessThanToken));
+            checks.push(_bin(_access(validator.expression(), "length"), validator.typeData.minLen, ts.SyntaxKind.LessThanToken));
             errorMessages.push(...concat`to have a length greater than ${validator.typeData.minLen}`);
         }
 
         if (validator.typeData.maxLen) {
-            checks.push(_bin(validator.expression(), validator.typeData.maxLen, ts.SyntaxKind.GreaterThanToken));
+            checks.push(_bin(_access(validator.expression(), "length"), validator.typeData.maxLen, ts.SyntaxKind.GreaterThanToken));
             errorMessages.push(...concat`to have a length less than ${validator.typeData.maxLen}`);
         }
 
@@ -138,13 +138,18 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     };
     case TypeDataKinds.If: {
         if (validator.typeData.fullCheck) {
-            
-        }
-
-        return emptyGenResult();
+            const innerGen = genNode(validator.children[0] as Validator, ctx);
+            return {
+                ...innerGen,
+                condition: _and([_not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })), innerGen.condition])
+            };
+        } else return {
+            condition: _not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })),
+            error: [validator.path(), [_str(`to satisfy the expression "${validator.typeData.expression}"`)]]
+        };
     }
     case TypeDataKinds.Union: {
-        const compoundTypes = [], normalTypeConditions: ts.Expression[] = [], normalTypeErrors: ts.Expression[] = [], typeNames = [];
+        const compoundTypes = [], normalTypeConditions: ts.Expression[] = [], normalTypeErrors: GenResultError[] = [], typeNames = [];
         let isNullable = false;
         for (const child of validator.children) {
             if (child.typeData.kind === TypeDataKinds.Undefined) {
@@ -157,15 +162,17 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             else {
                 const node = genNode(child, ctx);
                 normalTypeConditions.push(node.condition);
-                if (node.error) normalTypeErrors.push(...node.error[1]);
+                if (node.error) normalTypeErrors.push(node.error);
             }
             typeNames.push(ctx.transformer.checker.typeToString(child._original));
         }
 
         if (!compoundTypes.length) return {
             condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
-            error: [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            error: normalTypeConditions.length === 1 ? normalTypeErrors[0]! : [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]
         };
+
         else return {
             condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
             ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]))
