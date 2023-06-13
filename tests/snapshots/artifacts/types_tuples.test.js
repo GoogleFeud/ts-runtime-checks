@@ -6,25 +6,25 @@ describe("Tuple", () => {
     describe("Assert", () => {
         function test(a) {
             if (!(a instanceof Array))
-                throw new Error("Expected a to be [string, \"123\", (number | undefined)?].");
+                throw new Error("Expected a to be an array");
             if (typeof a[0] !== "string")
-                throw new Error("Expected " + ("a[" + 0 + "]") + " to be string.");
+                throw new Error("Expected a[0] to be a string");
             if (a[1] !== "123")
-                throw new Error("Expected " + ("a[" + 1 + "]") + " to be \"123\".");
-            if (a[2] !== undefined && typeof a[2] !== "number")
-                throw new Error("Expected " + ("a[" + 2 + "]") + " to be number.");
+                throw new Error("Expected a[1] to be equal to \"123\"");
+            if (2 in a && typeof a[2] !== "number")
+                throw new Error("Expected a[2] to be a number");
             return a;
         }
         it("Throw when one of the values is undefined", () => {
-            (0, chai_1.expect)((0, utils_1.call)(test, ["abc"])).to.throw("Expected a[1] to be \"123\".");
+            (0, chai_1.expect)((0, utils_1.call)(test, ["abc"])).to.throw("Expected a[1] to be equal to \"123\"");
         });
         it("Throw when the tuple is not provided", () => {
-            (0, chai_1.expect)((0, utils_1.call)(test)).to.throw("Expected a to be [string, \"123\", (number | undefined)?].");
+            (0, chai_1.expect)((0, utils_1.call)(test)).to.throw("Expected a to be an array");
         });
         it("Throw when one of the values has a wrong type", () => {
-            (0, chai_1.expect)((0, utils_1.call)(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be number.");
-            (0, chai_1.expect)((0, utils_1.call)(test, ["abc", 123, "Hello"])).to.throw("Expected a[1] to be \"123\".");
-            (0, chai_1.expect)((0, utils_1.call)(test, [Symbol(), 123, "Hello"])).to.throw("Expected a[0] to be string.");
+            (0, chai_1.expect)((0, utils_1.call)(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be a number");
+            (0, chai_1.expect)((0, utils_1.call)(test, ["abc", 123, "Hello"])).to.throw("Expected a[1] to be equal to \"123\"");
+            (0, chai_1.expect)((0, utils_1.call)(test, [Symbol(), 123, "Hello"])).to.throw("Expected a[0] to be a string");
         });
         it("Not throw when all the types are correct", () => {
             (0, chai_1.expect)((0, utils_1.call)(test, ["Hello", "123"])).to.not.throw();

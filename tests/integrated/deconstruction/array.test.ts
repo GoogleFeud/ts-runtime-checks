@@ -14,8 +14,8 @@ describe("Array deconstruction", () => {
         }
 
         it("Throw when one of the deconstructed properties has a wrong type", () => {
-            expect(call(test, ["a", 123], [123, "abc"])).to.throw("Expected b to be string.");
-            expect(call(test, ["a", "b"], ["abc", "abc"])).to.throw("Expected c to be number.");
+            expect(call(test, ["a", 123], [123, "abc"])).to.throw("Expected b to be a string");
+            expect(call(test, ["a", "b"], ["abc", "abc"])).to.throw("Expected c to be a number");
         });
     
         it("Not throw when a non-deconstructed property has a wrong type", () => {
@@ -23,7 +23,7 @@ describe("Array deconstruction", () => {
         });
 
         it("Throw when one of the nested deconstructed properties has a wrong type", () => {
-            expect(call(test2, ["abc", ["abc"]])).to.throw("Expected c to be number.");
+            expect(call(test2, ["abc", ["abc"]])).to.throw("Expected c to be a number");
         });
 
         it("Not throw when a non-deconstructed nested property has a wrong type", () => {

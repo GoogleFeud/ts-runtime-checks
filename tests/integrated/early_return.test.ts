@@ -27,8 +27,8 @@ describe("Early return", () => {
     }
 
     it("Return the error message if specified", () => {
-        expect(call(test3, {a: ["Hello", "World"]})()).to.be.equal("Expected a.a[1] to be number.");
-        expect(call(test3, {a: ["Hello", 123, { b: "World"}]})()).to.be.equal("Expected a.a[2].b to be number.");
+        expect(call(test3, {a: ["Hello", "World"]})()).to.be.equal("Expected a.a[1] to be a number");
+        expect(call(test3, {a: ["Hello", 123, { b: "World"}]})()).to.be.equal("Expected a.a[2].b to be a number");
     });
 
 });

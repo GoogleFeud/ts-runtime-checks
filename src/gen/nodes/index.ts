@@ -45,7 +45,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     switch (validator.typeData.kind) {
     case TypeDataKinds.Number: {
         if (validator.typeData.literal) return {
-            condition: _bin(validator.expression(), _num(validator.typeData.literal), ts.SyntaxKind.EqualsEqualsEqualsToken),
+            condition: _bin(validator.expression(), _num(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken),
             error: [validator.path(), concat`to be equal to ${validator.typeData.literal.toString()}`]
         };
         const errorMessages = [], checks: ts.Expression[] = [_typeof_cmp(validator.expression(), "number", ts.SyntaxKind.ExclamationEqualsEqualsToken)];
@@ -77,8 +77,8 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     }
     case TypeDataKinds.String: {
         if (validator.typeData.literal) return {
-            condition: _bin(validator.expression(), _str(validator.typeData.literal), ts.SyntaxKind.EqualsEqualsEqualsToken),
-            error: [validator.path(), concat`to be equal to ${validator.typeData.literal}`]
+            condition: _bin(validator.expression(), _str(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken),
+            error: [validator.path(), concat`to be equal to "${validator.typeData.literal}"`]
         };
 
         const errorMessages: Stringifyable[] = ["to be a string"], checks: ts.Expression[] = [_typeof_cmp(validator.expression(), "string", ts.SyntaxKind.ExclamationEqualsEqualsToken)];
@@ -89,8 +89,14 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
 
         if (validator.typeData.matches) {
-            checks.push(_call(_access(validator.expression(), "matches"), [validator.typeData.matches]));
-            errorMessages.push(...concat`to match ${validator.typeData.matches}`);
+            let regexp;
+            if (ts.isStringLiteral(validator.typeData.matches)) {
+                if (validator.typeData.matches.text !== "") regexp = ts.factory.createRegularExpressionLiteral(validator.typeData.matches.text);
+            } else regexp = validator.typeData.matches;
+            if (regexp) {
+                checks.push(_not(_call(_access(regexp, "test"), [validator.expression()])));
+                errorMessages.push(...concat`to match ${validator.typeData.matches}`);
+            }
         }
 
         if (validator.typeData.minLen) {
@@ -114,7 +120,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     };
     case TypeDataKinds.BigInt: return {
         condition: _typeof_cmp(validator.expression(), "bigint", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-        error: [validator.path(), [_str("to be a BigInt")]]
+        error: [validator.path(), [_str("to be a bigint")]]
     };
     case TypeDataKinds.Symbol: return {
         condition: _typeof_cmp(validator.expression(), "symbol", ts.SyntaxKind.ExclamationEqualsEqualsToken),
@@ -122,7 +128,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     };
     case TypeDataKinds.Class: return {
         condition: _not(_instanceof(validator.expression(), validator._original.symbol.name)),
-        error: [validator.path(), [_str(`to be ${validator._original.symbol.name}`)]]
+        error: [validator.path(), [_str(`to be an instance of "${validator._original.symbol.name}"`)]]
     };
     case TypeDataKinds.Function: return {
         condition: _typeof_cmp(validator.expression(), "function", ts.SyntaxKind.ExclamationEqualsEqualsToken),
@@ -146,11 +152,11 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             const innerGen = genNode(validator.children[0] as Validator, ctx);
             return {
                 ...innerGen,
-                condition: _and([_not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })), innerGen.condition])
+                extra: [_if(_not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })), error(ctx, [validator.path(), [_str(`to satisfy "${validator.typeData.expression}"`)]])), ...(innerGen.extra || [])]
             };
         } else return {
             condition: _not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })),
-            error: [validator.path(), [_str(`to satisfy the expression "${validator.typeData.expression}"`)]]
+            error: [validator.path(), [_str(`to satisfy "${validator.typeData.expression}"`)]]
         };
     }
     case TypeDataKinds.Union: {
@@ -252,8 +258,12 @@ export function generateStatements(results: GenResult[], ctx: NodeGenContext) : 
 
 export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean) : ts.Statement[] {
     const node = genNode(validator, ctx);
-    return generateStatements([isOptional ? {
-        ...node,
-        condition: _and([isNullableNode(validator), node.condition])
-    } : node], ctx);
+    if (isOptional) {
+        if (node.extra || node.ifFalse || node.ifTrue) return [_if(isNullableNode(validator), generateStatements([node], ctx))];
+        else return generateStatements([{
+            ...node,
+            condition: _and([isNullableNode(validator), node.condition])
+        }], ctx);
+    }
+    else return generateStatements([node], ctx);
 }

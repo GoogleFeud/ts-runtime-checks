@@ -10,7 +10,7 @@ describe("Exact Props", () => {
         }
 
         it("Throw when there are excessive properties", () => {
-            expect(call(test, {a: "a", b: 234, d: 33})).to.throw("Property a.d is excessive.");
+            expect(call(test, {a: "a", b: 234, d: 33})).to.throw("Property a.d is excessive");
         });
     
         it("Not throw when there aren't excessive properties", () => {
@@ -22,7 +22,7 @@ describe("Exact Props", () => {
         }
     
         it("Throw when there are excessive nested properties", () => {
-            expect(call(test2, { a: { b: "c2", c: 12 }})).to.throw("Property a.a.c is excessive.");
+            expect(call(test2, { a: { b: "c2", c: 12 }})).to.throw("Property a.a.c is excessive");
         });
 
         it("Not throw when there are excessive nested properties", () => {
@@ -38,7 +38,7 @@ describe("Exact Props", () => {
         });
 
         it("Throw when there are excessive properties", () => {
-            expect(call(test3, {a: "123", d: 123, b: { d: 32 }})).to.throw("Property a.b.d is excessive.");
+            expect(call(test3, {a: "123", d: 123, b: { c: 123, d: 32 }})).to.throw("Property a.b.d is excessive");
         });
     
     });

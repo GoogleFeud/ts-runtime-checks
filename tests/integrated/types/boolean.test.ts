@@ -9,8 +9,8 @@ describe("Boolean", () => {
         }
 
         it("Throw when a value is not provided", () => {
-            expect(call(test, 12)).to.throw("Expected a to be boolean.");
-            expect(call(test)).to.throw("Expected a to be boolean.");
+            expect(call(test, 12)).to.throw("Expected a to be a boolean");
+            expect(call(test)).to.throw("Expected a to be a boolean");
         });
     
         it("Not throw when a boolean is provided", () => {

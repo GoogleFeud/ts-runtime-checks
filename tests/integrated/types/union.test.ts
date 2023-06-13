@@ -9,9 +9,9 @@ describe("Unions", () => {
         }
 
         it("Throw when a different type is provided", () => {
-            expect(call(test, true)).to.throw("Expected a to be string | number | [string | number, string].");
-            expect(call(test, test)).to.throw("Expected a to be string | number | [string | number, string].");
-            expect(call(test, {})).to.throw("Expected a to be string | number | [string | number, string].");
+            expect(call(test, true)).to.throw("Expected a to be one of string, number, [string | number, string]");
+            expect(call(test, test)).to.throw("Expected a to be one of string, number, [string | number, string]");
+            expect(call(test, {})).to.throw("Expected a to be one of string, number, [string | number, string]");
         });
     
         it("Not throw when a value of the right type is provided", () => {
