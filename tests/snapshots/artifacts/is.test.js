@@ -11,7 +11,7 @@ describe("Is function", () => {
         })()).to.be.equal(false);
         (0, chai_1.expect)((() => {
             const value_2 = { a: "Hello", b: 3.14 };
-            if (typeof value_2 !== "object")
+            if (typeof value_2 !== "object" && value_2 !== null)
                 return false;
             if (typeof value_2.a !== "number")
                 return false;
@@ -46,7 +46,7 @@ describe("Is function", () => {
         (0, chai_1.expect)((() => {
             const value_6 = { a: "Hello" };
             if (typeof value_6 !== "string")
-                if (typeof value_6 !== "object")
+                if (typeof value_6 !== "object" && value_6 !== null)
                     return false;
                 else {
                     if (typeof value_6.a !== "number")

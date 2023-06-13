@@ -171,31 +171,4 @@ export class Validator {
         return;
     }
 
-    /*
-    getTypeName() : string {
-        switch (this.typeData.kind) {
-        case TypeDataKinds.String: {
-            if (this.typeData.literal) return `"${this.typeData.literal}"`;
-            else return "string";
-        }
-        case TypeDataKinds.Number: {
-            if (this.typeData.literal) return this.typeData.literal.toString();
-            else return "number";
-        }
-        case TypeDataKinds.Boolean: return "boolean";
-        case TypeDataKinds.Array: return `${(this.children[0] as Validator).getTypeName()}[]`;
-        case TypeDataKinds.Class: return this.name.toString();
-        case TypeDataKinds.BigInt: return "BigInt";
-        case TypeDataKinds.Symbol: return "symbol";
-        case TypeDataKinds.Tuple: return `[${this.children.map(c => c.getTypeName()).join(", ")}]`;
-        case TypeDataKinds.Function: return "function";
-        case TypeDataKinds.Object: return "object";
-        case TypeDataKinds.Undefined: return "undefined";
-        case TypeDataKinds.Null: return "null";
-        case TypeDataKinds.If: return `to satisfy "${this.typeData.expression}"`;
-        case TypeDataKinds.Union: return ``
-        }
-    }
-    */
-
 }

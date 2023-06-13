@@ -234,7 +234,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
 
         return {
-            condition: _typeof_cmp(validator.expression(), "object", ts.SyntaxKind.ExclamationEqualsEqualsToken),
+            condition: _and([_typeof_cmp(validator.expression(), "object", ts.SyntaxKind.ExclamationEqualsEqualsToken), _bin(validator.expression(), ts.factory.createNull(), ts.SyntaxKind.ExclamationEqualsEqualsToken)]),
             error: [validator.path(), [_str("to be an object")]],
             extra: checks
         };

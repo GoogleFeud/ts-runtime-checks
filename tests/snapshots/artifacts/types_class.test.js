@@ -11,7 +11,7 @@ describe("Class", () => {
         function test(a, b) {
             if (!(a instanceof Test))
                 throw new Error("Expected a to be an instance of \"Test\"");
-            if (typeof b !== "object")
+            if (typeof b !== "object" && b !== null)
                 throw new Error("Expected b to be an object");
             return [a, b];
         }
