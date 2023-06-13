@@ -206,7 +206,6 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.Object: {
-        //TBD: Handle exactProps
         const checks: ts.Statement[] = [];
         for (const child of validator.children) {
             checks.push(...validateType(child, ctx));
@@ -248,7 +247,6 @@ export function generateStatements(results: GenResult[], ctx: NodeGenContext) : 
 
 export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean) : ts.Statement[] {
     const node = genNode(validator, ctx);
-    // TBD: Handle nodes which produce multiple statement (via .extra)
     return generateStatements([isOptional ? {
         ...node,
         condition: _and([isNullableNode(validator), node.condition])

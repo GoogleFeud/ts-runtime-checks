@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts, { factory } from "typescript";
+import { Transformer } from "./transformer";
 
 export function hasBit(thing: { flags: number }, bit: number) : boolean {
     return (thing.flags & bit) !== 0;
@@ -9,6 +10,17 @@ export function isTrueType(t: ts.Type|undefined) : boolean {
     if (!t) return false;
     //@ts-expect-error Private API
     return t.intrinsicName === "true";
+}
+
+export function parseJsDocTags(transformer: Transformer, tags: readonly ts.JSDocTag[], expected: string[]) : Record<string, ts.Expression> {
+    const result: Record<string, ts.Expression> = {};
+    for (const tag of tags) {
+        if (!expected.includes(tag.tagName.text) || typeof tag.comment !== "string") continue;
+        const tagValue = tag.comment[0] === "{" ? tag.comment.slice(1, -1) : tag.comment;
+        const exp = transformer.stringToNode(tagValue);
+        result[tag.tagName.text] = exp;
+    }
+    return result;
 }
 
 export function isErrorMessage(t: ts.Type) : boolean {
@@ -192,6 +204,5 @@ export function createListOfStr(strings: Array<string>) : string {
 export function getTypeArg(t: ts.Type, argNum: number) : ts.Type | undefined {
     return t.aliasTypeArguments?.[argNum];
 }
-
 
 export const UNDEFINED = factory.createIdentifier("undefined");

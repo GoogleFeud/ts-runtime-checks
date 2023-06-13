@@ -1,15 +1,15 @@
 import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator, ValidatorTargetName } from "./validator";
-import { getObjectFromType, getStringFromType, getTypeArg, hasBit, isTrueType } from "../../utils";
+import { getObjectFromType, getStringFromType, getTypeArg, hasBit, isTrueType, parseJsDocTags } from "../../utils";
 import { Transformer } from "../../transformer";
 
-export function genValidator(transformer: Transformer, type: ts.Type | undefined, name: ValidatorTargetName, exp?: ts.Expression, parent?: Validator) : Validator | undefined {
+export function genValidator(transformer: Transformer, type: ts.Type | undefined, name: ValidatorTargetName, exp?: ts.Expression, parent?: Validator, tags?: readonly ts.JSDocTag[]) : Validator | undefined {
     if (!type) return;
     if (type.isStringLiteral()) return new Validator(type, name, { kind: TypeDataKinds.String, literal: type.value}, exp, parent);
     else if (type.isNumberLiteral()) return new Validator(type, name, { kind: TypeDataKinds.Number, literal: type.value }, exp, parent);
-    else if (hasBit(type, ts.TypeFlags.String)) return new Validator(type, name, { kind: TypeDataKinds.String }, exp, parent);
+    else if (hasBit(type, ts.TypeFlags.String)) return new Validator(type, name, { kind: TypeDataKinds.String, ...(tags ? parseJsDocTags(transformer, tags, ["minLen", "maxLen", "length", "matches"]) : {}) }, exp, parent);
+    else if (hasBit(type, ts.TypeFlags.Number)) return new Validator(type, name, { kind: TypeDataKinds.Number, ...(tags ? parseJsDocTags(transformer, tags, ["min", "max", "type"]) : {}) }, exp, parent);
     else if (hasBit(type, ts.TypeFlags.BigInt)) return new Validator(type, name, { kind: TypeDataKinds.BigInt }, exp, parent);
-    else if (hasBit(type, ts.TypeFlags.Number)) return new Validator(type, name, { kind: TypeDataKinds.Number }, exp, parent);
     else if (hasBit(type, ts.TypeFlags.Boolean)) return new Validator(type, name, { kind: TypeDataKinds.Boolean }, exp, parent);
     else if (hasBit(type, ts.TypeFlags.ESSymbol)) return new Validator(type, name, { kind: TypeDataKinds.Symbol }, exp, parent);
     else if (hasBit(type, ts.TypeFlags.Null)) return new Validator(type, name, { kind: TypeDataKinds.Null }, exp, parent);
@@ -22,7 +22,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     }
     else if (transformer.checker.isArrayType(type)) {
         const validators = transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i)).filter(t => t) as Validator[];
-        return new Validator(type, name, { kind: TypeDataKinds.Array }, exp, parent, validators);
+        return new Validator(type, name, { kind: TypeDataKinds.Array, ...(tags ? parseJsDocTags(transformer, tags, ["minLen", "maxLen", "length"]) : {}) }, exp, parent, validators);
     }
     else {
         const utility = transformer.getUtilityType(type);
@@ -30,7 +30,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             if (type.isUnion()) return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, type.types.map(t => genValidator(transformer, t, "", exp)).filter(t => t) as Validator[]);
             const properties = type.getProperties().map(sym => {
                 const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
-                return genValidator(transformer, typeOfProp, sym.name);
+                return genValidator(transformer, typeOfProp, sym.name, undefined, undefined, sym.valueDeclaration ? ts.getJSDocTags(sym.valueDeclaration) : undefined);
             }).filter(p => p) as Validator[];
             return new Validator(type, name, { kind: TypeDataKinds.Object }, exp, parent, properties);
         }
