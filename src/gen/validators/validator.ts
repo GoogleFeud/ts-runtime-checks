@@ -87,9 +87,14 @@ export interface ArrayTypeData {
     maxLen?: ts.Expression
 }
 
+export const enum ObjectTypeDataExactOptions {
+    RemoveExtra,
+    RaiseError
+}
+
 export interface ObjectTypeData {
     kind: TypeDataKinds.Object,
-    exact?: boolean
+    exact?: ObjectTypeDataExactOptions
 }
 
 export interface IfTypeData {
@@ -156,14 +161,14 @@ export class Validator {
         delete this._exp;
     }
 
-    exactProps() : boolean {
+    exactProps() : ObjectTypeDataExactOptions|undefined {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         let parent: Validator | undefined = this;
         while (parent) {
-            if (parent.typeData.kind === TypeDataKinds.Object && parent.typeData.exact) return true;
+            if (parent.typeData.kind === TypeDataKinds.Object && parent.typeData.exact !== undefined) return parent.typeData.exact;
             else parent = parent.parent;
         }
-        return false;
+        return;
     }
 
     /*

@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { NumberTypes, TypeDataKinds, Validator, ValidatorTargetName } from "./validator";
+import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator, ValidatorTargetName } from "./validator";
 import { getObjectFromType, getStringFromType, getTypeArg, hasBit, isTrueType } from "../../utils";
 import { Transformer } from "../../transformer";
 
@@ -88,13 +88,13 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             }, exp, parent, innerTypeValidator ? [innerTypeValidator] : undefined);
         }
         case "ExactProps": {
-            const obj = genValidator(transformer, getTypeArg(utility, 0), name, exp, parent);
+            const obj = genValidator(transformer, getTypeArg(utility, 0), "");
             if (!obj) return;
-            const exact = isTrueType(getTypeArg(utility, 1));
+            const remove = isTrueType(getTypeArg(utility, 1));
             return new Validator(type, name, {
                 kind: TypeDataKinds.Object,
-                exact
-            }, exp, parent, [obj]);
+                exact: remove ? ObjectTypeDataExactOptions.RemoveExtra : ObjectTypeDataExactOptions.RaiseError
+            }, exp, parent, obj.children);
         }
         default: return undefined;
         }

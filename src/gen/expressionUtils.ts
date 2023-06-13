@@ -51,11 +51,15 @@ export function _if_nest(ind: number, check: [ts.Expression, BlockLike][], last:
     return factory.createIfStatement(check[ind]![0], _if_nest(ind + 1, check, last), _stmt(check[ind]![1]));
 }
 
-export function _ident(name: ts.Identifier | string, initializer?: ts.Expression, flag = ts.NodeFlags.Let) : [ts.VariableStatement, ts.Identifier] {
+export function _var(name: ts.Identifier | string, initializer?: ts.Expression, flag = ts.NodeFlags.Let) : [ts.VariableStatement, ts.Identifier] {
     const ident = typeof name === "string" ? factory.createUniqueName(name) : name;
     return [factory.createVariableStatement(undefined, factory.createVariableDeclarationList([
         factory.createVariableDeclaration(ident, undefined, undefined, initializer),
     ], flag)), ident];
+}
+
+export function _ident(name: string) : ts.Identifier {
+    return factory.createUniqueName(name);
 }
 
 export function _bin(left: ts.Expression, right: ts.Expression, op: ts.BinaryOperator) : ts.Expression {
@@ -143,13 +147,22 @@ export function _call(exp: ts.Expression, args: ts.Expression[]) : ts.Expression
 }
 
 export function _for(arr: ts.Expression, indName: ts.Identifier | string, body: BlockLike) : [loop: ts.Statement, index: ts.Expression] {
-    const [initializerCreate, initializer] = _ident(indName, factory.createNumericLiteral(0));
+    const [initializerCreate, initializer] = _var(indName, factory.createNumericLiteral(0));
     return [factory.createForStatement(
         initializerCreate.declarationList,
         factory.createBinaryExpression(initializer, ts.SyntaxKind.LessThanToken, factory.createPropertyAccessExpression(arr, "length")),
         factory.createPostfixIncrement(initializer),
         _stmt(body)
     ), initializer];
+}
+
+export function _for_in(arr: ts.Expression, elName: ts.Identifier | string, body: BlockLike) : [loop: ts.Statement, variable: ts.Identifier] {
+    const [initializerCreate, initializer] = _var(elName);
+    return [factory.createForInStatement(initializerCreate.declarationList, arr, _stmt(body)), initializer];
+}
+
+export function _del(arg: ts.Expression) : ts.Expression {
+    return factory.createDeleteExpression(arg);
 }
 
 export const UNDEFINED = factory.createIdentifier("undefined");

@@ -1,6 +1,6 @@
 import ts from "typescript";
-import { NumberTypes, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call } from "../expressionUtils";
+import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator } from "../validators";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _del } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -33,8 +33,8 @@ export function emptyGenResult() : GenResult {
     };
 }
 
-export function error(ctx: NodeGenContext, error: GenResultError) : ts.Statement {
-    const finalMsg = _bin_chain(joinElements(["Expected ", ...error[0], " ", ...error[1]]), ts.SyntaxKind.PlusToken);
+export function error(ctx: NodeGenContext, error: GenResultError, isFull = false) : ts.Statement {
+    const finalMsg = _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0], " ", ...error[1]]), ts.SyntaxKind.PlusToken);
     if (ctx.resultType.return) return ts.factory.createReturnStatement(ctx.resultType.return);
     if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
     else if (ctx.resultType.custom) return ctx.resultType.custom(finalMsg);
@@ -196,7 +196,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             errorMessages.push(...concat`to have a length less than ${validator.typeData.maxLen}`);
         }
 
-        const index = ts.factory.createUniqueName("i");
+        const index = _ident("i");
         const childType = validator.children[0] as Validator;
         childType.setName(index);
         return {
@@ -211,6 +211,18 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         for (const child of validator.children) {
             checks.push(...validateType(child, ctx));
         }
+
+        const exactProps = validator.exactProps();
+        if (exactProps !== undefined) {
+            const name = _ident("p");
+            checks.push(_for_in(validator.expression(), name, [
+                _if(
+                    _and(validator.children.filter(c => typeof c.name === "string").map(c => _bin(name, _str(c.name as string), ts.SyntaxKind.ExclamationEqualsEqualsToken))),
+                    exactProps === ObjectTypeDataExactOptions.RaiseError ? error(ctx, [validator.path(), joinElements(["Property ", ...validator.path(), ".", name, " is excessive"])], true) : _del(_access(validator.expression(), name)) 
+                )
+            ])[0]);
+        }
+
         return {
             condition: _typeof_cmp(validator.expression(), "object", ts.SyntaxKind.ExclamationEqualsEqualsToken),
             error: [validator.path(), [_str("to be an object")]],
