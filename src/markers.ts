@@ -2,12 +2,10 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
-import { genArrayPush, isErrorMessage } from "./utils";
-import { validate, ValidationContext } from "./validation";
+import { isErrorMessage } from "./utils";
 import { validateType } from "./gen/nodes";
-import { ValidationResultType } from "./validation/context";
-import { genIdentifier, UNDEFINED } from "./utils";
 import { genValidator } from "./gen/validators";
+import { _access, _call, _var, UNDEFINED } from "./gen/expressionUtils";
 
 
 export const enum MacroCallContext {
@@ -21,7 +19,6 @@ export interface MarkerCallData {
     ctx: MacroCallContext,
     optional?: boolean,
     exp: ts.Expression | ts.BindingName,
-    resultType?: ValidationResultType
 }
 
 export interface FnCallData {
@@ -41,25 +38,24 @@ export const Markers: Record<string, MarkerFn> = {
                 const validator = genValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i);
                 if (!validator) return [];
                 return validateType(validator, {
-                    errorTypeName: parameters[1]?.symbol?.name || "Error",
-                    resultType: { throw: true },
+                    resultType: { throw: parameters[1]?.symbol?.name || "Error" },
                     transformer: trans
                 }, optional);
             }));
-            return undefined;
+            return;
         } else {
             let callBy = exp as ts.Expression;
             if (!ts.isIdentifier(callBy) && !ts.isPropertyAccessExpression(callBy) && !ts.isElementAccessExpression(callBy)) {
-                const [decl, ident] = genIdentifier("temp", callBy as ts.Expression, ts.NodeFlags.Const);
+                const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
                 block.nodes.push(decl);
                 callBy = ident;
             }
-            block.nodes.push(...validate(parameters[0]!, callBy, new ValidationContext({
-                errorTypeName: parameters[1]?.symbol?.name,
+            const validator = genValidator(trans, parameters[0]!, ts.isIdentifier(callBy) ? callBy.text : callBy.getText(), callBy);
+            if (!validator) return;
+            block.nodes.push(...validateType(validator, {
                 transformer: trans,
-                depth: [],
-                propName: callBy.pos === -1 ? "value" : callBy.getText()
-            })));
+                resultType: { throw: parameters[1]?.symbol?.name || "Error" }
+            }));
             return callBy;
         }
     },
@@ -67,27 +63,27 @@ export const Markers: Record<string, MarkerFn> = {
         const resultType = parameters[1] ? isErrorMessage(parameters[1]) ? { returnErr: true } : { return: trans.typeValueToNode(parameters[1], true) } : { return: UNDEFINED };
         if (ctx === MacroCallContext.Parameter) {
             block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
-                return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
+                const validator = genValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i);
+                if (!validator) return [];
+                return validateType(validator, {
                     resultType,
-                    transformer: trans,
-                    depth: [],
-                    propName: ts.isIdentifier(i) ? i.text : i
-                }), optional);
+                    transformer: trans
+                }, optional);
             }));
             return undefined;
         } else {
             let callBy = exp as ts.Expression;
             if (!ts.isIdentifier(callBy) && !ts.isPropertyAccessExpression(callBy) && !ts.isElementAccessExpression(callBy)) {
-                const [decl, ident] = genIdentifier("temp", callBy as ts.Expression, ts.NodeFlags.Const);
+                const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
                 block.nodes.push(decl);
                 callBy = ident;
             }
-            block.nodes.push(...validate(parameters[0]!, callBy, new ValidationContext({
+            const validator = genValidator(trans, parameters[0]!, ts.isIdentifier(callBy) ? callBy.text : callBy.getText(), callBy);
+            if (!validator) return;
+            block.nodes.push(...validateType(validator, {
                 resultType,
-                transformer: trans,
-                depth: [],
-                propName: callBy.pos === -1 ? "value" : callBy.getText()
-            })));
+                transformer: trans
+            }, optional));
             return callBy;
         }
     }
@@ -97,16 +93,16 @@ export const Functions: Record<string, FnCallFn> = {
     is: (transformer, data) => {
         let arg = data.call.arguments[0]!;
         if (!ts.isIdentifier(arg)) {
-            const [stmt, newArg] = genIdentifier("temp", arg, ts.NodeFlags.Const);
+            const [stmt, newArg] = _var("value", arg, ts.NodeFlags.Const);
             arg = newArg;
             data.block.nodes.push(stmt);
         }
-        data.block.nodes.push(...validate(data.type, arg, new ValidationContext({
+        const validator = genValidator(transformer, data.type, ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
+        if (!validator) return;
+        data.block.nodes.push(...validateType(validator, {
             resultType: { return: ts.factory.createFalse() },
-            transformer,
-            depth: [],
-            propName: arg.pos === -1 ? "value" : arg.getText()
-        })), ts.factory.createReturnStatement(ts.factory.createTrue()));
+            transformer
+        }), ts.factory.createReturnStatement(ts.factory.createTrue()));
     },
     check: (transformer, data) => {
         let dataVariable: ts.Identifier;
@@ -117,36 +113,36 @@ export const Functions: Record<string, FnCallFn> = {
             const name = data.call.parent.name;
             if (name.elements[0] && ts.isBindingElement(name.elements[0]) && ts.isIdentifier(name.elements[0].name)) {
                 dataVariable = name.elements[0].name;
-                dataInitialize = genIdentifier(dataVariable, data.call.arguments[0], ts.NodeFlags.Const)[0];
+                dataInitialize = _var(dataVariable, data.call.arguments[0], ts.NodeFlags.Const)[0];
             }
             else {
-                if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = genIdentifier("temp", data.call.arguments[0], ts.NodeFlags.Const);
+                if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = _var("value", data.call.arguments[0], ts.NodeFlags.Const);
                 else dataVariable = data.call.arguments[0]!;
             }
             if (name.elements[1] && ts.isBindingElement(name.elements[1]) && ts.isIdentifier(name.elements[1].name)) {
                 arrVariable = name.elements[1].name;
-                arrIntitialize = genIdentifier(arrVariable!, ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const)[0];
+                arrIntitialize = _var(arrVariable!, ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const)[0];
             } else {
-                [arrIntitialize, arrVariable] = genIdentifier("temp", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
+                [arrIntitialize, arrVariable] = _var("value", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
             }
             block = data.prevBlock;
             Block.listen(block, () => block.nodes.pop());
         } else {
-            if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = genIdentifier("temp", data.call.arguments[0], ts.NodeFlags.Const);
+            if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = _var("value", data.call.arguments[0], ts.NodeFlags.Const);
             else dataVariable = data.call.arguments[0]!;
-            [arrIntitialize, arrVariable] = genIdentifier("temp", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
+            [arrIntitialize, arrVariable] = _var("value", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
         }
         if (dataInitialize) block.nodes.push(dataInitialize);
         block.nodes.push(arrIntitialize);
-        block.nodes.push(...validate(data.type, dataVariable, new ValidationContext({
+        const validator = genValidator(transformer, data.type, dataVariable.text, dataVariable);
+        if (!validator) return;
+        block.nodes.push(...validateType(validator, {
             resultType: {
-                custom: (msg) => ts.factory.createExpressionStatement(genArrayPush(arrVariable, msg))
+                custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
             },
             transformer,
-            depth: [],
-            propName: dataVariable.pos === -1 ? "value" : dataVariable.getText()
-        })));
-        if (block === data.block) block.nodes.push(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable]));
+        }));
+        if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
     }
 };
 

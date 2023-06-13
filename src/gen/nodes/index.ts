@@ -4,7 +4,7 @@ import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw,
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
-    throw?: boolean,
+    throw?: string,
     return?: ts.Expression,
     returnErr?: boolean,
     custom?: (msg: ts.Expression) => ts.Statement
@@ -12,7 +12,6 @@ export interface ValidationResultType {
 
 export interface NodeGenContext {
     transformer: Transformer,
-    errorTypeName: string,
     resultType: ValidationResultType
 }
 
@@ -36,9 +35,10 @@ export function emptyGenResult() : GenResult {
 export function error(ctx: NodeGenContext, error: GenResultError, isFull = false) : ts.Statement {
     const finalMsg = _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0], " ", ...error[1]]), ts.SyntaxKind.PlusToken);
     if (ctx.resultType.return) return ts.factory.createReturnStatement(ctx.resultType.return);
-    if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
+    else if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
+    else if (ctx.resultType.throw) return _throw(_new(ctx.resultType.throw, [finalMsg]));
     else if (ctx.resultType.custom) return ctx.resultType.custom(finalMsg);
-    else return _throw(_new(ctx.errorTypeName, [finalMsg]));
+    else return _throw(_new("Error", [finalMsg]));
 }
 
 export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
@@ -121,7 +121,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         error: [validator.path(), [_str("to be a symbol")]]
     };
     case TypeDataKinds.Class: return {
-        condition: _instanceof(validator.expression(), validator._original.symbol.name),
+        condition: _not(_instanceof(validator.expression(), validator._original.symbol.name)),
         error: [validator.path(), [_str(`to be ${validator._original.symbol.name}`)]]
     };
     case TypeDataKinds.Function: return {

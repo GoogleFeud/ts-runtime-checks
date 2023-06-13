@@ -2,7 +2,7 @@ import ts from "typescript";
 import * as Block from "./block";
 import { FnCallFn, Functions, MacroCallContext, MarkerFn, Markers } from "./markers";
 import { getStringFromType, hasBit, resolveAsChain } from "./utils";
-import { UNDEFINED } from "./utils";
+import { UNDEFINED } from "./gen/expressionUtils";
 
 export class Transformer {
     checker: ts.TypeChecker;
