@@ -17,12 +17,12 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     else if (type.getCallSignatures().length === 1) return new Validator(type, name, { kind: TypeDataKinds.Function }, exp, parent);
     else if (type.isClass()) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
     else if (transformer.checker.isTupleType(type)) {
-        const innerValidator = genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], 0);
-        return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, innerValidator ? [innerValidator] : []);
+        const validators = transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i)).filter(t => t) as Validator[];
+        return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, validators);
     }
     else if (transformer.checker.isArrayType(type)) {
-        const validators = transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i)).filter(t => t) as Validator[];
-        return new Validator(type, name, { kind: TypeDataKinds.Array, ...(tags ? parseJsDocTags(transformer, tags, ["minLen", "maxLen", "length"]) : {}) }, exp, parent, validators);
+        const validator = genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], 0);
+        return new Validator(type, name, { kind: TypeDataKinds.Array, ...(tags ? parseJsDocTags(transformer, tags, ["minLen", "maxLen", "length"]) : {}) }, exp, parent, validator ? [validator] : []);
     }
     else {
         const utility = transformer.getUtilityType(type);

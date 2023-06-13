@@ -136,6 +136,11 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         condition: _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken),
         error: [validator.path(), [_str("to be undefined")]]
     };
+    case TypeDataKinds.Tuple: return {
+        condition: _not(_instanceof(validator.expression(), "Array")),
+        error: [validator.path(), [_str("to be an array")]],
+        extra: validator.children.map(c => validateType(c, ctx)).flat()
+    };
     case TypeDataKinds.If: {
         if (validator.typeData.fullCheck) {
             const innerGen = genNode(validator.children[0] as Validator, ctx);
@@ -233,7 +238,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 }
 
 export function isNullableNode(validator: Validator) : ts.Expression {
-    return validator.parent ? _bin(_str(validator.name.toString()), validator.parent.expression(), ts.SyntaxKind.InKeyword) : _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken);
+    return validator.parent ? _bin(validator.nameAsExpression(), validator.parent.expression(), ts.SyntaxKind.InKeyword) : _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken);
 }
 
 export function generateStatements(results: GenResult[], ctx: NodeGenContext) : ts.Statement[] {
