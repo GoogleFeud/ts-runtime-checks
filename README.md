@@ -89,7 +89,8 @@ Markers are typescript type aliases which are detected by the transformer. These
     - `NoCheck<Type, removeExtra>`- Doesn't generate checks for the provided type.
     - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
     - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
-    - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `NumRange` and `Matches` for example.
+    - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Num.min/max` and `Str.matches` for example.
+    - `Infer<Type>` - Create a union of all possible types of a type parameter and validate it.
 
 #### Assert<Type, ErrorType>
 
@@ -291,6 +292,38 @@ function test(num) {
 }
 ```
 
+#### Infer<Type>
+
+You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it.
+
+```ts
+export const validate = <Body>(req: { body: Body }) => {
+    const [body, errors] = check<Infer<Body>>(req.body);
+};
+
+// in fileA.ts
+validate({
+    body: { a: "hello" }
+});
+
+// in FileB.ts
+validate({
+    body: { something: true, a: 123 }
+});
+
+// Transpiles to:
+const validate = (req) => {
+    const body = req.body;
+    const errors = [];
+    if (typeof body !== "object" && body !== null)
+        errors.push("Expected body to be an object");
+    if (typeof body.a !== "string" && typeof body.a !== "number")
+        errors.push("Expected body.a to be one of string, number");
+    if (typeof body.something !== "boolean")
+        errors.push("Expected body.something to be a boolean");
+};
+```
+
 ### Supported types and code generation
 
 - `string`s and string literals
@@ -318,7 +351,6 @@ function test(num) {
     - `value instanceof Class`
 - Enums
 - Unions (`a | b | c`)
-    - Unions get **partially** validated. If one of the types inside the union is a **compound** type (tuples, arrays, object literals, interfaces), then the validity of that type's members doesn't get checked.
 
 ### `as` assertions
 

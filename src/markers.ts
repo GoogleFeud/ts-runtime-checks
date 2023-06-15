@@ -297,6 +297,39 @@ export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
  */
 export type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
 
+/**
+ * You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it.
+ * 
+ * ```ts
+ * export const validate = <Body>(req: { body: Body }) => {
+ *    const [body, errors] = check<Infer<Body>>(req.body);
+ * };
+ *
+ * // in fileA.ts
+ * validate({
+ *   body: { a: "hello" }
+ * });
+ *
+ * // in FileB.ts
+ * validate({
+ *   body: { something: true, a: 123 }
+ * });
+ *
+ * // Transpiles to:
+ * const validate = (req) => {
+ *   const body = req.body;
+ *   const errors = [];
+ *   if (typeof body !== "object" && body !== null)
+ *       errors.push("Expected body to be an object");
+ *   if (typeof body.a !== "string" && typeof body.a !== "number")
+ *       errors.push("Expected body to be one of string, number");
+ *   if (typeof body.something !== "boolean")
+ *       errors.push("Expected body.something to be a boolean");
+ * };
+``` 
+ */
+export type Infer<Type> = Type & { __utility?: Infer<Type> };
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
 

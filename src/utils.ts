@@ -61,3 +61,19 @@ export function createListOfStr(strings: Array<string>) : string {
 export function getTypeArg(t: ts.Type, argNum: number) : ts.Type | undefined {
     return t.aliasTypeArguments?.[argNum];
 }
+
+export function getApparentType(checker: ts.TypeChecker, t: ts.Type) : ts.Type {
+    if (t.isStringLiteral()) return checker.getStringType();
+    else if (t.isNumberLiteral()) return checker.getNumberType();
+    else return t;
+}
+
+export function resolveAliasedSymbol(checker: ts.TypeChecker, sym?: ts.Symbol) : ts.Symbol | undefined {
+    if (!sym) return;
+    while ((sym.flags & ts.SymbolFlags.Alias) !== 0) {
+        const newSym = checker.getAliasedSymbol(sym);
+        if (newSym.name === "unknown") return sym;
+        sym = newSym;
+    }
+    return sym;
+}
