@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator, ValidatorTargetName } from "./validator";
-import { getApparentType, getObjectFromType, getStringFromType, getTypeArg, hasBit, isTrueType, parseJsDocTags } from "../../utils";
+import { getCallSigFromType, getObjectFromType, getResolvedTypesFromCallSig, getStringFromType, getTypeArg, hasBit, isTrueType, parseJsDocTags } from "../../utils";
 import { Transformer } from "../../transformer";
 
 export function genValidator(transformer: Transformer, type: ts.Type | undefined, name: ValidatorTargetName, exp?: ts.Expression, parent?: Validator, tags?: readonly ts.JSDocTag[]) : Validator | undefined {
@@ -100,26 +100,18 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
         case "Infer": {
             const typeParam = utility.aliasTypeArguments[0];
             if (!typeParam || !typeParam.isTypeParameter()) return;
-            const sym = typeParam.getSymbol();
-            if (!sym || !sym.declarations?.length) return;
-            const callSig = transformer.checker.getSignatureFromDeclaration((sym.declarations[0] as ts.TypeParameterDeclaration).parent as ts.CallSignatureDeclaration);
+            const callSig = getCallSigFromType(transformer.checker, typeParam);
             if (!callSig || !callSig.instantiations) return;
             const possibleTypes: Validator[] = [];
             callSig.instantiations.forEach((sig) => {
-                if (!sig.mapper) return;
-                let resolvedType: ts.Type|undefined;
-                if (sig.mapper.kind === ts.TypeMapKind.Simple && sig.mapper.source === typeParam) resolvedType = getApparentType(transformer.checker, sig.mapper.target);
-                else if (sig.mapper.kind === ts.TypeMapKind.Array && sig.mapper.targets) {
-                    const resolvedInd = sig.mapper.sources.indexOf(typeParam);
-                    if (resolvedInd !== -1) resolvedType = getApparentType(transformer.checker, sig.mapper.targets[resolvedInd] as ts.Type);
-                }
-                if (!resolvedType) return false;
+                const [resolvedType] = getResolvedTypesFromCallSig(transformer.checker, [typeParam], sig);
+                if (!resolvedType) return;
                 const validator = genValidator(transformer, resolvedType, "", exp, parent);
-                if (!validator) return false;
+                if (!validator) return;
                 const existing = possibleTypes.findIndex(v => v.typeData.kind === validator.typeData.kind);
                 if (existing !== -1) possibleTypes[existing] = (possibleTypes[existing] as Validator).merge(validator);
                 else possibleTypes.push(validator);
-                return false;
+                return;
             });
             if (!possibleTypes.length) return;
             else if (possibleTypes.length === 1) {
@@ -127,6 +119,14 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 return new Validator(t._original, name, t.typeData, exp, parent, t.children);
             }
             else return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, possibleTypes);
+        }
+        case "Resolve": {
+            const typeParam = utility.aliasTypeArguments[0];
+            if (!typeParam || !typeParam.isTypeParameter()) return;
+            return new Validator(type, name, { 
+                kind: TypeDataKinds.Resolve,
+                type: typeParam
+            }, exp, parent);
         }
         default: return;
         }

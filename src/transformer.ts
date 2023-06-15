@@ -1,15 +1,28 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { FnCallFn, Functions, MacroCallContext, MarkerFn, Markers } from "./markers";
-import { getStringFromType, hasBit, resolveAsChain } from "./utils";
-import { UNDEFINED } from "./gen/expressionUtils";
+import { getResolvedTypesFromCallSig, getStringFromType, hasBit, resolveAsChain } from "./utils";
+import { UNDEFINED, _var } from "./gen/expressionUtils";
+import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
+import { ValidationResultType, validateType } from "./gen/nodes";
+
+interface ToBeResolved {
+    validators: Validator[],
+    optional?: boolean,
+    resultType: ValidationResultType,
+    top: Validator
+}
 
 export class Transformer {
     checker: ts.TypeChecker;
     ctx: ts.TransformationContext;
+    toBeResolved: Map<ts.SignatureDeclaration, ToBeResolved>;
+    validatedDecls: Set<ts.Declaration>;
     constructor(program: ts.Program, ctx: ts.TransformationContext) {
         this.checker = program.getTypeChecker();
         this.ctx = ctx;
+        this.toBeResolved = new Map();
+        this.validatedDecls = new Set();
     }
 
     run(node: ts.SourceFile) : ts.SourceFile {
@@ -30,8 +43,9 @@ export class Transformer {
     } 
 
     visitor(node: ts.Node, body: Block.Block<ts.Node>) : ts.VisitResult<ts.Node> {
-        if (ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isArrowFunction(node)) {
+        if ((ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isArrowFunction(node)) && !this.validatedDecls.has(node)) {
             if (!node.body) return node;
+            this.validatedDecls.add(node);
             const fnBody = Block.createBlock<ts.Statement>(body);
             for (const param of node.parameters) this.callMarkerFromParameterDecl(param, fnBody);
             if (ts.isBlock(node.body)) this.visitEach(node.body.statements, fnBody);
@@ -56,25 +70,71 @@ export class Transformer {
             else return;
         } else if (ts.isBlock(node)) {
             return ts.factory.createBlock(this.visitEach(node.statements, Block.createBlock(body)));
-        } else if (ts.isCallExpression(node) && node.arguments[0]) {
-            const callee = node.expression;
-            const typeOfFn = this.checker.getTypeAtLocation(callee).getCallSignatures()[0]?.getTypeParameters();
-            if (typeOfFn && typeOfFn[0] && typeOfFn[1]) {
-                const fnName = typeOfFn[1].getDefault()?.getProperty("__marker");
-                if (fnName && fnName.valueDeclaration) {
-                    const name = this.checker.getTypeOfSymbolAtLocation(fnName, fnName.valueDeclaration);
-                    if (name.isStringLiteral()) {
-                        const block = Block.createBlock();
-                        (Functions[name.value] as FnCallFn)(this, {
-                            call: node,
-                            block,
-                            prevBlock: body,
-                            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                            type: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType()
-                        });
-                        return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
+        } else if (ts.isCallExpression(node)) {
+            const sigOfCall = this.checker.getResolvedSignature(node);
+            // Check for type parameters that need to be resolved
+            if (sigOfCall && sigOfCall.declaration) {
+                const decl = sigOfCall.declaration as ts.SignatureDeclaration;
+                if (!this.validatedDecls.has(decl)) this.visitor(sigOfCall.declaration, body);
+                if (this.toBeResolved.has(decl)) {
+                    const data = this.toBeResolved.get(decl) as ToBeResolved;
+                    const resolved = getResolvedTypesFromCallSig(this.checker, data.validators.map(v => (v.typeData as ResolveTypeData).type), sigOfCall);
+                    if (resolved.length) {
+                        for (let i=0; i < resolved.length; i++) {
+                            const validator = data.validators[i];
+                            if (!validator || !resolved[i]) continue;
+                            const actualValidator = genValidator(this, resolved[i], "");
+                            if (!actualValidator) continue;
+                            validator.setChildren(actualValidator.children);
+                            validator.typeData = actualValidator.typeData;
+                        }
                     }
+                    const defineVars = [];
+                    const variables: ts.Identifier[] = [];
+                    for (let i=0; i < decl.parameters.length; i++) {
+                        const param = decl.parameters[i] as ts.ParameterDeclaration;
+                        if (!ts.isIdentifier(param.name)) continue;
+                        const valueExp = node.arguments[i] || param.initializer || UNDEFINED;
+                        if (ts.isIdentifier(valueExp)) variables.push(valueExp);
+                        else {
+                            const [stmt, identifier] = _var(param.name, node.arguments[i] || param.initializer, ts.NodeFlags.Const);
+                            variables.push(identifier);
+                            defineVars.push(stmt);
+                        }
+                    }
+                    return ts.factory.createImmediatelyInvokedArrowFunction([
+                        ...defineVars,
+                        ...validateType(data.top, {
+                            transformer: this,
+                            resultType: data.resultType,
+                        }, data.optional),
+                        ts.factory.createReturnStatement(
+                            ts.factory.updateCallExpression(node, node.expression, node.typeArguments, variables)
+                        )
+                    ]);
+                }
+            }
+            // Check for built-in functions
+            if (node.arguments[0]) {
+                const callee = node.expression;
+                const typeOfFn = this.checker.getTypeAtLocation(callee).getCallSignatures()[0]?.getTypeParameters();
+                if (typeOfFn && typeOfFn[0] && typeOfFn[1]) {
+                    const fnName = typeOfFn[1].getDefault()?.getProperty("__marker");
+                    if (fnName && fnName.valueDeclaration) {
+                        const name = this.checker.getTypeOfSymbolAtLocation(fnName, fnName.valueDeclaration);
+                        if (name.isStringLiteral()) {
+                            const block = Block.createBlock();
+                            (Functions[name.value] as FnCallFn)(this, {
+                                call: node,
+                                block,
+                                prevBlock: body,
+                                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                                type: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType()
+                            });
+                            return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
+                        }
                     
+                    }
                 }
             } 
         } 
@@ -118,8 +178,8 @@ export class Transformer {
         return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
     }
 
-    typeValueToNode(t: ts.Type, firstOnly?: true) : ts.Expression;
-    typeValueToNode(t: ts.Type, firstOnly?: boolean) : ts.Expression|Array<ts.Expression> {
+    typeValueToNode(t: ts.Type, firstOnly?: true, exprReplacements?: Record<string, ts.Expression>) : ts.Expression;
+    typeValueToNode(t: ts.Type, firstOnly?: boolean, exprReplacements?: Record<string, ts.Expression>) : ts.Expression|Array<ts.Expression> {
         if (t.isStringLiteral()) return ts.factory.createStringLiteral(t.value);
         else if (t.isNumberLiteral()) return ts.factory.createNumericLiteral(t.value);
         else if (hasBit(t, ts.TypeFlags.BigIntLiteral)) {
@@ -142,7 +202,7 @@ export class Transformer {
             const utility = this.getUtilityType(t);
             if (utility && utility.aliasSymbol?.name === "Expr") {
                 const strVal = getStringFromType(t, 0);
-                return strVal ? this.stringToNode(strVal) : UNDEFINED;
+                return strVal ? this.stringToNode(strVal, exprReplacements) : UNDEFINED;
             }
             else return UNDEFINED;
         }

@@ -77,24 +77,22 @@ options: {
 
 ### Markers
 
-Markers are typescript type aliases which are detected by the transformer. These types don't represent actual values, but they tell the transformer what code to generate. Think of them as functions! This transformer has two type of markers:
+Markers are typescript type aliases which are detected by the transformer. These types don't represent actual values, but they tell the transformer what code to generate. Think of them as functions!
 
-- `Assertions` - Tell the transformer that the value associated with this type needs to be checked during runtime. These types can be used in either **function parameters** or in **type assertions**.
-    - `Assert<Type, ErrorType>`
-    - `EarlyReturn<Type, ReturnType>`
-- `Utility` - Types which perform additional checks. These types should be only used inside `Assertion` types.
-    - `Num<{min, max, type}>` - More detailed number requirements.
-    - `Str<{matches, length}>` - More detailed string requirements.
-    - `Arr<{length, minLen, maxLen}>` - More detailed array requirements.
-    - `NoCheck<Type, removeExtra>`- Doesn't generate checks for the provided type.
-    - `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
-    - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
-    - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Num.min/max` and `Str.matches` for example.
-    - `Infer<Type>` - Create a union of all possible types of a type parameter and validate it.
+By far the most important marker is `Assert<T>`, which tells the transpiler to validate the type `T`. There are also `utility` markers which can be used inside an `Assert` marker to customize the validation in some way or to add extra checks. Here's the list of all utility markers:
 
-#### Assert<Type, ErrorType>
+- `Num<{min, max, type}>` - More detailed number requirements.
+- `Str<{matches, length}>` - More detailed string requirements.
+- `Arr<{length, minLen, maxLen}>` - More detailed array requirements.
+- `NoCheck<Type, removeExtra>`- Doesn't generate checks for the provided type.
+- `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
+- `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
+- `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Num.min/max` and `Str.matches` for example.
+- `Infer<Type>` / `Resolve<Type>` - Creating validation for type parameters.
 
-The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, it throws a new error of the provided `ErrorType`, and it includes a detailed message of what exactly is wrong.
+#### Assert<Type, ReturnValue>
+
+The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, the code will either return a value or throw an error, depending on what `ResolveType` is.
 
 **Example:**
 
@@ -112,11 +110,17 @@ function addPlayer(player) {
 }
 ```
 
-You can provide a custom error if you'd like:
+For `ResolveType`, you can provide the following types:
+- Type literals (`123`, `"hello"`, `undefined`, `true`, `false`) - The literal will be returned.
+- `Expr<Type>` - The expression will be returned.
+- `ErrorMsg` - The error message will be returned.
+- `ThrowError<ErrorType>` - An error of type `ErrorType` will be thrown.
+
+By default, `ThrowError<Error>` is passed to `Assert`.
 
 ```ts
 function getType(element: { type: unknown }) : string {
-    return element.type as Assert<string, IncorrectElementType>;
+    return element.type as Assert<string, ErrorMsg>;
 }
 
 // Transpiles to:
@@ -125,25 +129,6 @@ function getType(element) {
     return element.type;
 }
 ```
-
-#### EarlyReturn<Type, ReturnValue>
-
-Same as `Assert`, except instead of throwing an error, it returns `ReturnValue`, or `undefined` if a return value is not provided:
-
-```ts
-function verifyUser({username, id}: EarlyReturn<{username: string, id: If<number, "$self < 100">}>) {
-    // Other code
-}
-
-// Transpiles to:
-function verifyUser({ username, id }) {
-    if (typeof username !== "string") return undefined;
-    if (id > 100) return undefined;
-    // Your code
-}
-```
-
-You can provide the `ErrorMsg` type to make it return the error strings.
 
 #### Num<{min, max, type}>
 
@@ -294,7 +279,7 @@ function test(num) {
 
 #### Infer<Type>
 
-You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it.
+You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it inside the function body.
 
 ```ts
 export const validate = <Body>(req: { body: Body }) => {
@@ -322,6 +307,42 @@ const validate = (req) => {
     if (typeof body.something !== "boolean")
         errors.push("Expected body.something to be a boolean");
 };
+```
+
+#### Resolve<Type>
+
+Pass a type parameter to `Resolve<Type>` to *move* the validation logic to the call site, where the type parameter is resolved to an actual type.
+
+Currently, this marker has some limitations:
+- Can only be used in `Assert` markers (so you can't use it in `check` or `is`).
+- If used in a parameter declaration, the parameter name **has** to be an identifier (no deconstructions).
+- Cannot be used on rest parameters.
+
+```ts
+function validateBody<T>(data: Assert<{ body: Resolve<T> }>) {
+    return data.body;
+}
+
+const validatedBody = validateBody<{
+    name: string,
+    other: boolean
+}>({ body: JSON.parse(process.argv[2]) });
+
+// Transpiles to:
+function validateBody(data) {
+    return data.body;
+}
+const receivedBody = JSON.parse(process.argv[2]);
+const validatedBody = (() => {
+    const data = { body: receivedBody };
+    if (typeof data.body !== "object" && data.body !== null)
+        throw new Error("Expected data.body to be an object");
+    if (typeof data.body.name !== "string")
+        throw new Error("Expected data.body.name to be a string");
+    if (typeof data.body.other !== "boolean")
+        throw new Error("Expected data.body.other to be a boolean");
+    return validateBody(data);
+})();
 ```
 
 ### Supported types and code generation
@@ -429,13 +450,13 @@ if (errors.length) console.log(errors);
 If a value is a destructured object / array, then only the deconstructed properties / elements will get validated.
 
 ```ts
-function test({user: { skills: [skill1, skill2, skill3] }}: EarlyReturn<{
+function test({user: { skills: [skill1, skill2, skill3] }}: Assert<{
     user: {
         username: string,
         password: string,
         skills: [string, string?, string?]
     }
-}>) {
+}, undefined>) {
     // Your code
 }
 

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
 import { Transformer } from "./transformer";
+import { ValidationResultType } from "./gen/nodes";
 
 export function hasBit(thing: { flags: number }, bit: number) : boolean {
     return (thing.flags & bit) !== 0;
@@ -25,6 +26,10 @@ export function parseJsDocTags(transformer: Transformer, tags: readonly ts.JSDoc
 
 export function isErrorMessage(t: ts.Type) : boolean {
     return Boolean(t.getProperty("__error_msg"));
+}
+
+export function isErrorType(t: ts.Type) : ts.Symbol|undefined {
+    return t.getProperty("__throw_err");
 }
 
 export function resolveAsChain(exp: ts.Expression) : ts.Expression {
@@ -68,12 +73,55 @@ export function getApparentType(checker: ts.TypeChecker, t: ts.Type) : ts.Type {
     else return t;
 }
 
-export function resolveAliasedSymbol(checker: ts.TypeChecker, sym?: ts.Symbol) : ts.Symbol | undefined {
-    if (!sym) return;
-    while ((sym.flags & ts.SymbolFlags.Alias) !== 0) {
-        const newSym = checker.getAliasedSymbol(sym);
-        if (newSym.name === "unknown") return sym;
-        sym = newSym;
+export function getCallSigFromType(checker: ts.TypeChecker, type: ts.Type) : ts.Signature|undefined {
+    const sym = type.getSymbol();
+    if (!sym || !sym.declarations?.length) return;
+    return checker.getSignatureFromDeclaration((sym.declarations[0] as ts.TypeParameterDeclaration).parent as ts.CallSignatureDeclaration);
+}
+
+export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: ts.Type[], sig: ts.Signature) : ts.Type[] {
+    if (!sig.mapper) return [];
+    const resolvedTypes = [];
+    if (sig.mapper.kind === ts.TypeMapKind.Simple && sig.mapper.source === typeParam[0]) resolvedTypes.push(getApparentType(checker, sig.mapper.target));
+    else if (sig.mapper.kind === ts.TypeMapKind.Array && sig.mapper.targets) {
+        for (let i=0; i < sig.mapper.sources.length; i++) {
+            const typeParamInd = typeParam.indexOf(sig.mapper.sources[i] as ts.Type);
+            if (typeParamInd !== -1) resolvedTypes[typeParamInd] = getApparentType(checker, sig.mapper.targets[i] as ts.Type);
+        }
     }
-    return sym;
+    return resolvedTypes;
+}
+
+export function resolveResultType(transformer: Transformer, type?: ts.Type) : ValidationResultType {
+    if (!type) return { throw: "Error" };
+    else if (type.getProperty("__error_msg")) return { returnErr: true };
+    else if (type.getProperty("__throw_err")) return { throw: transformer.checker.typeToString(transformer.checker.getTypeOfSymbol(type.getProperty("__throw_err") as ts.Symbol)) };
+    else return { return: transformer.typeValueToNode(type) };
+}
+
+export const enum BindingPatternTypes {
+    Object,
+    Array
+}
+
+export function forEachVar(prop: ts.Expression|ts.BindingName|ts.QualifiedName, 
+    cb: (i: ts.Expression, bindingPatternType?: BindingPatternTypes) => Array<ts.Statement>,
+    parentType?: BindingPatternTypes) : Array<ts.Statement> {
+    if (ts.isIdentifier(prop)) return cb(prop, parentType);
+    else if (ts.isQualifiedName(prop)) return cb(prop.right, parentType);
+    else if (ts.isObjectBindingPattern(prop)) {
+        const result = [];
+        for (const el of prop.elements) {
+            result.push(...forEachVar(el.name, cb, BindingPatternTypes.Object));
+        }
+        return result;
+    } else if (ts.isArrayBindingPattern(prop)) {
+        const result = [];
+        for (const el of prop.elements) {
+            if (ts.isOmittedExpression(el)) continue;
+            result.push(...forEachVar(el.name, cb, BindingPatternTypes.Array));
+        }
+        return result;
+    }
+    else return cb(prop);
 }

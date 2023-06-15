@@ -3,9 +3,9 @@ import ts from "typescript";
 import TsChecks from "../../dist/index";
 
 export const Markers = `
-type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType> };
-type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
+type Assert<T, ReturnValue = ThrowError<Error>> = T & { __marker?: Assert<T, ReturnValue> };
 type ErrorMsg = { __error_msg: true };
+type ThrowError<ErrorType = Error> = { __throw_err: ErrorType };
 type Num<Settings extends {
     min?: number|Expr<"">,
     max?: number|Expr<"">,
@@ -26,6 +26,8 @@ type Arr<T, Settings extends {
 type ExactProps<Obj extends object, removeExcessive extends boolean = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive> };
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
+type Infer<Type> = Type & { __utility?: Infer<Type> };
+type Resolve<Type, ReturnValue = ThrowError<Error>> = Type & { __utility?: Resolve<Type, ReturnValue> };
 declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
 

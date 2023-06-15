@@ -15,7 +15,13 @@ export const enum TypeDataKinds {
     Class,
     Function,
     If,
-    Union
+    Union,
+    Resolve
+}
+
+export interface ResolveTypeData {
+    kind: TypeDataKinds.Resolve,
+    type: ts.Type
 }
 
 export interface BooleanTypeData {
@@ -103,28 +109,25 @@ export interface IfTypeData {
     expression: string
 }
 
-export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | IfTypeData | UndefinedTypeData;
+export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | IfTypeData | UndefinedTypeData | ResolveTypeData;
 
 export type ValidatorTargetName = string | number | ts.Identifier;
 
 export class Validator {
     _original: ts.Type;
     private _exp?: ts.Expression;
-    private customExp?: ts.Expression;
+    customExp?: ts.Expression;
     name: ValidatorTargetName;
     parent?: Validator;
     typeData: TypeData;
-    children: Validator[];
+    children!: Validator[];
     constructor(original: ts.Type, targetName: ValidatorTargetName, data: TypeData, exp?: ts.Expression, parent?: Validator, children?: Validator[]) {
         this._original = original;
         this.name = targetName;
         this.typeData = data;
         this.customExp = exp;
-        this.children = children || [];
         if (parent) this.setParent(parent);
-        for (const child of this.children) {
-            child.setParent(this);
-        }
+        this.setChildren(children || []);
     }
 
     nameAsExpression() : ts.Expression {
@@ -156,9 +159,25 @@ export class Validator {
         delete this._exp;
     }
 
+    setChildren(children: Validator[]) {
+        for (const child of children) {
+            child.setParent(this);
+        }
+        this.children = children;
+    }
+
     setName(name: ValidatorTargetName) {
         this.name = name;
         delete this._exp;
+    }
+
+    getChildrenOfKind(kind: TypeDataKinds) : Validator[] {
+        const result = [];
+        if (this.typeData.kind === kind) result.push(this);
+        for (const child of this.children) {
+            result.push(...child.getChildrenOfKind(kind));
+        }
+        return result;
     }
 
     exactProps() : ObjectTypeDataExactOptions|undefined {
