@@ -92,7 +92,7 @@ By far the most important marker is `Assert<T>`, which tells the transpiler to v
 
 #### Assert<Type, ReturnValue>
 
-The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, the code will either return a value or throw an error, depending on what `ResolveType` is.
+The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, the code will either return a value or throw an error, depending on what `ReturnValue` is.
 
 **Example:**
 
@@ -110,7 +110,7 @@ function addPlayer(player) {
 }
 ```
 
-For `ResolveType`, you can provide the following types:
+For `ReturnValue`, you can provide the following types:
 - Type literals (`123`, `"hello"`, `undefined`, `true`, `false`) - The literal will be returned.
 - `Expr<Type>` - The expression will be returned.
 - `ErrorMsg` - The error message will be returned.
@@ -125,7 +125,7 @@ function getType(element: { type: unknown }) : string {
 
 // Transpiles to:
 function getType(element) {
-    if (typeof element.type !== "string") throw new IncorrectElementType("Expected element.type to be string.");
+    if (typeof element.type !== "string") return "Expected element.type to be a string";
     return element.type;
 }
 ```
@@ -343,6 +343,38 @@ const validatedBody = (() => {
         throw new Error("Expected data.body.other to be a boolean");
     return validateBody(data);
 })();
+```
+
+#### `Str`, `Num` and `Arr` alternatives
+
+Instead of using the markers mentioned above, you can use JS Doc comments to specify the extra requirements of a certain type. The requirements have the same names:
+
+```ts
+interface Test {
+    /**
+     * @minLen 1
+     * @maxLen 10
+    */
+    name: string,
+    /**
+     * @min 17
+     * @max 100
+     * @type int 
+    */
+    age: number
+}
+
+const variable = {} as Assert<Test>;
+
+// Transpiles to:
+const value_1 = {};
+if (typeof value_1 !== "object" && value_1 !== null)
+    throw new Error("Expected value to be an object");
+if (typeof value_1.name !== "string" || value_1.name.length < 1 || value_1.name.length > 10)
+    throw new Error("Expected value.name to be a string, to have a length greater than 1, to have a length less than 10");
+if (typeof value_1.age !== "number" || value_1.age < 17 || value_1.age > 100)
+    throw new Error("Expected value.age to be a number, to be greater than 17, to be less than 100");
+const variable = value_1;
 ```
 
 ### Supported types and code generation
