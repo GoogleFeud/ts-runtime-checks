@@ -4,11 +4,11 @@
   "description": "A typescript transformer which automatically generates validation code from your types.",
   "main": "dist/index.js",
   "scripts": {
-    "test": "tsc && cd ./tests && ttsc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index",
-    "ci": "cd ./tests && ttsc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index force",
+    "test": "tsc && cd ./tests && tspc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index",
+    "ci": "cd ./tests && tspc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index force",
     "build": "tsc",
     "lint": "npx eslint",
-    "mtest": "tsc && cd ./manualTests && ttsc",
+    "mtest": "tsc && cd ./manualTests && tspc",
     "playground": "tsc && cd ./playground && npm run dev"
   },
   "repository": {
@@ -28,16 +28,17 @@
   },
   "homepage": "https://github.com/GoogleFeud/ts-runtime-checks#readme",
   "devDependencies": {
-    "@types/chai": "^4.3.0",
-    "@types/diff": "^5.0.2",
-    "@types/mocha": "^9.1.0",
-    "@typescript-eslint/eslint-plugin": "^5.16.0",
-    "@typescript-eslint/parser": "^5.16.0",
-    "chai": "^4.3.6",
-    "diff": "^5.0.0",
-    "eslint": "^8.11.0",
-    "mocha": "^9.2.2",
-    "ttypescript": "^1.5.13",
-    "typescript": "^4.6.2"
+    "@types/chai": "^4.3.5",
+    "@types/diff": "^5.0.3",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.3.1",
+    "@typescript-eslint/eslint-plugin": "^5.59.11",
+    "@typescript-eslint/parser": "^5.59.11",
+    "chai": "^4.3.7",
+    "diff": "^5.1.0",
+    "eslint": "^8.42.0",
+    "mocha": "^10.2.0",
+    "ts-patch": "^3.0.0",
+    "typescript": "^5.1.3"
   }
 }

@@ -29,7 +29,7 @@ export class Transformer {
         return block.nodes;
     } 
 
-    visitor(node: ts.Node, body: Block.Block<ts.Node>) : ts.VisitResult<ts.Node> {
+    visitor(node: ts.Node, body: Block.Block<ts.Node>) : ts.VisitResult<ts.Node> | undefined {
         if (ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isArrowFunction(node)) {
             if (!node.body) return node;
             const fnBody = Block.createBlock<ts.Statement>(body);
@@ -37,9 +37,10 @@ export class Transformer {
             if (ts.isBlock(node.body)) this.visitEach(node.body.statements, fnBody);
             else {
                 const exp = ts.visitNode(node.body, (node) => this.visitor(node, fnBody));
-                fnBody.nodes.push(ts.factory.createReturnStatement(exp));
+                if (exp !== undefined && ts.isExpression(exp)) fnBody.nodes.push(ts.factory.createReturnStatement(exp));
+                else fnBody.nodes.push(ts.factory.createReturnStatement(undefined));
             }
-            if (ts.isFunctionDeclaration(node)) return ts.factory.createFunctionDeclaration(node.decorators, node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
+            if (ts.isFunctionDeclaration(node)) return ts.factory.createFunctionDeclaration(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
             else if (ts.isArrowFunction(node)) return ts.factory.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, ts.factory.createBlock(fnBody.nodes, true));
             else return ts.factory.createFunctionExpression(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
         }
@@ -70,7 +71,6 @@ export class Transformer {
                             block,
                             prevBlock: body,
                             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                            //@ts-expect-error Internal API
                             type: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType()
                         });
                         return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
@@ -120,7 +120,7 @@ export class Transformer {
     }
 
     typeValueToNode(t: ts.Type, firstOnly?: true) : ts.Expression;
-    typeValueToNode(t: ts.Type, firstOnly?: boolean) : ts.Expression|Array<ts.Expression> {
+    typeValueToNode(t: ts.Type, firstOnly?: boolean) : ts.Node|Array<ts.Expression> {
         if (t.isStringLiteral()) return ts.factory.createStringLiteral(t.value);
         else if (t.isNumberLiteral()) return ts.factory.createNumericLiteral(t.value);
         else if (hasBit(t, ts.TypeFlags.BigIntLiteral)) {
@@ -149,7 +149,7 @@ export class Transformer {
         }
     }
 
-    stringToNode(str: string, replacements?: Record<string, ts.Expression>) : ts.Expression {
+    stringToNode(str: string, replacements?: Record<string, ts.Expression>) : ts.Node {
         const result = ts.createSourceFile("expr", str, ts.ScriptTarget.ESNext, false, ts.ScriptKind.JS);
         const firstStmt = result.statements[0];
         if (!firstStmt || !ts.isExpressionStatement(firstStmt)) return UNDEFINED;
