@@ -9,10 +9,10 @@ describe("Unions", () => {
                 if (!(a instanceof Array))
                     throw new Error("Expected a to be one of string, number, [string | number, string]");
                 else {
-                    if (typeof a[0] !== "string" && typeof a[0] !== "number")
-                        throw new Error("Expected a[0] to be one of string, number");
                     if (typeof a[1] !== "string")
                         throw new Error("Expected a[1] to be a string");
+                    if (typeof a[0] !== "string" && typeof a[0] !== "number")
+                        throw new Error("Expected a[0] to be one of string, number");
                 }
             return a;
         }

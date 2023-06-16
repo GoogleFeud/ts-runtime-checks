@@ -163,6 +163,7 @@ export class Validator {
         for (const child of children) {
             child.setParent(this);
         }
+        children.sort((a, b) => a.weigh() - b.weigh());
         this.children = children;
     }
 
@@ -188,6 +189,53 @@ export class Validator {
             else parent = parent.parent;
         }
         return;
+    }
+
+    weigh() : number {
+        let sum = 0;
+        switch (this.typeData.kind) {
+        case TypeDataKinds.Number: {
+            if (this.typeData.literal) return 1;
+            sum++;
+            if (this.typeData.type) sum += 2;
+            if (this.typeData.max) sum++;
+            if (this.typeData.min) sum++;
+            break;
+        }
+        case TypeDataKinds.String: {
+            if (this.typeData.literal) return 1;
+            sum++;
+            if (this.typeData.maxLen) sum++;
+            if (this.typeData.minLen) sum++;
+            if (this.typeData.length) sum++;
+            if (this.typeData.matches) sum += 3;
+            break;
+        }
+        case TypeDataKinds.Array: {
+            sum += 2;
+            if (this.typeData.minLen) sum++;
+            if (this.typeData.maxLen) sum++;
+            if (this.typeData.length) sum++;
+            break;
+        }
+        case TypeDataKinds.Union:
+        case TypeDataKinds.Resolve:
+            break;
+        case TypeDataKinds.Boolean:
+        case TypeDataKinds.Null:
+        case TypeDataKinds.Undefined:
+        case TypeDataKinds.Symbol:
+        case TypeDataKinds.BigInt:
+        case TypeDataKinds.Function:
+        case TypeDataKinds.If:
+            sum++;
+            break;
+        case TypeDataKinds.Class:
+        case TypeDataKinds.Tuple:
+        case TypeDataKinds.Object:
+            sum += 2;
+        }
+        return this.children.reduce((prev, current) => prev + current.weigh(), sum);
     }
 
     merge(other: Validator) : Validator {
