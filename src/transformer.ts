@@ -16,7 +16,7 @@ interface ToBeResolved {
 export class Transformer {
     checker: ts.TypeChecker;
     ctx: ts.TransformationContext;
-    toBeResolved: Map<ts.SignatureDeclaration, ToBeResolved>;
+    toBeResolved: Map<ts.SignatureDeclaration, ToBeResolved[]>;
     validatedDecls: Set<ts.Declaration>;
     constructor(program: ts.Program, ctx: ts.TransformationContext) {
         this.checker = program.getTypeChecker();
@@ -77,20 +77,7 @@ export class Transformer {
                 const decl = sigOfCall.declaration as ts.SignatureDeclaration;
                 if (!this.validatedDecls.has(decl)) this.visitor(sigOfCall.declaration, body);
                 if (this.toBeResolved.has(decl)) {
-                    const data = this.toBeResolved.get(decl) as ToBeResolved;
-                    const resolved = getResolvedTypesFromCallSig(this.checker, data.validators.map(v => (v.typeData as ResolveTypeData).type), sigOfCall);
-                    if (resolved.length) {
-                        for (let i=0; i < resolved.length; i++) {
-                            const validator = data.validators[i];
-                            if (!validator || !resolved[i]) continue;
-                            const actualValidator = genValidator(this, resolved[i], "");
-                            if (!actualValidator) continue;
-                            validator.setChildren(actualValidator.children);
-                            validator.typeData = actualValidator.typeData;
-                        }
-                    }
-                    const defineVars = [];
-                    const variables: ts.Identifier[] = [];
+                    const statements: ts.Statement[] = [], variables: ts.Identifier[] = [], defineVars = [];
                     for (let i=0; i < decl.parameters.length; i++) {
                         const param = decl.parameters[i] as ts.ParameterDeclaration;
                         if (!ts.isIdentifier(param.name)) continue;
@@ -102,12 +89,28 @@ export class Transformer {
                             defineVars.push(stmt);
                         }
                     }
+                    for (const data of this.toBeResolved.get(decl) as ToBeResolved[]) {
+                        const resolved = getResolvedTypesFromCallSig(this.checker, data.validators.map(v => (v.typeData as ResolveTypeData).type), sigOfCall);
+                        if (resolved.length) {
+                            for (let i=0; i < resolved.length; i++) {
+                                const validator = data.validators[i];
+                                if (!validator || !resolved[i]) continue;
+                                const actualValidator = genValidator(this, resolved[i], "");
+                                if (!actualValidator) continue;
+                                validator.setChildren(actualValidator.children);
+                                validator.typeData = actualValidator.typeData;
+                            }
+                        }
+                        statements.push(
+                            ...validateType(data.top, {
+                                transformer: this,
+                                resultType: data.resultType,
+                            }, data.optional)
+                        );
+                    }
                     return ts.factory.createImmediatelyInvokedArrowFunction([
                         ...defineVars,
-                        ...validateType(data.top, {
-                            transformer: this,
-                            resultType: data.resultType,
-                        }, data.optional),
+                        ...statements,
                         ts.factory.createReturnStatement(
                             ts.factory.updateCallExpression(node, node.expression, node.typeArguments, variables)
                         )

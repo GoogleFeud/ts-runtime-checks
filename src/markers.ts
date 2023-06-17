@@ -125,12 +125,19 @@ function createValidator(transformer: Transformer, type: ts.Type, name: Validato
     if (resolveTypes.length) {
         const callSig = getCallSigFromType(transformer.checker, ((resolveTypes[0] as Validator).typeData as ResolveTypeData).type);
         if (callSig) {
-            transformer.toBeResolved.set(callSig.declaration as ts.CallSignatureDeclaration, {
+            const toBeResolved = transformer.toBeResolved.get(callSig.declaration as ts.CallSignatureDeclaration);
+            if (toBeResolved) toBeResolved.push({
                 validators: resolveTypes,
                 optional,
                 top: validator,
                 resultType
             });
+            else transformer.toBeResolved.set(callSig.declaration as ts.CallSignatureDeclaration, [{
+                validators: resolveTypes,
+                optional,
+                top: validator,
+                resultType
+            }]);
             return;
         }
     }
