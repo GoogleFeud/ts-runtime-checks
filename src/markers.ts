@@ -3,9 +3,9 @@ import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
 import { forEachVar, getCallSigFromType, resolveResultType } from "./utils";
-import { ValidationResultType, validateType } from "./gen/nodes";
+import { ValidationResultType, genNode, validateType } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
-import { _access, _call, _var } from "./gen/expressionUtils";
+import { _access, _call, _not, _var } from "./gen/expressionUtils";
 
 export const enum MacroCallContext {
     As,
@@ -28,7 +28,7 @@ export interface FnCallData {
 }
 
 export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Expression|undefined;
-export type FnCallFn = (transformer: Transformer, data: FnCallData) => void;
+export type FnCallFn = (transformer: Transformer, data: FnCallData) => ts.Expression|void;
 
 export const Markers: Record<string, MarkerFn> = {
     Assert: (trans, {ctx, exp, block, parameters, optional}) => {
@@ -63,18 +63,21 @@ export const Markers: Record<string, MarkerFn> = {
 
 export const Functions: Record<string, FnCallFn> = {
     is: (transformer, data) => {
-        let arg = data.call.arguments[0]!;
-        if (!ts.isIdentifier(arg)) {
-            const [stmt, newArg] = _var("value", arg, ts.NodeFlags.Const);
-            arg = newArg;
-            data.block.nodes.push(stmt);
-        }
+        let arg = data.call.arguments[0]!, stmt;
+        if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
         const validator = genValidator(transformer, data.type, ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
         if (!validator) return;
-        data.block.nodes.push(...validateType(validator, {
-            resultType: { return: ts.factory.createFalse() },
-            transformer
-        }), ts.factory.createReturnStatement(ts.factory.createTrue()));
+        const nodes = genNode(validator, { transformer, resultType: { none: true }});
+        if (!nodes.extra && !nodes.ifFalse && !nodes.ifTrue) {
+            if (stmt) (data.block.parent || data.block).nodes.push(stmt);
+            return _not(nodes.condition);
+        } else {
+            data.block.nodes.push(stmt, ...validateType(validator, {
+                resultType: { return: ts.factory.createFalse() },
+                transformer
+            }), ts.factory.createReturnStatement(ts.factory.createTrue()));
+            return;
+        }
     },
     check: (transformer, data) => {
         let dataVariable: ts.Identifier;

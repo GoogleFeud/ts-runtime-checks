@@ -112,6 +112,7 @@ export function _instanceof(exp: ts.Expression, inst: string | ts.Identifier) : 
 }
 
 export function _not(exp: ts.Expression) : ts.Expression {
+    if (ts.isParenthesizedExpression(exp)) return ts.factory.createParenthesizedExpression(_not(exp.expression));
     if (ts.isBinaryExpression(exp)) {
         switch(exp.operatorToken.kind) {
         case ts.SyntaxKind.EqualsEqualsToken:
@@ -130,6 +131,10 @@ export function _not(exp: ts.Expression) : ts.Expression {
             return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanToken, exp.right);
         case ts.SyntaxKind.LessThanEqualsToken:
             return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanEqualsToken, exp.right);
+        case ts.SyntaxKind.AmpersandAmpersandToken:
+            return factory.createBinaryExpression(_not(exp.left), ts.SyntaxKind.BarBarToken, _not(exp.right));
+        case ts.SyntaxKind.BarBarToken:
+            return factory.createBinaryExpression(_not(exp.left), ts.SyntaxKind.AmpersandAmpersandToken, _not(exp.right));
         }
     }
     else if (ts.isPrefixUnaryExpression(exp) && exp.operator === ts.SyntaxKind.ExclamationToken) return exp.operand;

@@ -3,36 +3,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const chai_1 = require("chai");
 describe("Is function", () => {
     it("Return false when the value does not match the type", () => {
+        const value_1 = 123;
+        (0, chai_1.expect)(typeof value_1 === "string").to.be.equal(false);
         (0, chai_1.expect)((() => {
-            const value_1 = 123;
-            if (typeof value_1 !== "string")
+            const value_3 = { a: "Hello", b: 3.14 };
+            if (typeof value_3 !== "object" && value_3 !== null)
+                return false;
+            if (typeof value_3.a !== "number")
+                return false;
+            if (typeof value_3.b !== "string")
                 return false;
             return true;
         })()).to.be.equal(false);
-        (0, chai_1.expect)((() => {
-            const value_2 = { a: "Hello", b: 3.14 };
-            if (typeof value_2 !== "object" && value_2 !== null)
-                return false;
-            if (typeof value_2.a !== "number")
-                return false;
-            if (typeof value_2.b !== "string")
-                return false;
-            return true;
-        })()).to.be.equal(false);
-        (0, chai_1.expect)((() => {
-            const value_3 = -1;
-            if (typeof value_3 !== "string" && (typeof value_3 !== "number" || value_3 < 1 || value_3 > 100))
-                return false;
-            return true;
-        })()).to.be.equal(false);
+        const value_2 = -1;
+        (0, chai_1.expect)(typeof value_2 === "string" || (typeof value_2 === "number" && value_2 > 1 && value_2 < 100)).to.be.equal(false);
     });
     it("Return true when the value matches the type", () => {
-        (0, chai_1.expect)((() => {
-            const value_4 = true;
-            if (typeof value_4 !== "boolean")
-                return false;
-            return true;
-        })()).to.be.equal(true);
+        const value_4 = true;
+        (0, chai_1.expect)(typeof value_4 === "boolean").to.be.equal(true);
         (0, chai_1.expect)((() => {
             const value_5 = ["a", 123];
             if (!(value_5 instanceof Array))

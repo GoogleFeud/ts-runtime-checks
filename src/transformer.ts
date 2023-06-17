@@ -126,14 +126,15 @@ export class Transformer {
                     if (fnName && fnName.valueDeclaration) {
                         const name = this.checker.getTypeOfSymbolAtLocation(fnName, fnName.valueDeclaration);
                         if (name.isStringLiteral()) {
-                            const block = Block.createBlock();
-                            (Functions[name.value] as FnCallFn)(this, {
+                            const block = Block.createBlock(body);
+                            const exp = (Functions[name.value] as FnCallFn)(this, {
                                 call: node,
                                 block,
                                 prevBlock: body,
                                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                                 type: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType()
                             });
+                            if (exp) return exp;
                             return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
                         }
                     

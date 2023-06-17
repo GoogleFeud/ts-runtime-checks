@@ -7,7 +7,8 @@ export interface ValidationResultType {
     throw?: string,
     return?: ts.Expression,
     returnErr?: boolean,
-    custom?: (msg: ts.Expression) => ts.Statement
+    custom?: (msg: ts.Expression) => ts.Statement,
+    none?: boolean
 }
 
 export interface NodeGenContext {
@@ -33,6 +34,7 @@ export function emptyGenResult() : GenResult {
 }
 
 export function error(ctx: NodeGenContext, error: GenResultError, isFull = false) : ts.Statement {
+    if (ctx.resultType.none) return ts.factory.createReturnStatement();
     const finalMsg = _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0], " ", ...error[1]]), ts.SyntaxKind.PlusToken);
     if (ctx.resultType.return) return ts.factory.createReturnStatement(ctx.resultType.return);
     else if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
