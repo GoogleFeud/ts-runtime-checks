@@ -9,7 +9,8 @@
     "build": "tsc",
     "lint": "npx eslint",
     "mtest": "tsc && cd ./manualTests && ttsc",
-    "playground": "tsc && cd ./playground && npm run dev"
+    "playground": "tsc && cd ./playground && npm run dev",
+    "mitata": "cd ./perf && ttsc && node ./dist/index.mjs"
   },
   "repository": {
     "type": "git",
@@ -38,6 +39,7 @@
     "chai": "^4.3.6",
     "diff": "^5.0.0",
     "eslint": "^8.11.0",
+    "mitata": "^0.1.6",
     "mocha": "^9.2.2",
     "ttypescript": "^1.5.15",
     "typescript": "^4.9.5"

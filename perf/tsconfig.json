@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+      "target": "ES2021",
+      "module": "ESNext",
+      "moduleResolution": "nodenext",
+      "rootDir": "./src",
+      "removeComments": true,
+      "outDir": "./dist",
+      "esModuleInterop": true,
+      "strictNullChecks": true, 
+      "plugins": [
+        { "transform": "../dist/index.js" }
+    ]
+    }
+}

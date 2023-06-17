@@ -104,3 +104,4 @@ dist
 .tern-port
 
 manualTests/
+perf/dist/
