@@ -99,6 +99,10 @@ export function _num(number: number) : ts.Expression {
     return factory.createNumericLiteral(number);
 }
 
+export function _bool(bool: boolean) : ts.Expression {
+    return bool ? factory.createTrue() : factory.createFalse();
+}
+
 export function _new(className: string, parameters: string | ts.Expression[]) : ts.Expression {
     return factory.createNewExpression(
         factory.createIdentifier(className),

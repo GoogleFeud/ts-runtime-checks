@@ -25,7 +25,8 @@ export interface ResolveTypeData {
 }
 
 export interface BooleanTypeData {
-    kind: TypeDataKinds.Boolean
+    kind: TypeDataKinds.Boolean,
+    literal?: boolean
 }
 
 export interface SymbolTypeData {
