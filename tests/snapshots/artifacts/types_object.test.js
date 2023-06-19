@@ -11,7 +11,7 @@ describe("Object", () => {
                 throw new Error("Expected a.a to be a string");
             if ("b" in a && typeof a.b !== "number")
                 throw new Error("Expected a.b to be a number");
-            if (!(a.c instanceof Array))
+            if (!Array.isArray(a.c))
                 throw new Error("Expected a.c to be an array");
             for (let i_1 = 0; i_1 < a.c.length; i_1++) {
                 if (typeof a.c[i_1] !== "string")

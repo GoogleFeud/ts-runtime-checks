@@ -5,7 +5,7 @@ const chai_1 = require("chai");
 describe("Type assertions (as)", () => {
     describe("Assert", () => {
         function test(a, b) {
-            if (!(a instanceof Array))
+            if (!Array.isArray(a))
                 throw new Error("Expected a to be an array");
             for (let i_1 = 0; i_1 < a.length; i_1++) {
                 if (typeof a[i_1] !== "number")
@@ -18,7 +18,7 @@ describe("Type assertions (as)", () => {
             if (typeof b.b !== "string")
                 throw new Error("Expected b.b to be a string");
             if ("c" in b)
-                if (!(b.c instanceof Array))
+                if (!Array.isArray(b.c))
                     throw new Error("Expected b.c to be one of string[]");
                 else {
                     for (let i_2 = 0; i_2 < b.c.length; i_2++) {
@@ -37,7 +37,7 @@ describe("Type assertions (as)", () => {
             return [a, b];
         }
         function test1(a, b) {
-            if (!(a instanceof Array))
+            if (!Array.isArray(a))
                 throw new Error("Expected a to be an array");
             for (let i_3 = 0; i_3 < a.length; i_3++) {
                 if (typeof a[i_3] !== "number")
@@ -50,7 +50,7 @@ describe("Type assertions (as)", () => {
             if (typeof b.b !== "string")
                 throw new Error("Expected b.b to be a string");
             if ("c" in b)
-                if (!(b.c instanceof Array))
+                if (!Array.isArray(b.c))
                     throw new Error("Expected b.c to be one of string[]");
                 else {
                     for (let i_4 = 0; i_4 < b.c.length; i_4++) {

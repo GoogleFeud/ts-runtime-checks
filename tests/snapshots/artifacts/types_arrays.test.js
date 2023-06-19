@@ -5,7 +5,7 @@ const chai_1 = require("chai");
 describe("Array", () => {
     describe("Assert", () => {
         function test(a) {
-            if (!(a instanceof Array))
+            if (!Array.isArray(a))
                 throw new Error("Expected a to be an array");
             for (let i_1 = 0; i_1 < a.length; i_1++) {
                 if (typeof a[i_1] !== "number")

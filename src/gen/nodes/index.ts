@@ -192,7 +192,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.Array: {
-        const checks = [_not(_instanceof(validator.expression(), "Array"))], errorMessages: Stringifyable[] = ["to be an array"];
+        const checks = [_not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()]))], errorMessages: Stringifyable[] = ["to be an array"];
 
         if (validator.typeData.length) {
             checks.push(_bin(_access(validator.expression(), "length"), validator.typeData.length, ts.SyntaxKind.ExclamationEqualsEqualsToken));

@@ -20,7 +20,7 @@ describe("If", () => {
                 throw new Error("Expected b to be a number");
             if (b !== 5)
                 throw new Error("Expected b to satisfy \"$self === 5\"");
-            if (!(c instanceof Array))
+            if (!Array.isArray(c))
                 throw new Error("Expected c to be an array");
             if (c.length < 10)
                 throw new Error("Expected c to satisfy \"$self.length > 10\"");

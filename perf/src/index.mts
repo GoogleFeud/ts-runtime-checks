@@ -58,6 +58,22 @@ group("Object deletion", () => {
 
 });
 
+group("Checking if an object is an array", () => {
+    
+    bench("constructor", () => {
+        return arr.constructor === Array;
+    });
+
+    bench("instanceof Array", () => {
+        return arr instanceof Array;
+    });
+
+    bench("Array.isArray", () => {
+        return Array.isArray(arr);
+    });
+
+});
+
 (async () => {
     run();
 })();

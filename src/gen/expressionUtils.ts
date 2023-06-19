@@ -58,8 +58,8 @@ export function _var(name: ts.Identifier | string, initializer?: ts.Expression, 
     ], flag)), ident];
 }
 
-export function _ident(name: string) : ts.Identifier {
-    return factory.createUniqueName(name);
+export function _ident(name: string, nonUnique?: boolean) : ts.Identifier {
+    return nonUnique ? factory.createIdentifier(name) : factory.createUniqueName(name);
 }
 
 export function _bin(left: ts.Expression, right: ts.Expression, op: ts.BinaryOperator) : ts.Expression {

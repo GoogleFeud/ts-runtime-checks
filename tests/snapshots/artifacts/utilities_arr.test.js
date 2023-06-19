@@ -5,7 +5,7 @@ const chai_1 = require("chai");
 describe("Arr", () => {
     describe("Arr<{length}>", () => {
         function test(a) {
-            if (!(a instanceof Array) || a.length !== 6)
+            if (!Array.isArray(a) || a.length !== 6)
                 throw new Error("Expected a to be an array, to have a length of 6");
             for (let i_1 = 0; i_1 < a.length; i_1++) {
                 if (typeof a[i_1] !== "string" || a[i_1].length !== 4)
@@ -25,7 +25,7 @@ describe("Arr", () => {
     });
     describe("Arr<{minLen}>", () => {
         function test(a) {
-            if (!(a instanceof Array) || a.length < 3)
+            if (!Array.isArray(a) || a.length < 3)
                 throw new Error("Expected a to be an array, to have a length greater than 3");
             for (let i_2 = 0; i_2 < a.length; i_2++) {
                 if (typeof a[i_2] !== "number")
@@ -42,7 +42,7 @@ describe("Arr", () => {
     });
     describe("Arr<{maxLen}>", () => {
         function test(a) {
-            if (!(a instanceof Array) || a.length > 6)
+            if (!Array.isArray(a) || a.length > 6)
                 throw new Error("Expected a to be an array, to have a length less than 6");
             for (let i_3 = 0; i_3 < a.length; i_3++) {
                 if (typeof a[i_3] !== "number")
