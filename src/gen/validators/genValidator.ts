@@ -95,7 +95,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             const remove = isTrueType(getTypeArg(utility, 1));
             return new Validator(type, name, {
                 kind: TypeDataKinds.Object,
-                exact: remove ? ObjectTypeDataExactOptions.RemoveExtra : ObjectTypeDataExactOptions.RaiseError
+                exact: remove ? ObjectTypeDataExactOptions.RemoveExtra : ObjectTypeDataExactOptions.RaiseError,
+                useDeleteOperator: isTrueType(getTypeArg(utility, 2))
             }, exp, parent, obj.children);
         }
         case "Infer": {

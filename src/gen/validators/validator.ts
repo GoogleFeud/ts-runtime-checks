@@ -100,7 +100,8 @@ export const enum ObjectTypeDataExactOptions {
 
 export interface ObjectTypeData {
     kind: TypeDataKinds.Object,
-    exact?: ObjectTypeDataExactOptions
+    exact?: ObjectTypeDataExactOptions,
+    useDeleteOperator?: boolean
 }
 
 export interface IfTypeData {

@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _del } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -230,7 +230,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             checks.push(_for_in(validator.expression(), name, [
                 _if(
                     _and(validator.children.filter(c => typeof c.name === "string").map(c => _bin(name, _str(c.name as string), ts.SyntaxKind.ExclamationEqualsEqualsToken))),
-                    exactProps === ObjectTypeDataExactOptions.RaiseError ? error(ctx, [validator.path(), joinElements(["Property ", ...validator.path(), ".", name, " is excessive"])], true) : _del(_access(validator.expression(), name)) 
+                    exactProps === ObjectTypeDataExactOptions.RaiseError ? error(ctx, [validator.path(), joinElements(["Property ", ...validator.path(), ".", name, " is excessive"])], true) : validator.typeData.useDeleteOperator ? ts.factory.createDeleteExpression(_access(validator.expression(), name)) : _bin(_access(validator.expression(), name), UNDEFINED, ts.SyntaxKind.EqualsToken)
                 )
             ])[0]);
         }

@@ -83,7 +83,7 @@ describe("Exact Props", () => {
                     throw new Error("Expected a.c to be a string");
                 for (let p_5 in a) {
                     if (p_5 !== "a" && p_5 !== "b" && p_5 !== "c")
-                        delete a[p_5];
+                        a[p_5] = undefined;
                 }
                 (0, chai_1.expect)(a.d).to.be(undefined);
                 return a;

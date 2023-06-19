@@ -219,7 +219,7 @@ export type NoCheck<T> = T & { __utility?: NoCheck<T> };
  * }
  * ```
  */
-export type ExactProps<Obj extends object, removeExcessive extends boolean = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive> };
+export type ExactProps<Obj extends object, removeExcessive = false, useDeleteOperator = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive, useDeleteOperator> };
 
 export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 

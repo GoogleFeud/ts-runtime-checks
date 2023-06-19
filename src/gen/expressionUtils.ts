@@ -166,8 +166,4 @@ export function _for_in(arr: ts.Expression, elName: ts.Identifier | string, body
     return [factory.createForInStatement(initializerCreate.declarationList, arr, _stmt(body)), initializer];
 }
 
-export function _del(arg: ts.Expression) : ts.Expression {
-    return factory.createDeleteExpression(arg);
-}
-
 export const UNDEFINED = factory.createIdentifier("undefined");

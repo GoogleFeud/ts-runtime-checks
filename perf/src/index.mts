@@ -40,14 +40,20 @@ group("Tuple checks", () => {
 
 });
 
-const obj = { a: 123, b: "abc", c: false, d: 456 };
-group("Object properties checks", () => {
+const obj: Array<{a?: number, b: string, c: boolean}> = Array.from({length: 1000}, (i: number) => ({a: i, b: "string", c: true}));
+group("Object deletion", () => {
 
-    bench("For in loop", () => {
-        for (const key in obj) {
-            if (key !== "a" && key !== "b" && key !== "c" && key !== "d") return false;
+    bench("Set to undefined", () => {
+        for (let i=0; i < obj.length; i++) {
+            obj[i].a = undefined;
         }
-        return true;
+    });
+
+    
+    bench("Delete keyword", () => {
+        for (let i=0; i < obj.length; i++) {
+            delete obj[i].a;
+        }
     });
 
 });
