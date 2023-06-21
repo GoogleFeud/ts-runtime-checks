@@ -23,7 +23,8 @@ export interface GenResult {
     error?: GenResultError,
     ifTrue?: BlockLike,
     ifFalse?: BlockLike,
-    extra?: ts.Statement[]
+    extra?: ts.Statement[],
+    minimzed?: boolean
 }
 
 export function emptyGenResult() : GenResult {
@@ -259,7 +260,7 @@ export function generateStatements(results: GenResult[], ctx: NodeGenContext) : 
 }
 
 export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean) : ts.Statement[] {
-    const node = genNode(validator, ctx);
+    const node = ctx.resultType.return ? minimizeGenResult(genNode(validator, ctx)) : genNode(validator, ctx);
     if (isOptional) {
         if (node.extra || node.ifFalse || node.ifTrue) return [_if(isNullableNode(validator), generateStatements([node], ctx))];
         else return generateStatements([{
@@ -268,4 +269,20 @@ export function validateType(validator: Validator, ctx: NodeGenContext, isOption
         }], ctx);
     }
     else return generateStatements([node], ctx);
+}
+
+export function minimizeGenResult(result: GenResult, negate?: boolean) : GenResult {
+    if (result.ifFalse || result.ifTrue) return result;
+    const _join = negate ? _and : _or;
+    const _negate = negate ? _not : (exp: ts.Expression) => exp;
+    if (!result.extra) return {
+        condition: _negate(result.condition),
+        error: result.error,
+        minimzed: true
+    };
+    else return {
+        condition: _join([_negate(result.condition), ...result.extra.map(n => _negate((n as ts.IfStatement).expression))]),
+        error: result.error,
+        minimzed: true
+    };
 }

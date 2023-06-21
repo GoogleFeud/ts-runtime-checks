@@ -5,7 +5,7 @@ const chai_1 = require("chai");
 describe("Exact Props", () => {
     describe("Raise Error", () => {
         function test(a) {
-            if (typeof a !== "object" && a !== null)
+            if (typeof a !== "object" || a === null)
                 throw new Error("Expected a to be an object");
             if (typeof a.a !== "string")
                 throw new Error("Expected a.a to be a string");
@@ -26,9 +26,9 @@ describe("Exact Props", () => {
             (0, chai_1.expect)((0, utils_1.call)(test, { a: "a", b: 2345, c: "b" })).to.not.throw();
         });
         function test2(a) {
-            if (typeof a !== "object" && a !== null)
+            if (typeof a !== "object" || a === null)
                 throw new Error("Expected a to be an object");
-            if (typeof a.a !== "object" && a.a !== null)
+            if (typeof a.a !== "object" || a.a === null)
                 throw new Error("Expected a.a to be an object");
             if (typeof a.a.b !== "string")
                 throw new Error("Expected a.a.b to be a string");
@@ -49,11 +49,11 @@ describe("Exact Props", () => {
             (0, chai_1.expect)((0, utils_1.call)(test2, { a: { b: "c2" } })).to.not.throw();
         });
         function test3(a) {
-            if (typeof a !== "object" && a !== null)
+            if (typeof a !== "object" || a === null)
                 throw new Error("Expected a to be an object");
             if (typeof a.a !== "string")
                 throw new Error("Expected a.a to be a string");
-            if (typeof a.b !== "object" && a.b !== null)
+            if (typeof a.b !== "object" || a.b === null)
                 throw new Error("Expected a.b to be an object");
             if (typeof a.b.c !== "number")
                 throw new Error("Expected a.b.c to be a number");
@@ -73,7 +73,7 @@ describe("Exact Props", () => {
     describe("Remove excessive", () => {
         it("Should remove extra properties", () => {
             function test(a) {
-                if (typeof a !== "object" && a !== null)
+                if (typeof a !== "object" || a === null)
                     throw new Error("Expected a to be an object");
                 if (typeof a.a !== "string")
                     throw new Error("Expected a.a to be a string");

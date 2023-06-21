@@ -15,11 +15,7 @@ describe("Early return", () => {
         (0, chai_1.expect)(test("Hello", 123)).to.be.equal(true);
     });
     function test2(a) {
-        if (typeof a !== "object" && a !== null)
-            return a.a === undefined ? "a" : "b";
-        if (typeof a.a !== "number")
-            return a.a === undefined ? "a" : "b";
-        if (typeof a.b !== "string")
+        if (typeof a !== "object" || a === null || typeof a.a !== "number" || typeof a.b !== "string")
             return a.a === undefined ? "a" : "b";
         return "c";
     }
@@ -28,7 +24,7 @@ describe("Early return", () => {
         (0, chai_1.expect)((0, utils_1.call)(test2, { b: "abc", a: 123 })()).to.be.equal("c");
     });
     function test3(a) {
-        if (typeof a !== "object" && a !== null)
+        if (typeof a !== "object" || a === null)
             return "Expected a to be an object";
         if (!(a.a instanceof Array))
             return "Expected a.a to be an array";
@@ -37,7 +33,7 @@ describe("Early return", () => {
         if (typeof a.a[1] !== "number")
             return "Expected a.a[1] to be a number";
         if (2 in a.a)
-            if (typeof a.a[2] !== "object" && a.a[2] !== null)
+            if (typeof a.a[2] !== "object" || a.a[2] === null)
                 return "Expected a.a[2] to be one of { b: number; }";
             else {
                 if (typeof a.a[2].b !== "number")

@@ -5,7 +5,7 @@ const chai_1 = require("chai");
 describe("Object", () => {
     describe("Assert", () => {
         function test(a) {
-            if (typeof a !== "object" && a !== null)
+            if (typeof a !== "object" || a === null)
                 throw new Error("Expected a to be an object");
             if (typeof a.a !== "string")
                 throw new Error("Expected a.a to be a string");

@@ -3,9 +3,9 @@ import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
 import { forEachVar, getCallSigFromType, resolveResultType } from "./utils";
-import { ValidationResultType, genNode, validateType } from "./gen/nodes";
+import { ValidationResultType, genNode, generateStatements, minimizeGenResult, validateType } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
-import { _access, _and, _call, _not, _var } from "./gen/expressionUtils";
+import { _access, _call, _var } from "./gen/expressionUtils";
 
 export const enum MacroCallContext {
     As,
@@ -67,12 +67,12 @@ export const Functions: Record<string, FnCallFn> = {
         if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
         const validator = genValidator(transformer, data.type, ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
         if (!validator) return;
-        const nodes = genNode(validator, { transformer, resultType: { none: true }});
-        if (!nodes.ifFalse && !nodes.ifTrue && (!nodes.extra || nodes.extra.every(e => ts.isIfStatement(e)))) {
+        const nodes = minimizeGenResult(genNode(validator, { transformer, resultType: { return: ts.factory.createFalse() }}), true);
+        if (nodes.minimzed) {
             if (stmt) (data.block.parent || data.block).nodes.push(stmt);
-            return _and([_not(nodes.condition), ...(nodes.extra || []).map(n => _not((n as ts.IfStatement).expression))]);
+            return nodes.condition;
         } else {
-            data.block.nodes.push(stmt, ...validateType(validator, {
+            data.block.nodes.push(stmt, ...generateStatements([nodes], {
                 resultType: { return: ts.factory.createFalse() },
                 transformer
             }), ts.factory.createReturnStatement(ts.factory.createTrue()));
