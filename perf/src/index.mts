@@ -8,7 +8,7 @@ group("For loops", () => {
         let i = arr.length;
         while(i--) {
             const data = arr[i];
-            if (data === 3100) return true;
+            if (typeof data === "number") continue;
         }
     });
 
@@ -16,8 +16,12 @@ group("For loops", () => {
     bench("Default for loop", () => {
         for (let i=0; i < arr.length; i++) {
             const data = arr[i];
-            if (data === 3100) return true;
+            if (typeof data === "number") continue;
         }
+    });
+
+    bench(".every", () => {
+        const data = arr.every(n => typeof n === "number");
     });
 });
 
