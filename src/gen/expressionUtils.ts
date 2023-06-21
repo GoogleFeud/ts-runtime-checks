@@ -103,6 +103,10 @@ export function _bool(bool: boolean) : ts.Expression {
     return bool ? factory.createTrue() : factory.createFalse();
 }
 
+export function _obj_check(obj: ts.Expression) : ts.Expression {
+    return _or([_typeof_cmp(obj, "object", ts.SyntaxKind.ExclamationEqualsEqualsToken), _bin(obj, ts.factory.createNull(), ts.SyntaxKind.EqualsEqualsEqualsToken)]);
+}
+
 export function _new(className: string, parameters: string | ts.Expression[]) : ts.Expression {
     return factory.createNewExpression(
         factory.createIdentifier(className),

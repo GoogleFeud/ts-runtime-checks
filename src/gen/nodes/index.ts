@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -162,16 +162,36 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             error: [validator.path(), [_str(`to satisfy "${validator.typeData.expression}"`)]]
         };
     }
+    // TODO: We can do better...
     case TypeDataKinds.Union: {
-        const compoundTypes = [], normalTypeConditions: ts.Expression[] = [], normalTypeErrors: GenResultError[] = [], typeNames = [];
+        const compoundTypes: GenResult[] = [], 
+            normalTypeConditions: ts.Expression[] = [], 
+            normalTypeErrors: GenResultError[] = [],
+            objectTypes: GenResult[] = [],
+            typeNames: string[] = [];
         let isNullable = false;
+        const objectKind = validator.getChildCountOfKind(TypeDataKinds.Object);
         for (const child of validator.children) {
             if (child.typeData.kind === TypeDataKinds.Undefined) {
                 isNullable = true;
                 continue;
             }
             else if (child.children.length) {
-                compoundTypes.push(genNode(child, ctx));
+                if (child.typeData.kind === TypeDataKinds.Object && objectKind > 1) {
+                    const idRepresent = child.getFirstLiteralChild();
+                    if (idRepresent) {
+                        child.children.splice(child.children.indexOf(idRepresent), 1);
+                        const node = genNode(child, ctx);
+                        const childNode = genNode(idRepresent, ctx);
+                        objectTypes.push({
+                            condition: childNode.condition,
+                            error: childNode.error,
+                            extra: node.extra
+                        });
+                    }
+                    else compoundTypes.push(genNode(child, ctx));
+                }
+                else compoundTypes.push(genNode(child, ctx));
             }
             else {
                 const node = genNode(child, ctx);
@@ -181,16 +201,38 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             typeNames.push(ctx.transformer.checker.typeToString(child._original));
         }
 
+        if (objectTypes.length) compoundTypes.push({
+            condition: _obj_check(validator.expression()),
+            extra: [_if_nest(0, objectTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be an object")]]))]
+        });
+
         if (!compoundTypes.length) return {
             condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            error: normalTypeConditions.length === 1 ? normalTypeErrors[0]! : [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]
+            error: normalTypeConditions.length === 1 ? normalTypeErrors[0]! : [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]],
         };
-
-        else return {
-            condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
-            ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]))
-        };
+        else {
+            if (!normalTypeConditions.length) {
+                const firstCompound = compoundTypes.shift() as GenResult;
+                if (isNullable) return {
+                    condition: isNullableNode(validator),
+                    ifTrue: [
+                        _if(firstCompound.condition, error(ctx, firstCompound.error || [[], []])),
+                        ...(firstCompound.extra || []),
+                        _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]))
+                    ]
+                };
+                else return {
+                    condition: isNullable ? isNullableNode(validator) : firstCompound.condition,
+                    ifTrue: isNullable ? _if(firstCompound.condition, _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]))) : _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]])),
+                    ifFalse: firstCompound.extra
+                };
+            }
+            else return {
+                condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
+                ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]))
+            };
+        }
     }
     case TypeDataKinds.Array: {
         const checks = [_not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()]))], errorMessages: Stringifyable[] = ["to be an array"];
@@ -237,7 +279,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
 
         return {
-            condition: _or([_typeof_cmp(validator.expression(), "object", ts.SyntaxKind.ExclamationEqualsEqualsToken), _bin(validator.expression(), ts.factory.createNull(), ts.SyntaxKind.EqualsEqualsEqualsToken)]),
+            condition: _obj_check(validator.expression()),
             error: [validator.path(), [_str("to be an object")]],
             extra: checks
         };
@@ -275,9 +317,9 @@ export function minimizeGenResult(result: GenResult, negate?: boolean) : GenResu
     if (result.ifFalse || result.ifTrue) return result;
     const _join = negate ? _and : _or;
     const _negate = negate ? _not : (exp: ts.Expression) => exp;
-    if (!result.extra) return {
+    if (!result.extra || !result.extra.every(v => ts.isIfStatement(v) && ts.isReturnStatement(v.thenStatement) && !v.elseStatement)) return {
+        ...result,
         condition: _negate(result.condition),
-        error: result.error,
         minimzed: true
     };
     else return {

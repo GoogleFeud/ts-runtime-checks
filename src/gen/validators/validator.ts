@@ -183,6 +183,21 @@ export class Validator {
         return result;
     }
 
+    getChildCountOfKind(kind: TypeDataKinds) : number {
+        let counter = 0;
+        for (const child of this.children) {
+            if (child.typeData.kind === kind) counter++;
+        }
+        return counter;
+    }
+
+    getFirstLiteralChild() : Validator|undefined {
+        for (const child of this.children) {
+            if ((child.typeData.kind === TypeDataKinds.String && child.typeData.literal !== undefined) || (child.typeData.kind === TypeDataKinds.Number && child.typeData.literal !== undefined)) return child;
+        }
+        return;
+    }
+
     exactProps() : ObjectTypeDataExactOptions|undefined {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         let parent: Validator | undefined = this;

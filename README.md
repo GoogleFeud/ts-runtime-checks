@@ -392,18 +392,20 @@ const variable = value_1;
 - `null`
     - `value === null`
 - Tuples (`[a, b, c]`)
-    - `value instanceof Array`
+    - `Array.isArray(value)`
     - Each type in the tuple gets checked individually.
 - Arrays (`Array<a>`, `a[]`)
-    - `value instanceof Array`
+    - `Array.isArray(value)`
     - Each value in the array gets checked via a `for` loop.
 - Interfaces and object literals (`{a: b, c: d}`)
     - `typeof value === "object"`
+    - `value !== null`
     - Each property in the object gets checked individually.
 - Classes
     - `value instanceof Class`
 - Enums
 - Unions (`a | b | c`)
+    - Object unions - If you want to have a union of multiple possible objects, each object must have at least 1 key that's either a string or a number literal.
 
 ### `as` assertions
 
