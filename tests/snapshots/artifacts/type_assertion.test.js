@@ -17,15 +17,15 @@ describe("Type assertions (as)", () => {
                 throw new Error("Expected b.a to be a number");
             if (typeof b.b !== "string")
                 throw new Error("Expected b.b to be a string");
-            if ("c" in b)
+            if ("c" in b) {
                 if (!Array.isArray(b.c))
-                    throw new Error("Expected b.c to be one of string[]");
-                else {
-                    for (let i_2 = 0; i_2 < b.c.length; i_2++) {
-                        if (typeof b.c[i_2] !== "string")
-                            throw new Error("Expected b.c[" + i_2 + "] to be a string");
-                    }
+                    throw new Error("Expected b.c to be an array");
+                for (let i_2 = 0; i_2 < b.c.length; i_2++) {
+                    if (typeof b.c[i_2] !== "string")
+                        throw new Error("Expected b.c[" + i_2 + "] to be a string");
                 }
+                ;
+            }
             if (!(b.d instanceof Array))
                 throw new Error("Expected b.d to be an array");
             if (typeof b.d[0] !== "string")
@@ -49,15 +49,15 @@ describe("Type assertions (as)", () => {
                 throw new Error("Expected b.a to be a number");
             if (typeof b.b !== "string")
                 throw new Error("Expected b.b to be a string");
-            if ("c" in b)
+            if ("c" in b) {
                 if (!Array.isArray(b.c))
-                    throw new Error("Expected b.c to be one of string[]");
-                else {
-                    for (let i_4 = 0; i_4 < b.c.length; i_4++) {
-                        if (typeof b.c[i_4] !== "string")
-                            throw new Error("Expected b.c[" + i_4 + "] to be a string");
-                    }
+                    throw new Error("Expected b.c to be an array");
+                for (let i_4 = 0; i_4 < b.c.length; i_4++) {
+                    if (typeof b.c[i_4] !== "string")
+                        throw new Error("Expected b.c[" + i_4 + "] to be a string");
                 }
+                ;
+            }
             if (!(b.d instanceof Array))
                 throw new Error("Expected b.d to be an array");
             if (typeof b.d[0] !== "string")

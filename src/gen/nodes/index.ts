@@ -162,7 +162,6 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             error: [validator.path(), [_str(`to satisfy "${validator.typeData.expression}"`)]]
         };
     }
-    // TODO: We can do better...
     case TypeDataKinds.Union: {
         const compoundTypes: GenResult[] = [], 
             normalTypeConditions: ts.Expression[] = [], 
@@ -219,7 +218,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                     ifTrue: [
                         _if(firstCompound.condition, error(ctx, firstCompound.error || [[], []])),
                         ...(firstCompound.extra || []),
-                        _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]))
+                        _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), ts.factory.createEmptyStatement())
                     ]
                 };
                 else return {

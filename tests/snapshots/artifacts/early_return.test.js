@@ -32,13 +32,13 @@ describe("Early return", () => {
             return "Expected a.a[0] to be a string";
         if (typeof a.a[1] !== "number")
             return "Expected a.a[1] to be a number";
-        if (2 in a.a)
+        if (2 in a.a) {
             if (typeof a.a[2] !== "object" || a.a[2] === null)
-                return "Expected a.a[2] to be one of { b: number; }";
-            else {
-                if (typeof a.a[2].b !== "number")
-                    return "Expected a.a[2].b to be a number";
-            }
+                return "Expected a.a[2] to be an object";
+            if (typeof a.a[2].b !== "number")
+                return "Expected a.a[2].b to be a number";
+            ;
+        }
         return true;
     }
     it("Return the error message if specified", () => {
