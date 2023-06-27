@@ -6,6 +6,11 @@ export const Markers = `
 type Assert<T, ReturnValue = ThrowError<Error>> = T & { __marker?: Assert<T, ReturnValue> };
 type ErrorMsg<_rawErrorData = false> = { __error_msg: true, __raw_error: _rawErrorData };
 type ThrowError<ErrorType = Error, _rawErrorData = false> = { __throw_err: ErrorType, __raw_error: _rawErrorData };
+interface ValidationError {
+    valueName: string,
+    value: unknown,
+    parts: string[]
+};
 type Num<Settings extends {
     min?: number|Expr<"">,
     max?: number|Expr<"">,

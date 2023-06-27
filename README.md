@@ -90,9 +90,9 @@ By far the most important marker is `Assert<T>`, which tells the transpiler to v
 - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Num.min/max` and `Str.matches` for example.
 - `Infer<Type>` / `Resolve<Type>` - Creating validation for type parameters.
 
-#### Assert<Type, ReturnValue>
+#### Assert<Type, Action>
 
-The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, the code will either return a value or throw an error, depending on what `ReturnValue` is.
+The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, the code will either return a value or throw an error, depending on what `Action` is.
 
 **Example:**
 
@@ -110,11 +110,24 @@ function addPlayer(player) {
 }
 ```
 
-For `ReturnValue`, you can provide the following types:
+For `Action`, you can provide the following types:
 - Type literals (`123`, `"hello"`, `undefined`, `true`, `false`) - The literal will be returned.
 - `Expr<Type>` - The expression will be returned.
-- `ErrorMsg` - The error message will be returned.
-- `ThrowError<ErrorType>` - An error of type `ErrorType` will be thrown.
+- `ErrorMsg<rawErrors>` - The error message will be returned.
+- `ThrowError<ErrorType, rawErrors>` - An error of type `ErrorType` will be thrown.
+
+If `rawErrors` is true, instead of an error string, the transformer will pass / return an object like this:
+
+```js
+{
+    // The value of the item that caused it
+    value: any
+    // The name of the value
+    valueName: string
+    // Extra parts that form the error string
+    parts: string
+}
+```
 
 By default, `ThrowError<Error>` is passed to `Assert`.
 
