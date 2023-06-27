@@ -26,7 +26,7 @@ describe("Type assertions (as)", () => {
                 }
                 ;
             }
-            if (!(b.d instanceof Array))
+            if (!Array.isArray(b.d))
                 throw new Error("Expected b.d to be an array");
             if (typeof b.d[0] !== "string")
                 throw new Error("Expected b.d[0] to be a string");
@@ -58,7 +58,7 @@ describe("Type assertions (as)", () => {
                 }
                 ;
             }
-            if (!(b.d instanceof Array))
+            if (!Array.isArray(b.d))
                 throw new Error("Expected b.d to be an array");
             if (typeof b.d[0] !== "string")
                 throw new Error("Expected b.d[0] to be a string");

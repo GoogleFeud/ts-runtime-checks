@@ -84,8 +84,8 @@ By far the most important marker is `Assert<T>`, which tells the transpiler to v
 - `Num<{min, max, type}>` - More detailed number requirements.
 - `Str<{matches, length}>` - More detailed string requirements.
 - `Arr<{length, minLen, maxLen}>` - More detailed array requirements.
-- `NoCheck<Type, removeExtra>`- Doesn't generate checks for the provided type.
-- `ExactProps<Obj>` - Makes sure the value doesn't have any excessive properties.
+- `NoCheck<Type>`- Doesn't generate checks for the provided type.
+- `ExactProps<Obj, removeExtra, useDeleteOperator>` - Makes sure the value doesn't have any excessive properties.
 - `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
 - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Num.min/max` and `Str.matches` for example.
 - `Infer<Type>` / `Resolve<Type>` - Creating validation for type parameters.
@@ -229,11 +229,13 @@ function test(req) {
 }
 ```
 
-#### ExactProps<Type, removeExtra> 
+#### ExactProps<Type, removeExtra, useDeleteOperator> 
 
 Checks if an object has any "excessive" properties (properties which are not on the type but they are on the object).
 
 If `removeExtra` is true, then instead of an error getting thrown, any excessive properties will be deleted **in place** from the object.
+
+If `useDeleteOperator` is true, then the `delete` operator will be used to delete the property, otherwise the property will get set to undefined.
 
 ```ts
 function test(req: unknown) {

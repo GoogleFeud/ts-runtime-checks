@@ -14,7 +14,7 @@ describe("Is function", () => {
         const value_4 = true;
         (0, chai_1.expect)(typeof value_4 === "boolean").to.be.equal(true);
         const value_5 = ["a", 123];
-        (0, chai_1.expect)((value_5 instanceof Array) && typeof value_5[0] === "string" && typeof value_5[1] === "number").to.be.equal(true);
+        (0, chai_1.expect)(Array.isArray(value_5) && typeof value_5[0] === "string" && typeof value_5[1] === "number").to.be.equal(true);
         (0, chai_1.expect)((() => {
             const value_6 = { a: "Hello" };
             if (typeof value_6 !== "string")

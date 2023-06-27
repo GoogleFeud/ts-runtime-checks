@@ -19,7 +19,7 @@ describe("Tuple", () => {
         it("Throw when one of the values has a wrong type", () => {
             expect(call(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be a number");
             expect(call(test, ["abc", 123, "Hello"])).to.throw("Expected a[1] to be equal to \"123\"");
-            expect(call(test, [Symbol(), 123, "Hello"])).to.throw("Expected a[0] to be a string");
+            expect(call(test, [Symbol(), "123", "Hello"])).to.throw("Expected a[0] to be a string");
         });
 
         it("Not throw when all the types are correct", () => {

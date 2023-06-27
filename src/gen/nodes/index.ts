@@ -328,7 +328,7 @@ export function minimizeGenResult(result: GenResult, negate?: boolean) : GenResu
     }
     return {
         condition: _join([_negate(result.condition), ...ifStatements]),
-        extra: other,
+        extra: other.length ? other : undefined,
         error: result.error,
         minimzed: true
     };

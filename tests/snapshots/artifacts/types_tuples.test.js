@@ -5,12 +5,12 @@ const chai_1 = require("chai");
 describe("Tuple", () => {
     describe("Assert", () => {
         function test(a) {
-            if (!(a instanceof Array))
+            if (!Array.isArray(a))
                 throw new Error("Expected a to be an array");
-            if (typeof a[0] !== "string")
-                throw new Error("Expected a[0] to be a string");
             if (a[1] !== "123")
                 throw new Error("Expected a[1] to be equal to \"123\"");
+            if (typeof a[0] !== "string")
+                throw new Error("Expected a[0] to be a string");
             if (2 in a && typeof a[2] !== "number")
                 throw new Error("Expected a[2] to be a number");
             return a;
@@ -24,7 +24,7 @@ describe("Tuple", () => {
         it("Throw when one of the values has a wrong type", () => {
             (0, chai_1.expect)((0, utils_1.call)(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be a number");
             (0, chai_1.expect)((0, utils_1.call)(test, ["abc", 123, "Hello"])).to.throw("Expected a[1] to be equal to \"123\"");
-            (0, chai_1.expect)((0, utils_1.call)(test, [Symbol(), 123, "Hello"])).to.throw("Expected a[0] to be a string");
+            (0, chai_1.expect)((0, utils_1.call)(test, [Symbol(), "123", "Hello"])).to.throw("Expected a[0] to be a string");
         });
         it("Not throw when all the types are correct", () => {
             (0, chai_1.expect)((0, utils_1.call)(test, ["Hello", "123"])).to.not.throw();

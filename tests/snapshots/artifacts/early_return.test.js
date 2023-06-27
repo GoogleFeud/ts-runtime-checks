@@ -26,7 +26,7 @@ describe("Early return", () => {
     function test3(a) {
         if (typeof a !== "object" || a === null)
             return "Expected a to be an object";
-        if (!(a.a instanceof Array))
+        if (!Array.isArray(a.a))
             return "Expected a.a to be an array";
         if (typeof a.a[0] !== "string")
             return "Expected a.a[0] to be a string";

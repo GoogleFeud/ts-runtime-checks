@@ -9,7 +9,7 @@ describe("Optional / nullable parameters", () => {
         if (a !== undefined && typeof a !== "string")
             throw new Error("Expected a to be a string");
         if (b !== undefined) {
-            if (!(b instanceof Array))
+            if (!Array.isArray(b))
                 throw new Error("Expected b to be an array");
             if (typeof b[0] !== "string")
                 throw new Error("Expected b[0] to be a string");

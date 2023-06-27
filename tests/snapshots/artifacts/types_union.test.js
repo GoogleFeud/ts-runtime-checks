@@ -6,7 +6,7 @@ describe("Unions", () => {
     describe("Assert", () => {
         function test(a) {
             if (typeof a !== "string" && typeof a !== "number")
-                if (!(a instanceof Array))
+                if (!Array.isArray(a))
                     throw new Error("Expected a to be one of string, number, [string | number, string]");
                 else {
                     if (typeof a[1] !== "string")
