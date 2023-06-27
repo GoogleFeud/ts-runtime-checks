@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -8,6 +8,7 @@ export interface ValidationResultType {
     return?: ts.Expression,
     returnErr?: boolean,
     custom?: (msg: ts.Expression) => ts.Statement,
+    rawErrors?: boolean,
     none?: boolean
 }
 
@@ -16,7 +17,7 @@ export interface NodeGenContext {
     resultType: ValidationResultType
 }
 
-export type GenResultError = [path: Stringifyable[], message: ts.Expression[]];
+export type GenResultError = [validator: Validator, message: ts.Expression[]];
 
 export interface GenResult {
     condition: ts.Expression,
@@ -27,16 +28,14 @@ export interface GenResult {
     minimzed?: boolean
 }
 
-export function emptyGenResult() : GenResult {
-    return {
-        condition: ts.factory.createNull(),
-        error: [[], []]
-    };
-}
 
 export function error(ctx: NodeGenContext, error: GenResultError, isFull = false) : ts.Statement {
     if (ctx.resultType.none) return ts.factory.createReturnStatement();
-    const finalMsg = _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0], " ", ...error[1]]), ts.SyntaxKind.PlusToken);
+    const finalMsg = ctx.resultType.rawErrors ? _obj({
+        value: error[0].expression(),
+        valueName: _bin_chain(joinElements(error[0].path()), ts.SyntaxKind.PlusToken),
+        parts: ts.factory.createArrayLiteralExpression(error[1])
+    }) : _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0].path(), " ", ...error[1]]), ts.SyntaxKind.PlusToken);
     if (ctx.resultType.return) return ts.factory.createReturnStatement(ctx.resultType.return);
     else if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
     else if (ctx.resultType.throw) return _throw(_new(ctx.resultType.throw, [finalMsg]));
@@ -49,7 +48,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     case TypeDataKinds.Number: {
         if (validator.typeData.literal) return {
             condition: _bin(validator.expression(), _num(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken),
-            error: [validator.path(), concat`to be equal to ${validator.typeData.literal.toString()}`]
+            error: [validator, concat`to be equal to ${validator.typeData.literal.toString()}`]
         };
         const errorMessages = [], checks: ts.Expression[] = [_typeof_cmp(validator.expression(), "number", ts.SyntaxKind.ExclamationEqualsEqualsToken)];
         if (validator.typeData.type === NumberTypes.Integer) {
@@ -75,13 +74,13 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 
         return {
             condition: _or(checks),
-            error: [validator.path(), joinElements(errorMessages, ", ")]
+            error: [validator, joinElements(errorMessages, ", ")]
         };
     }
     case TypeDataKinds.String: {
         if (validator.typeData.literal) return {
             condition: _bin(validator.expression(), _str(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken),
-            error: [validator.path(), concat`to be equal to "${validator.typeData.literal}"`]
+            error: [validator, concat`to be equal to "${validator.typeData.literal}"`]
         };
 
         const errorMessages: Stringifyable[] = ["to be a string"], checks: ts.Expression[] = [_typeof_cmp(validator.expression(), "string", ts.SyntaxKind.ExclamationEqualsEqualsToken)];
@@ -114,40 +113,40 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 
         return {
             condition: _or(checks),
-            error: [validator.path(), joinElements(errorMessages, ", ")]
+            error: [validator, joinElements(errorMessages, ", ")]
         };
     }
     case TypeDataKinds.Boolean: return { 
         condition: validator.typeData.literal !== undefined ? _bin(validator.expression(), _bool(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken) : _typeof_cmp(validator.expression(), "boolean", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-        error: [validator.path(), [validator.typeData.literal !== undefined ? _str(`to be ${validator.typeData.literal}`) : _str("to be a boolean")]]
+        error: [validator, [validator.typeData.literal !== undefined ? _str(`to be ${validator.typeData.literal}`) : _str("to be a boolean")]]
     };
     case TypeDataKinds.BigInt: return {
         condition: _typeof_cmp(validator.expression(), "bigint", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-        error: [validator.path(), [_str("to be a bigint")]]
+        error: [validator, [_str("to be a bigint")]]
     };
     case TypeDataKinds.Symbol: return {
         condition: _typeof_cmp(validator.expression(), "symbol", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-        error: [validator.path(), [_str("to be a symbol")]]
+        error: [validator, [_str("to be a symbol")]]
     };
     case TypeDataKinds.Class: return {
         condition: _not(_instanceof(validator.expression(), validator._original.symbol.name)),
-        error: [validator.path(), [_str(`to be an instance of "${validator._original.symbol.name}"`)]]
+        error: [validator, [_str(`to be an instance of "${validator._original.symbol.name}"`)]]
     };
     case TypeDataKinds.Function: return {
         condition: _typeof_cmp(validator.expression(), "function", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-        error: [validator.path(), [_str("to be a function")]]
+        error: [validator, [_str("to be a function")]]
     };
     case TypeDataKinds.Null: return {
         condition: _bin(validator.expression(), ts.factory.createNull(), ts.SyntaxKind.ExclamationEqualsEqualsToken),
-        error: [validator.path(), [_str("to be null")]]
+        error: [validator, [_str("to be null")]]
     };
     case TypeDataKinds.Undefined: return {
         condition: _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken),
-        error: [validator.path(), [_str("to be undefined")]]
+        error: [validator, [_str("to be undefined")]]
     };
     case TypeDataKinds.Tuple: return {
         condition: _not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()])),
-        error: [validator.path(), [_str("to be an array")]],
+        error: [validator, [_str("to be an array")]],
         extra: validator.children.map(c => validateType(c, ctx)).flat()
     };
     case TypeDataKinds.If: {
@@ -155,11 +154,11 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             const innerGen = genNode(validator.children[0] as Validator, ctx);
             return {
                 ...innerGen,
-                extra: [_if(_not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })), error(ctx, [validator.path(), [_str(`to satisfy "${validator.typeData.expression}"`)]])), ...(innerGen.extra || [])]
+                extra: [_if(_not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })), error(ctx, [validator, [_str(`to satisfy "${validator.typeData.expression}"`)]])), ...(innerGen.extra || [])]
             };
         } else return {
             condition: _not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })),
-            error: [validator.path(), [_str(`to satisfy "${validator.typeData.expression}"`)]]
+            error: [validator, [_str(`to satisfy "${validator.typeData.expression}"`)]]
         };
     }
     case TypeDataKinds.Union: {
@@ -202,13 +201,13 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 
         if (objectTypes.length) compoundTypes.push({
             condition: _obj_check(validator.expression()),
-            extra: [_if_nest(0, objectTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be an object")]]))]
+            extra: [_if_nest(0, objectTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator, [_str("to be an object")]]))]
         });
 
         if (!compoundTypes.length) return {
             condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            error: normalTypeConditions.length === 1 ? normalTypeErrors[0]! : [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]],
+            error: normalTypeConditions.length === 1 ? normalTypeErrors[0]! : [validator, [_str("to be one of "), _str(typeNames.join(", "))]],
         };
         else {
             if (!normalTypeConditions.length) {
@@ -216,20 +215,20 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                 if (isNullable) return {
                     condition: isNullableNode(validator),
                     ifTrue: [
-                        _if(firstCompound.condition, error(ctx, firstCompound.error || [[], []])),
+                        _if(firstCompound.condition, error(ctx, firstCompound.error as GenResultError)),
                         ...(firstCompound.extra || []),
                         _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), ts.factory.createEmptyStatement())
                     ]
                 };
                 else return {
                     condition: isNullable ? isNullableNode(validator) : firstCompound.condition,
-                    ifTrue: isNullable ? _if(firstCompound.condition, _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]))) : _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]])),
+                    ifTrue: isNullable ? _if(firstCompound.condition, _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))) : _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]])),
                     ifFalse: firstCompound.extra
                 };
             }
             else return {
                 condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
-                ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator.path(), [_str("to be one of "), _str(typeNames.join(", "))]]))
+                ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))
             };
         }
     }
@@ -256,7 +255,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         childType.setName(index);
         return {
             condition: _or(checks),
-            error: [validator.path(), joinElements(errorMessages, ", ")],
+            error: [validator, joinElements(errorMessages, ", ")],
             extra: [_for(validator.expression(), index, validateType(childType, ctx))[0]]
         };
     }
@@ -272,18 +271,18 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             checks.push(_for_in(validator.expression(), name, [
                 _if(
                     _and(validator.children.filter(c => typeof c.name === "string").map(c => _bin(name, _str(c.name as string), ts.SyntaxKind.ExclamationEqualsEqualsToken))),
-                    exactProps === ObjectTypeDataExactOptions.RaiseError ? error(ctx, [validator.path(), joinElements(["Property ", ...validator.path(), ".", name, " is excessive"])], true) : validator.typeData.useDeleteOperator ? ts.factory.createDeleteExpression(_access(validator.expression(), name)) : _bin(_access(validator.expression(), name), UNDEFINED, ts.SyntaxKind.EqualsToken)
+                    exactProps === ObjectTypeDataExactOptions.RaiseError ? error(ctx, [validator, joinElements(["Property ", ...validator.path(), ".", name, " is excessive"])], true) : validator.typeData.useDeleteOperator ? ts.factory.createDeleteExpression(_access(validator.expression(), name)) : _bin(_access(validator.expression(), name), UNDEFINED, ts.SyntaxKind.EqualsToken)
                 )
             ])[0]);
         }
 
         return {
             condition: _obj_check(validator.expression()),
-            error: [validator.path(), [_str("to be an object")]],
+            error: [validator, [_str("to be an object")]],
             extra: checks
         };
     }
-    default: return emptyGenResult();
+    default: throw new Error("Unexpected TypeDataKind.");
     }
 }
 

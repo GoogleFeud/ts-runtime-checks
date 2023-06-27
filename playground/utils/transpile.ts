@@ -4,8 +4,8 @@ import TsChecks from "../../dist/index";
 
 export const Markers = `
 type Assert<T, ReturnValue = ThrowError<Error>> = T & { __marker?: Assert<T, ReturnValue> };
-type ErrorMsg = { __error_msg: true };
-type ThrowError<ErrorType = Error> = { __throw_err: ErrorType };
+type ErrorMsg<_rawErrorData = false> = { __error_msg: true, __raw_error: _rawErrorData };
+type ThrowError<ErrorType = Error, _rawErrorData = false> = { __throw_err: ErrorType, __raw_error: _rawErrorData };
 type Num<Settings extends {
     min?: number|Expr<"">,
     max?: number|Expr<"">,

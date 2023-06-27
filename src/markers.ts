@@ -169,8 +169,14 @@ function createValidator(transformer: Transformer, type: ts.Type, name: Validato
  * ```
  */
 export type Assert<T, ReturnValue = ThrowError<Error>> = T & { __marker?: Assert<T, ReturnValue> };
-export type ErrorMsg = { __error_msg: true }
-export type ThrowError<ErrorType = Error> = { __throw_err: ErrorType }
+export type ErrorMsg<_rawErrorData = false> = { __error_msg: true, __raw_error: _rawErrorData };
+export type ThrowError<ErrorType = Error, _rawErrorData = false> = { __throw_err: ErrorType, __raw_error: _rawErrorData };
+
+export interface ValidationError {
+    valueName: string,
+    value: unknown,
+    parts: string[]
+}
 
 export type Str<Settings extends {
     length?: number|Expr<"">,

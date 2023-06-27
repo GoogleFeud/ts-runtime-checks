@@ -174,4 +174,12 @@ export function _for_in(arr: ts.Expression, elName: ts.Identifier | string, body
     return [factory.createForInStatement(initializerCreate.declarationList, arr, _stmt(body)), initializer];
 }
 
+export function _obj(props: Record<string, ts.Expression>) : ts.Expression {
+    const propNodes: ts.PropertyAssignment[] = [];
+    for (const property in props) {
+        propNodes.push(ts.factory.createPropertyAssignment(property, props[property] as ts.Expression));
+    }
+    return ts.factory.createObjectLiteralExpression(propNodes);
+}
+
 export const UNDEFINED = factory.createIdentifier("undefined");

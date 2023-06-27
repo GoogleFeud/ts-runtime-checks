@@ -94,9 +94,10 @@ export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: 
 
 export function resolveResultType(transformer: Transformer, type?: ts.Type) : ValidationResultType {
     if (!type) return { throw: "Error" };
-    else if (type.getProperty("__error_msg")) return { returnErr: true };
-    else if (type.getProperty("__throw_err")) return { throw: transformer.checker.typeToString(transformer.checker.getTypeOfSymbol(type.getProperty("__throw_err") as ts.Symbol)) };
-    else return { return: transformer.typeValueToNode(type) };
+    const rawErrors = type.getProperty("__raw_error") && isTrueType(transformer.checker.getTypeOfSymbol(type.getProperty("__raw_error") as ts.Symbol));
+    if (type.getProperty("__error_msg")) return { returnErr: true, rawErrors };
+    else if (type.getProperty("__throw_err")) return { throw: transformer.checker.typeToString(transformer.checker.getTypeOfSymbol(type.getProperty("__throw_err") as ts.Symbol)), rawErrors };
+    else return { return: transformer.typeValueToNode(type), rawErrors };
 }
 
 export const enum BindingPatternTypes {
