@@ -212,7 +212,7 @@ export class Validator {
         let sum = 0;
         switch (this.typeData.kind) {
         case TypeDataKinds.Number: {
-            if (this.typeData.literal) return 1;
+            if (this.typeData.literal) return 0;
             sum++;
             if (this.typeData.type) sum += 2;
             if (this.typeData.max) sum++;
@@ -220,7 +220,7 @@ export class Validator {
             break;
         }
         case TypeDataKinds.String: {
-            if (this.typeData.literal) return 1;
+            if (this.typeData.literal) return 0;
             sum++;
             if (this.typeData.maxLen) sum++;
             if (this.typeData.minLen) sum++;
@@ -228,6 +228,10 @@ export class Validator {
             if (this.typeData.matches) sum += 3;
             break;
         }
+        case TypeDataKinds.Boolean:
+            if (this.typeData.literal) return 0;
+            else return 1;
+            break;
         case TypeDataKinds.Array: {
             sum += 2;
             if (this.typeData.minLen) sum++;
@@ -238,7 +242,6 @@ export class Validator {
         case TypeDataKinds.Union:
         case TypeDataKinds.Resolve:
             break;
-        case TypeDataKinds.Boolean:
         case TypeDataKinds.Null:
         case TypeDataKinds.Undefined:
         case TypeDataKinds.Symbol:

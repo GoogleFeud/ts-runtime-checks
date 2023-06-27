@@ -146,7 +146,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         error: [validator.path(), [_str("to be undefined")]]
     };
     case TypeDataKinds.Tuple: return {
-        condition: _not(_instanceof(validator.expression(), "Array")),
+        condition: _not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()])),
         error: [validator.path(), [_str("to be an array")]],
         extra: validator.children.map(c => validateType(c, ctx)).flat()
     };
@@ -316,13 +316,19 @@ export function minimizeGenResult(result: GenResult, negate?: boolean) : GenResu
     if (result.ifFalse || result.ifTrue) return result;
     const _join = negate ? _and : _or;
     const _negate = negate ? _not : (exp: ts.Expression) => exp;
-    if (!result.extra || !result.extra.every(v => ts.isIfStatement(v) && ts.isReturnStatement(v.thenStatement) && !v.elseStatement)) return {
+    if (!result.extra) return {
         ...result,
         condition: _negate(result.condition),
         minimzed: true
     };
-    else return {
-        condition: _join([_negate(result.condition), ...result.extra.map(n => _negate((n as ts.IfStatement).expression))]),
+    const ifStatements: ts.Expression[] = [], other: ts.Statement[] = [];
+    for (const stmt of result.extra) {
+        if (ts.isIfStatement(stmt) && ts.isReturnStatement(stmt.thenStatement) && !stmt.elseStatement) ifStatements.push(_negate(stmt.expression));
+        else other.push(stmt);
+    }
+    return {
+        condition: _join([_negate(result.condition), ...ifStatements]),
+        extra: other,
         error: result.error,
         minimzed: true
     };

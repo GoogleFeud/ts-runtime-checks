@@ -1,79 +1,44 @@
 import { run, bench, group } from "mitata";
+import { Assert, ErrorMsg, ExactProps } from "../../dist/index.js";
 
-const arr = Array.from({length: 10000}, (i: number) => i + 1);
+type ToBeValidated = {
+    name: string,
+    id: number,
+    other: "test",
+    tuple: [string, number, [string, number, true]],
+    obj: ExactProps<{
+        test1: string,
+        test2: number[]
+    }, true>
+}
 
-group("For loops", () => {
+function test_minimized(obj: Assert<ToBeValidated, false>) {
+    return true;
+}
 
-    bench("Reverse while loop", () => {
-        let i = arr.length;
-        while(i--) {
-            const data = arr[i];
-            if (typeof data === "number") continue;
-        }
+function test_lots_of_ifs(obj: Assert<ToBeValidated, ErrorMsg>) {
+    return true;
+}
+
+const object: ToBeValidated = {
+    name: "abc",
+    id: 123,
+    other: "test",
+    tuple: ["a", 123, ["b", 123, true]],
+    obj: {
+        test1: "abc",
+        test2: [1, 2, 3]
+    }
+};
+
+group("If vs AND/OR", () => {
+
+    bench("AND/OR", () => {
+        const result = test_minimized(object);
     });
 
-
-    bench("Default for loop", () => {
-        for (let i=0; i < arr.length; i++) {
-            const data = arr[i];
-            if (typeof data === "number") continue;
-        }
-    });
-
-    bench(".every", () => {
-        const data = arr.every(n => typeof n === "number");
-    });
-});
-
-const tuple = [1, "abc", true];
-
-group("Tuple checks", () => {
-
-    bench("If chain", () => {
-        if (!(tuple instanceof Array) || tuple.length !== 3) return false;
-        if (typeof tuple[0] !== "number") return false;
-        if (typeof tuple[1] !== "string") return false;
-        if (typeof tuple[2] !== "boolean") return false;
-        return true;
-    });
-
-    
-    bench("Without conditions", () => {
-        return tuple instanceof Array && tuple.length === 3 && typeof tuple[0] === "number" && typeof tuple[1] === "string" && tuple[2] === "boolean";
-    });
-
-});
-
-const obj: Array<{a?: number, b: string, c: boolean}> = Array.from({length: 1000}, (i: number) => ({a: i, b: "string", c: true}));
-group("Object deletion", () => {
-
-    bench("Set to undefined", () => {
-        for (let i=0; i < obj.length; i++) {
-            obj[i].a = undefined;
-        }
-    });
-
-    
-    bench("Delete keyword", () => {
-        for (let i=0; i < obj.length; i++) {
-            delete obj[i].a;
-        }
-    });
-
-});
-
-group("Checking if an object is an array", () => {
-    
-    bench("constructor", () => {
-        return arr.constructor === Array;
-    });
-
-    bench("instanceof Array", () => {
-        return arr instanceof Array;
-    });
-
-    bench("Array.isArray", () => {
-        return Array.isArray(arr);
+    bench("If", () => {
+        const result = test_lots_of_ifs(object);
     });
 
 });
