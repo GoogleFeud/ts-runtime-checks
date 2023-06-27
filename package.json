@@ -10,7 +10,7 @@
     "lint": "npx eslint",
     "mtest": "tsc && cd ./manualTests && ttsc",
     "playground": "tsc && cd ./playground && npm run dev",
-    "mitata": "cd ./perf && ttsc && node ./dist/index.mjs"
+    "mitata": "tsc && cd ./perf && ttsc && node ./dist/index.mjs"
   },
   "repository": {
     "type": "git",

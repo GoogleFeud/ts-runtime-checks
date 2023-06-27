@@ -208,6 +208,19 @@ export class Validator {
         return;
     }
 
+    isComplex() : boolean {
+        switch (this.typeData.kind) {
+        case TypeDataKinds.Array:
+            return true;
+        case TypeDataKinds.Object:
+            return !!this.typeData.exact;
+        case TypeDataKinds.Union:
+            return this.children.every(c => !c.children.length);
+        default:
+            return false;
+        }
+    }
+
     weigh() : number {
         let sum = 0;
         switch (this.typeData.kind) {
