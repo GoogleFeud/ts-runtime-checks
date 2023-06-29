@@ -68,7 +68,7 @@ export const Functions: Record<string, FnCallFn> = {
         const validator = genValidator(transformer, data.type, ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
         if (!validator) return;
         const nodes = minimizeGenResult(genNode(validator, { transformer, resultType: { return: ts.factory.createTrue() }}), true);
-        if (nodes.minimzed && !nodes.extra) {
+        if (nodes.minimzed && !nodes.after) {
             if (stmt) (data.block.parent || data.block).nodes.push(stmt);
             return nodes.condition;
         } else {

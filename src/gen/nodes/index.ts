@@ -24,20 +24,21 @@ export interface GenResult {
     error?: GenResultError,
     ifTrue?: BlockLike,
     ifFalse?: BlockLike,
-    extra?: ts.Statement[],
+    after?: ts.Statement[],
+    before?: ts.Statement[],
     minimzed?: boolean
 }
 
-
-export function error(ctx: NodeGenContext, error: GenResultError, isFull = false) : ts.Statement {
+export function error(ctx: NodeGenContext, error?: GenResultError, isFull = false) : ts.Statement {
     if (ctx.resultType.none) return ts.factory.createReturnStatement();
+    if (ctx.resultType.return) return ts.factory.createReturnStatement(ctx.resultType.return);
+    if (!error) return ts.factory.createReturnStatement();
     const finalMsg = ctx.resultType.rawErrors ? _obj({
         value: error[0].expression(),
         valueName: _bin_chain(joinElements(error[0].path()), ts.SyntaxKind.PlusToken),
         parts: ts.factory.createArrayLiteralExpression(error[1])
     }) : _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0].path(), " ", ...error[1]]), ts.SyntaxKind.PlusToken);
-    if (ctx.resultType.return) return ts.factory.createReturnStatement(ctx.resultType.return);
-    else if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
+    if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
     else if (ctx.resultType.throw) return _throw(_new(ctx.resultType.throw, [finalMsg]));
     else if (ctx.resultType.custom) return ctx.resultType.custom(finalMsg);
     else return _throw(_new("Error", [finalMsg]));
@@ -147,14 +148,14 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     case TypeDataKinds.Tuple: return {
         condition: _not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()])),
         error: [validator, [_str("to be an array")]],
-        extra: validator.children.map(c => validateType(c, ctx)).flat()
+        after: validator.children.map(c => validateType(c, ctx)).flat()
     };
     case TypeDataKinds.If: {
         if (validator.typeData.fullCheck) {
             const innerGen = genNode(validator.children[0] as Validator, ctx);
             return {
                 ...innerGen,
-                extra: [_if(_not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })), error(ctx, [validator, [_str(`to satisfy "${validator.typeData.expression}"`)]])), ...(innerGen.extra || [])]
+                after: [_if(_not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })), error(ctx, [validator, [_str(`to satisfy "${validator.typeData.expression}"`)]])), ...(innerGen.after || [])]
             };
         } else return {
             condition: _not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })),
@@ -184,7 +185,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                         objectTypes.push({
                             condition: childNode.condition,
                             error: childNode.error,
-                            extra: node.extra
+                            after: node.after
                         });
                     }
                     else compoundTypes.push(genNode(child, ctx));
@@ -201,7 +202,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 
         if (objectTypes.length) compoundTypes.push({
             condition: _obj_check(validator.expression()),
-            extra: [_if_nest(0, objectTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator, [_str("to be an object")]]))]
+            after: [_if_nest(0, objectTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be an object")]]))]
         });
 
         if (!compoundTypes.length) return {
@@ -215,20 +216,20 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                 if (isNullable) return {
                     condition: isNullableNode(validator),
                     ifTrue: [
-                        _if(firstCompound.condition, error(ctx, firstCompound.error as GenResultError)),
-                        ...(firstCompound.extra || []),
-                        _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), ts.factory.createEmptyStatement())
+                        _if(firstCompound.condition, error(ctx, firstCompound.error)),
+                        ...(firstCompound.after || []),
+                        _if_nest(0, compoundTypes.map(t => [t.condition, t.after || []]), ts.factory.createEmptyStatement())
                     ]
                 };
                 else return {
                     condition: isNullable ? isNullableNode(validator) : firstCompound.condition,
-                    ifTrue: isNullable ? _if(firstCompound.condition, _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))) : _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]])),
-                    ifFalse: firstCompound.extra
+                    ifTrue: isNullable ? _if(firstCompound.condition, _if_nest(0, compoundTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))) : _if_nest(0, compoundTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]])),
+                    ifFalse: firstCompound.after
                 };
             }
             else return {
                 condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
-                ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, t.extra || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))
+                ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))
             };
         }
     }
@@ -256,7 +257,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         return {
             condition: _or(checks),
             error: [validator, joinElements(errorMessages, ", ")],
-            extra: [_for(validator.expression(), index, validateType(childType, ctx))[0]]
+            after: [_for(validator.expression(), index, validateType(childType, ctx))[0]]
         };
     }
     case TypeDataKinds.Object: {
@@ -279,7 +280,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         return {
             condition: _obj_check(validator.expression()),
             error: [validator, [_str("to be an object")]],
-            extra: checks
+            after: checks
         };
     }
     default: throw new Error("Unexpected TypeDataKind.");
@@ -290,11 +291,12 @@ export function isNullableNode(validator: Validator) : ts.Expression {
     return validator.parent ? _bin(validator.nameAsExpression(), validator.parent.expression(), ts.SyntaxKind.InKeyword) : _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken);
 }
 
-export function generateStatements(results: GenResult[], ctx: NodeGenContext) : ts.Statement[] {
+export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.Statement[] {
     const result = [];
     for (const genResult of results) {
+        if (genResult.before) result.push(...genResult.before);
         result.push(_if(genResult.condition, (genResult.error ? error(ctx, genResult.error) : genResult.ifTrue) as BlockLike, genResult.ifFalse));
-        if (genResult.extra) result.push(...genResult.extra);
+        if (genResult.after) result.push(...genResult.after);
     }
     return result;
 }
@@ -302,32 +304,32 @@ export function generateStatements(results: GenResult[], ctx: NodeGenContext) : 
 export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean) : ts.Statement[] {
     const node = ctx.resultType.return ? minimizeGenResult(genNode(validator, ctx)) : genNode(validator, ctx);
     if (isOptional) {
-        if (node.extra || node.ifFalse || node.ifTrue) return [_if(isNullableNode(validator), generateStatements([node], ctx))];
-        else return generateStatements([{
+        if (node.after || node.ifFalse || node.ifTrue) return [_if(isNullableNode(validator), genStatements([node], ctx))];
+        else return genStatements([{
             ...node,
             condition: _and([isNullableNode(validator), node.condition])
         }], ctx);
     }
-    else return generateStatements([node], ctx);
+    else return genStatements([node], ctx);
 }
 
 export function minimizeGenResult(result: GenResult, negate?: boolean) : GenResult {
     if (result.ifFalse || result.ifTrue) return result;
     const _join = negate ? _and : _or;
     const _negate = negate ? _not : (exp: ts.Expression) => exp;
-    if (!result.extra) return {
+    if (!result.after) return {
         ...result,
         condition: _negate(result.condition),
         minimzed: true
     };
     const ifStatements: ts.Expression[] = [], other: ts.Statement[] = [];
-    for (const stmt of result.extra) {
+    for (const stmt of result.after) {
         if (ts.isIfStatement(stmt) && ts.isReturnStatement(stmt.thenStatement) && !stmt.elseStatement) ifStatements.push(_negate(stmt.expression));
         else other.push(stmt);
     }
     return {
         condition: _join([_negate(result.condition), ...ifStatements]),
-        extra: other.length ? other : undefined,
+        after: other.length ? other : undefined,
         error: result.error,
         minimzed: true
     };

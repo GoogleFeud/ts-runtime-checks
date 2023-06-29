@@ -17,6 +17,14 @@ describe("Type assertions (as)", () => {
                 throw new Error("Expected b.a to be a number");
             if (typeof b.b !== "string")
                 throw new Error("Expected b.b to be a string");
+            if (!Array.isArray(b.d))
+                throw new Error("Expected b.d to be an array");
+            if (typeof b.d[0] !== "string")
+                throw new Error("Expected b.d[0] to be a string");
+            if (typeof b.d[1] !== "symbol")
+                throw new Error("Expected b.d[1] to be a symbol");
+            if (typeof b.d[2] !== "number")
+                throw new Error("Expected b.d[2] to be a number");
             if ("c" in b) {
                 if (!Array.isArray(b.c))
                     throw new Error("Expected b.c to be an array");
@@ -26,14 +34,6 @@ describe("Type assertions (as)", () => {
                 }
                 ;
             }
-            if (!Array.isArray(b.d))
-                throw new Error("Expected b.d to be an array");
-            if (typeof b.d[0] !== "string")
-                throw new Error("Expected b.d[0] to be a string");
-            if (typeof b.d[1] !== "symbol")
-                throw new Error("Expected b.d[1] to be a symbol");
-            if (typeof b.d[2] !== "number")
-                throw new Error("Expected b.d[2] to be a number");
             return [a, b];
         }
         function test1(a, b) {
@@ -49,6 +49,14 @@ describe("Type assertions (as)", () => {
                 throw new Error("Expected b.a to be a number");
             if (typeof b.b !== "string")
                 throw new Error("Expected b.b to be a string");
+            if (!Array.isArray(b.d))
+                throw new Error("Expected b.d to be an array");
+            if (typeof b.d[0] !== "string")
+                throw new Error("Expected b.d[0] to be a string");
+            if (typeof b.d[1] !== "symbol")
+                throw new Error("Expected b.d[1] to be a symbol");
+            if (typeof b.d[2] !== "number")
+                throw new Error("Expected b.d[2] to be a number");
             if ("c" in b) {
                 if (!Array.isArray(b.c))
                     throw new Error("Expected b.c to be an array");
@@ -58,14 +66,6 @@ describe("Type assertions (as)", () => {
                 }
                 ;
             }
-            if (!Array.isArray(b.d))
-                throw new Error("Expected b.d to be an array");
-            if (typeof b.d[0] !== "string")
-                throw new Error("Expected b.d[0] to be a string");
-            if (typeof b.d[1] !== "symbol")
-                throw new Error("Expected b.d[1] to be a symbol");
-            if (typeof b.d[2] !== "number")
-                throw new Error("Expected b.d[2] to be a number");
             return [a, b];
         }
         it("No difference between parameter assertions and as assetions", () => {

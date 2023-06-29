@@ -211,15 +211,14 @@ export class Validator {
     weigh() : number {
         let sum = 0;
         switch (this.typeData.kind) {
-        case TypeDataKinds.Number: {
+        case TypeDataKinds.Number:
             if (this.typeData.literal) return 0;
             sum++;
             if (this.typeData.type) sum += 2;
             if (this.typeData.max) sum++;
             if (this.typeData.min) sum++;
             break;
-        }
-        case TypeDataKinds.String: {
+        case TypeDataKinds.String:
             if (this.typeData.literal) return 0;
             sum++;
             if (this.typeData.maxLen) sum++;
@@ -227,18 +226,15 @@ export class Validator {
             if (this.typeData.length) sum++;
             if (this.typeData.matches) sum += 3;
             break;
-        }
         case TypeDataKinds.Boolean:
             if (this.typeData.literal) return 0;
             else return 1;
-            break;
-        case TypeDataKinds.Array: {
-            sum += 2;
+        case TypeDataKinds.Array:
+            sum += 10;
             if (this.typeData.minLen) sum++;
             if (this.typeData.maxLen) sum++;
             if (this.typeData.length) sum++;
             break;
-        }
         case TypeDataKinds.Union:
         case TypeDataKinds.Resolve:
             break;
@@ -252,7 +248,10 @@ export class Validator {
             break;
         case TypeDataKinds.Class:
         case TypeDataKinds.Tuple:
+            sum += 2;
+            break;
         case TypeDataKinds.Object:
+            if (this.typeData.exact) sum += 8;
             sum += 2;
         }
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
