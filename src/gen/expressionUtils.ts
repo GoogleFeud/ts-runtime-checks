@@ -31,8 +31,15 @@ export function joinElements(elements: Stringifyable[], separator = "") : ts.Exp
 
 export function _stmt(stmt: BlockLike) : ts.Statement {
     if (Array.isArray(stmt)) return factory.createBlock(stmt);
-    if (stmt.kind > ts.SyntaxKind.EmptyStatement && stmt.kind < ts.SyntaxKind.DebuggerStatement) return stmt as ts.Statement;
+    else if (stmt.kind > ts.SyntaxKind.EmptyStatement && stmt.kind < ts.SyntaxKind.DebuggerStatement) return stmt as ts.Statement;
     else return factory.createExpressionStatement(stmt as ts.Expression);
+}
+
+export function _concise(stmt: BlockLike) : ts.ConciseBody {
+    if (Array.isArray(stmt)) return factory.createBlock(stmt);
+    else if (ts.isBlock(stmt)) return stmt;
+    else if (stmt.kind > ts.SyntaxKind.EmptyStatement && stmt.kind < ts.SyntaxKind.DebuggerStatement) return factory.createBlock([stmt as ts.Statement]);
+    else return stmt as ts.Expression;
 }
 
 export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse?: BlockLike) : ts.IfStatement {
@@ -58,7 +65,8 @@ export function _var(name: ts.Identifier | string, initializer?: ts.Expression, 
     ], flag)), ident];
 }
 
-export function _ident(name: string, nonUnique?: boolean) : ts.Identifier {
+export function _ident(name: string|ts.Identifier, nonUnique?: boolean) : ts.Identifier {
+    if (typeof name !== "string") return name;
     return nonUnique ? factory.createIdentifier(name) : factory.createUniqueName(name);
 }
 
@@ -121,7 +129,7 @@ export function _instanceof(exp: ts.Expression, inst: string | ts.Identifier) : 
 
 export function _not(exp: ts.Expression) : ts.Expression {
     if (ts.isParenthesizedExpression(exp)) return ts.factory.createParenthesizedExpression(_not(exp.expression));
-    if (ts.isBinaryExpression(exp)) {
+    else if (ts.isBinaryExpression(exp)) {
         switch(exp.operatorToken.kind) {
         case ts.SyntaxKind.EqualsEqualsToken:
             return factory.createBinaryExpression(exp.left, ts.SyntaxKind.ExclamationEqualsToken, exp.right); 
@@ -143,8 +151,11 @@ export function _not(exp: ts.Expression) : ts.Expression {
             return factory.createBinaryExpression(_not(exp.left), ts.SyntaxKind.BarBarToken, _not(exp.right));
         case ts.SyntaxKind.BarBarToken:
             return factory.createBinaryExpression(_not(exp.left), ts.SyntaxKind.AmpersandAmpersandToken, _not(exp.right));
+        default:
+            return factory.createPrefixUnaryExpression(ts.SyntaxKind.ExclamationToken, exp);
         }
     }
+    else if (ts.isCallExpression(exp)) return ts.factory.createCallExpression(exp.expression, exp.typeArguments, exp.arguments.map(arg => _not(arg)));
     else if (ts.isPrefixUnaryExpression(exp) && exp.operator === ts.SyntaxKind.ExclamationToken) return exp.operand;
     return factory.createPrefixUnaryExpression(ts.SyntaxKind.ExclamationToken, exp);
 }
@@ -180,6 +191,11 @@ export function _obj(props: Record<string, ts.Expression>) : ts.Expression {
         propNodes.push(ts.factory.createPropertyAssignment(property, props[property] as ts.Expression));
     }
     return ts.factory.createObjectLiteralExpression(propNodes);
+}
+
+export function _arrow_fn(parameters: (string|ts.Identifier)[], body: BlockLike) : ts.Expression {
+    return factory.createArrowFunction(undefined, undefined, 
+        parameters.map(p => factory.createParameterDeclaration(undefined, undefined, _ident(p, true))), undefined, undefined, _concise(body));
 }
 
 export const UNDEFINED = factory.createIdentifier("undefined");

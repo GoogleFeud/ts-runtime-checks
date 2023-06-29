@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _arrow_fn } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -251,8 +251,20 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             errorMessages.push(...concat`to have a length less than ${validator.typeData.maxLen}`);
         }
 
-        const index = _ident("i");
         const childType = validator.children[0] as Validator;
+        if (ctx.resultType.return) {
+            const param = _ident("p");
+            childType.customExp = param;
+            const validated = validateType(childType, ctx);
+            let body;
+            if (validated[0] && ts.isIfStatement(validated[0]) && !validated[0].elseStatement) body = validated[0].expression;
+            else body = validated;
+            return {
+                condition: _or([...checks, _call(_access(validator.expression(), "every"), [_arrow_fn([param], body)])])
+            };
+        }
+
+        const index = _ident("i");
         childType.setName(index);
         return {
             condition: _or(checks),
@@ -295,7 +307,7 @@ export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.St
     const result = [];
     for (const genResult of results) {
         if (genResult.before) result.push(...genResult.before);
-        result.push(_if(genResult.condition, (genResult.error ? error(ctx, genResult.error) : genResult.ifTrue) as BlockLike, genResult.ifFalse));
+        result.push(_if(genResult.condition, (genResult.ifTrue ? genResult.ifTrue : error(ctx, genResult.error)) as BlockLike, genResult.ifFalse));
         if (genResult.after) result.push(...genResult.after);
     }
     return result;
