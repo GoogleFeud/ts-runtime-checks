@@ -155,7 +155,6 @@ export function _not(exp: ts.Expression) : ts.Expression {
             return factory.createPrefixUnaryExpression(ts.SyntaxKind.ExclamationToken, exp);
         }
     }
-    else if (ts.isCallExpression(exp)) return ts.factory.createCallExpression(exp.expression, exp.typeArguments, exp.arguments.map(arg => _not(arg)));
     else if (ts.isPrefixUnaryExpression(exp) && exp.operator === ts.SyntaxKind.ExclamationToken) return exp.operand;
     return factory.createPrefixUnaryExpression(ts.SyntaxKind.ExclamationToken, exp);
 }
@@ -170,11 +169,11 @@ export function _call(exp: ts.Expression, args: ts.Expression[]) : ts.Expression
     return factory.createCallExpression(exp, undefined, args);
 }
 
-export function _for(arr: ts.Expression, indName: ts.Identifier | string, body: BlockLike) : [loop: ts.Statement, index: ts.Expression] {
+export function _for(arr: ts.Expression, indName: ts.Identifier | string, body: BlockLike, arrayExp?: ts.Expression) : [loop: ts.Statement, index: ts.Expression] {
     const [initializerCreate, initializer] = _var(indName, factory.createNumericLiteral(0));
     return [factory.createForStatement(
         initializerCreate.declarationList,
-        factory.createBinaryExpression(initializer, ts.SyntaxKind.LessThanToken, factory.createPropertyAccessExpression(arr, "length")),
+        factory.createBinaryExpression(initializer, ts.SyntaxKind.LessThanToken, arrayExp || factory.createPropertyAccessExpression(arr, "length")),
         factory.createPostfixIncrement(initializer),
         _stmt(body)
     ), initializer];

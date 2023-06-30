@@ -43,6 +43,27 @@ group("If vs AND/OR", () => {
 
 });
 
+const array = Array.from({length: 100000}, (_, i) => i + 1);
+
+group("For vs every", () => {
+
+    
+    bench("Every", () => {
+        const result = array.every(el => typeof el === "number");
+    });
+    
+    bench("For", () => {
+        let result = true;
+        for (let i=0; i < array.length; i++) {
+            if (typeof array[i] !== "number") {
+                result = false;
+                break;
+            }
+        }
+    });
+
+});
+
 (async () => {
     run();
 })();
