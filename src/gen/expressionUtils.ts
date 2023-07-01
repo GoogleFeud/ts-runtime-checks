@@ -187,14 +187,13 @@ export function _for_in(arr: ts.Expression, elName: ts.Identifier | string, body
 export function _obj(props: Record<string, ts.Expression>) : ts.Expression {
     const propNodes: ts.PropertyAssignment[] = [];
     for (const property in props) {
-        propNodes.push(ts.factory.createPropertyAssignment(property, props[property] as ts.Expression));
+        propNodes.push(factory.createPropertyAssignment(property, props[property] as ts.Expression));
     }
-    return ts.factory.createObjectLiteralExpression(propNodes);
+    return factory.createObjectLiteralExpression(propNodes);
 }
 
-export function _arrow_fn(parameters: (string|ts.Identifier)[], body: BlockLike) : ts.Expression {
-    return factory.createArrowFunction(undefined, undefined, 
-        parameters.map(p => factory.createParameterDeclaration(undefined, undefined, _ident(p, true))), undefined, undefined, _concise(body));
+export function _binding_decl(elements: [string, ts.Identifier?][], value: ts.Expression) : ts.VariableDeclaration {
+    return factory.createVariableDeclaration(factory.createObjectBindingPattern(elements.map(e => factory.createBindingElement(undefined, e[1] ? e[0] : undefined, e[1] ? e[1] : e[0], undefined))), undefined, undefined, value);
 }
 
 export const UNDEFINED = factory.createIdentifier("undefined");

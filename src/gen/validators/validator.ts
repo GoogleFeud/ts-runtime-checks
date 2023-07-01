@@ -174,6 +174,19 @@ export class Validator {
         delete this._exp;
     }
 
+    setCustomExpression(exp: ts.Expression) {
+        this.customExp = exp;
+        delete this._exp;
+    }
+
+    hasChildrenOfKind(...kinds: TypeDataKinds[]) : boolean {
+        const ownedKinds: Set<number> = new Set();
+        for (const child of this.children) {
+            if (kinds.includes(child.typeData.kind)) ownedKinds.add(child.typeData.kind);
+        }
+        return ownedKinds.size === kinds.length;
+    }
+
     getChildrenOfKind(kind: TypeDataKinds) : Validator[] {
         const result = [];
         if (this.typeData.kind === kind) result.push(this);

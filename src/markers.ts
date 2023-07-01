@@ -5,7 +5,7 @@ import { Transformer } from "./transformer";
 import { forEachVar, getCallSigFromType, resolveResultType } from "./utils";
 import { ValidationResultType, genNode, minimizeGenResult, validateType } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
-import { _access, _call, _var } from "./gen/expressionUtils";
+import { _access, _call, _not, _var } from "./gen/expressionUtils";
 
 export const enum MacroCallContext {
     As,
@@ -67,15 +67,19 @@ export const Functions: Record<string, FnCallFn> = {
         if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
         const validator = genValidator(transformer, data.type, ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
         if (!validator) return;
-        const nodes = minimizeGenResult(genNode(validator, { transformer, resultType: { return: ts.factory.createTrue() }}), true);
-        if (nodes.minimzed && !nodes.after) {
+        const ctx = { transformer, resultType: { return: ts.factory.createTrue() }};
+        const nodes = minimizeGenResult(genNode(validator, ctx), ctx, true);
+        if (nodes.minimzed && !nodes.after && !nodes.before) {
             if (stmt) (data.block.parent || data.block).nodes.push(stmt);
             return nodes.condition;
         } else {
-            data.block.nodes.push(stmt, ...validateType(validator, {
+            const generated = validateType(validator, {
                 resultType: { return: ts.factory.createFalse() },
                 transformer
-            }), ts.factory.createReturnStatement(ts.factory.createTrue()));
+            }, false);
+            const last = generated.pop() as ts.Statement;
+            if (ts.isIfStatement(last) && ts.isReturnStatement(last.thenStatement)) data.block.nodes.push(stmt, ...generated, ts.factory.createReturnStatement(_not(last.expression)));
+            else data.block.nodes.push(stmt, ...generated, last, ts.factory.createReturnStatement(ts.factory.createTrue()));
             return;
         }
     },

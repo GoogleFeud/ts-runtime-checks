@@ -7,14 +7,16 @@ describe("Object", () => {
         function test(a) {
             if (typeof a !== "object" || a === null)
                 throw new Error("Expected a to be an object");
+            const { c: c_1 } = a;
             if (typeof a.a !== "string")
                 throw new Error("Expected a.a to be a string");
-            if ("b" in a && typeof a.b !== "number")
+            if (a.b !== undefined && typeof a.b !== "number")
                 throw new Error("Expected a.b to be a number");
-            if (!Array.isArray(a.c))
+            if (!Array.isArray(c_1))
                 throw new Error("Expected a.c to be an array");
-            for (let i_1 = 0; i_1 < a.c.length; i_1++) {
-                if (typeof a.c[i_1] !== "string")
+            const len_1 = c_1.length;
+            for (let i_1 = 0; i_1 < len_1; i_1++) {
+                if (typeof c_1[i_1] !== "string")
                     throw new Error("Expected a.c[" + i_1 + "] to be a string");
             }
             return a;

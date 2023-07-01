@@ -64,6 +64,19 @@ group("For vs every", () => {
 
 });
 
+const obj = { a: 123, b: 123, c: 456 };
+group("in vs undefined", () => {
+
+    bench("in", () => {
+        const r = "a" in obj;
+    });
+
+    bench("undefined", () => {
+        const r = obj.a !== undefined;
+    });
+
+});
+
 (async () => {
     run();
 })();

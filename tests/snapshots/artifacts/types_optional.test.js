@@ -15,7 +15,7 @@ describe("Optional / nullable parameters", () => {
                 throw new Error("Expected b[0] to be a string");
             if (typeof b[1] !== "string")
                 throw new Error("Expected b[1] to be a string");
-            if (2 in b && typeof b[2] !== "number")
+            if (b[2] !== undefined && typeof b[2] !== "number")
                 throw new Error("Expected b[2] to be a number");
         }
         return [a, b, c];

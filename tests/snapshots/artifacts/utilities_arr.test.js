@@ -7,7 +7,8 @@ describe("Arr", () => {
         function test(a) {
             if (!Array.isArray(a) || a.length !== 6)
                 throw new Error("Expected a to be an array, to have a length of 6");
-            for (let i_1 = 0; i_1 < a.length; i_1++) {
+            const len_1 = a.length;
+            for (let i_1 = 0; i_1 < len_1; i_1++) {
                 if (typeof a[i_1] !== "string" || a[i_1].length !== 4)
                     throw new Error("Expected a[" + i_1 + "] to be a string, to have a length of 4");
             }
@@ -27,7 +28,8 @@ describe("Arr", () => {
         function test(a) {
             if (!Array.isArray(a) || a.length < 3)
                 throw new Error("Expected a to be an array, to have a length greater than 3");
-            for (let i_2 = 0; i_2 < a.length; i_2++) {
+            const len_2 = a.length;
+            for (let i_2 = 0; i_2 < len_2; i_2++) {
                 if (typeof a[i_2] !== "number")
                     throw new Error("Expected a[" + i_2 + "] to be a number");
             }
@@ -44,7 +46,8 @@ describe("Arr", () => {
         function test(a) {
             if (!Array.isArray(a) || a.length > 6)
                 throw new Error("Expected a to be an array, to have a length less than 6");
-            for (let i_3 = 0; i_3 < a.length; i_3++) {
+            const len_3 = a.length;
+            for (let i_3 = 0; i_3 < len_3; i_3++) {
                 if (typeof a[i_3] !== "number")
                     throw new Error("Expected a[" + i_3 + "] to be a number");
             }

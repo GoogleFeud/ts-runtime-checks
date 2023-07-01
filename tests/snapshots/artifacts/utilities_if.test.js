@@ -22,9 +22,10 @@ describe("If", () => {
                 throw new Error("Expected b to satisfy \"$self === 5\"");
             if (!Array.isArray(c))
                 throw new Error("Expected c to be an array");
+            const len_1 = c.length;
             if (c.length < 10)
                 throw new Error("Expected c to satisfy \"$self.length > 10\"");
-            for (let i_1 = 0; i_1 < c.length; i_1++) {
+            for (let i_1 = 0; i_1 < len_1; i_1++) {
                 if (typeof c[i_1] !== "string")
                     throw new Error("Expected c[" + i_1 + "] to be a string");
             }

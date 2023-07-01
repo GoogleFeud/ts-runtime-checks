@@ -26,16 +26,17 @@ describe("Early return", () => {
     function test3(a) {
         if (typeof a !== "object" || a === null)
             return "Expected a to be an object";
-        if (!Array.isArray(a.a))
+        const { a: a_1 } = a;
+        if (!Array.isArray(a_1))
             return "Expected a.a to be an array";
-        if (typeof a.a[0] !== "string")
+        if (typeof a_1[0] !== "string")
             return "Expected a.a[0] to be a string";
-        if (typeof a.a[1] !== "number")
+        if (typeof a_1[1] !== "number")
             return "Expected a.a[1] to be a number";
-        if (2 in a.a) {
-            if (typeof a.a[2] !== "object" || a.a[2] === null)
+        if (a_1[2] !== undefined) {
+            if (typeof a_1[2] !== "object" || a_1[2] === null)
                 return "Expected a.a[2] to be an object";
-            if (typeof a.a[2].b !== "number")
+            if (typeof a_1[2].b !== "number")
                 return "Expected a.a[2].b to be a number";
             ;
         }

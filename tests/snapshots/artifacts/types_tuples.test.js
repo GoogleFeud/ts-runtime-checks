@@ -11,7 +11,7 @@ describe("Tuple", () => {
                 throw new Error("Expected a[1] to be equal to \"123\"");
             if (typeof a[0] !== "string")
                 throw new Error("Expected a[0] to be a string");
-            if (2 in a && typeof a[2] !== "number")
+            if (a[2] !== undefined && typeof a[2] !== "number")
                 throw new Error("Expected a[2] to be a number");
             return a;
         }

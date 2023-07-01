@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _var } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _var, _binding_decl } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -163,6 +163,8 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.Union: {
+        if (validator.children.length === 2 && validator.hasChildrenOfKind(TypeDataKinds.Object, TypeDataKinds.Null)) return genNode(validator.getChildrenOfKind(TypeDataKinds.Object)[0] as Validator, ctx);
+
         const compoundTypes: GenResult[] = [], 
             normalTypeConditions: ts.Expression[] = [], 
             normalTypeErrors: GenResultError[] = [],
@@ -270,7 +272,16 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     }
     case TypeDataKinds.Object: {
         const checks: ts.Statement[] = [];
+        const names: [string, ts.Identifier][] = [];
         for (const child of validator.children) {
+            if (child.weigh() > 5 && typeof child.name === "string") {
+                if (!child.customExp) {
+                    const unique = _ident(child.name);
+                    child.setCustomExpression(unique);
+                    names.push([child.name, unique]);
+                } 
+                else names.push([child.name, child.customExp as ts.Identifier]);
+            }
             checks.push(...validateType(child, ctx));
         }
 
@@ -288,6 +299,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         return {
             condition: _obj_check(validator.expression()),
             error: [validator, [_str("to be an object")]],
+            before: names.length ? [ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([_binding_decl(names, validator.expression())], ts.NodeFlags.Const))] : undefined,
             after: checks
         };
     }
@@ -296,7 +308,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 }
 
 export function isNullableNode(validator: Validator) : ts.Expression {
-    return validator.parent ? _bin(validator.nameAsExpression(), validator.parent.expression(), ts.SyntaxKind.InKeyword) : _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken);
+    return _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken);
 }
 
 export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.Statement[] {
@@ -311,9 +323,9 @@ export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.St
 
 export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean, gen?: GenResult) : ts.Statement[] {
     const genResult = gen || genNode(validator, ctx);
-    const node = ctx.resultType.return ? minimizeGenResult(genResult) : genResult;
+    const node = ctx.resultType.return ? minimizeGenResult(genResult, ctx) : genResult;
     if (isOptional) {
-        if (node.after || node.ifFalse || node.ifTrue) return [_if(isNullableNode(validator), genStatements([node], ctx))];
+        if (node.after || node.ifFalse || node.ifTrue || node.before) return [_if(isNullableNode(validator), genStatements([node], ctx))];
         else return genStatements([{
             ...node,
             condition: _and([isNullableNode(validator), node.condition])
@@ -322,22 +334,44 @@ export function validateType(validator: Validator, ctx: NodeGenContext, isOption
     else return genStatements([node], ctx);
 }
 
-export function minimizeGenResult(result: GenResult, negate?: boolean) : GenResult {
+export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate?: boolean) : GenResult {
     if (result.ifFalse || result.ifTrue) return result;
     const _join = negate ? _and : _or;
-    const _negate = negate ? _not : (exp: ts.Expression) => exp;
-    if (!result.after) return {
-        ...result,
-        condition: _negate(result.condition),
-        minimzed: true
-    };
+    const _negate = negate ? _not : <T>(exp: T) => exp;
+
     const ifStatements: ts.Expression[] = [], other: ts.Statement[] = [];
-    for (const stmt of result.after) {
-        if (ts.isIfStatement(stmt) && ts.isReturnStatement(stmt.thenStatement) && !stmt.elseStatement) ifStatements.push(_negate(stmt.expression));
-        else other.push(stmt);
+    let condition = _negate(result.condition);
+
+    /*
+    if (result.ifTrue) {
+        const block = _concise(result.ifTrue);
+        if (ts.isExpression(block)) ifStatements.push(_negate(block));
+        else if (block.statements.every(stmt => (ts.isIfStatement(stmt) && !stmt.elseStatement && ts.isReturnStatement(stmt.thenStatement)) || ts.isEmptyStatement(stmt))) {
+            const exps = [];
+            for (const nestedIf of block.statements) {
+                if (ts.isEmptyStatement(nestedIf)) continue;
+                exps.push(_negate((nestedIf as ts.IfStatement).expression));
+            }
+            condition = _or([negate ? condition : _not(condition), _join(exps)]);
+        }
+        else return result;
     }
+    */
+    
+    if (result.after) {
+        for (const stmt of result.after) {
+            if (ts.isIfStatement(stmt) && ts.isReturnStatement(stmt.thenStatement) && !stmt.elseStatement) ifStatements.push(_negate(stmt.expression));
+            else other.push(stmt);
+        }
+    }
+
+    if (result.before) {
+        if (ifStatements.length) other.push(_if(_join(ifStatements), error(ctx, result.error)));
+    }
+    else condition = _join([condition, ...ifStatements]);
+
     return {
-        condition: _join([_negate(result.condition), ...ifStatements]),
+        condition,
         after: other.length ? other : undefined,
         before: result.before,
         error: result.error,
