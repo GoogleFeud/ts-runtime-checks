@@ -169,6 +169,13 @@ export class Validator {
         this.children = children;
     }
 
+    setAlias(alias: () => ts.Identifier) : ts.Identifier {
+        delete this._exp;
+        if (this.customExp) return this.customExp as ts.Identifier;
+        this.customExp = alias();
+        return this.customExp as ts.Identifier;
+    }
+
     setName(name: ValidatorTargetName) {
         this.name = name;
         delete this._exp;

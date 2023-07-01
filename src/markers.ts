@@ -73,13 +73,14 @@ export const Functions: Record<string, FnCallFn> = {
             if (stmt) (data.block.parent || data.block).nodes.push(stmt);
             return nodes.condition;
         } else {
+            if (stmt) data.block.nodes.push(stmt);
             const generated = validateType(validator, {
                 resultType: { return: ts.factory.createFalse() },
                 transformer
             }, false);
             const last = generated.pop() as ts.Statement;
-            if (ts.isIfStatement(last) && ts.isReturnStatement(last.thenStatement)) data.block.nodes.push(stmt, ...generated, ts.factory.createReturnStatement(_not(last.expression)));
-            else data.block.nodes.push(stmt, ...generated, last, ts.factory.createReturnStatement(ts.factory.createTrue()));
+            if (ts.isIfStatement(last) && ts.isReturnStatement(last.thenStatement)) data.block.nodes.push(...generated, ts.factory.createReturnStatement(_not(last.expression)));
+            else data.block.nodes.push(...generated, last, ts.factory.createReturnStatement(ts.factory.createTrue()));
             return;
         }
     },

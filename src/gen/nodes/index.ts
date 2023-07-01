@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _var, _binding_decl } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _var, _obj_binding_decl, _arr_binding_decl } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -145,11 +145,21 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         condition: _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken),
         error: [validator, [_str("to be undefined")]]
     };
-    case TypeDataKinds.Tuple: return {
-        condition: _not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()])),
-        error: [validator, [_str("to be an array")]],
-        after: validator.children.map(c => validateType(c, ctx)).flat()
-    };
+    case TypeDataKinds.Tuple: {
+        const large: [number, ts.Identifier][] = [];
+        const after = [];
+        for (const child of validator.children) {
+            if (child.weigh() > 5 && typeof child.name === "number") large.push([child.name, child.setAlias(() => _ident("t"))]);
+            after.push(...validateType(child, ctx));
+        }
+
+        return {
+            condition: _not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()])),
+            error: [validator, [_str("to be an array")]],
+            before: large.length ? [ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([_arr_binding_decl(large, validator.expression())], ts.NodeFlags.Const))] : undefined,
+            after
+        };
+    }
     case TypeDataKinds.If: {
         if (validator.typeData.fullCheck) {
             const innerGen = genNode(validator.children[0] as Validator, ctx);
@@ -163,6 +173,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.Union: {
+        // Special case - if there's an union just between an object and `null`, we expand the union because the object already checks for null
         if (validator.children.length === 2 && validator.hasChildrenOfKind(TypeDataKinds.Object, TypeDataKinds.Null)) return genNode(validator.getChildrenOfKind(TypeDataKinds.Object)[0] as Validator, ctx);
 
         const compoundTypes: GenResult[] = [], 
@@ -274,14 +285,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         const checks: ts.Statement[] = [];
         const names: [string, ts.Identifier][] = [];
         for (const child of validator.children) {
-            if (child.weigh() > 5 && typeof child.name === "string") {
-                if (!child.customExp) {
-                    const unique = _ident(child.name);
-                    child.setCustomExpression(unique);
-                    names.push([child.name, unique]);
-                } 
-                else names.push([child.name, child.customExp as ts.Identifier]);
-            }
+            if (child.weigh() > 5 && typeof child.name === "string") names.push([child.name, child.setAlias(() => _ident(child.name as string))]);
             checks.push(...validateType(child, ctx));
         }
 
@@ -299,7 +303,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         return {
             condition: _obj_check(validator.expression()),
             error: [validator, [_str("to be an object")]],
-            before: names.length ? [ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([_binding_decl(names, validator.expression())], ts.NodeFlags.Const))] : undefined,
+            before: names.length ? [ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([_obj_binding_decl(names, validator.expression())], ts.NodeFlags.Const))] : undefined,
             after: checks
         };
     }
@@ -339,8 +343,8 @@ export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate
     const _join = negate ? _and : _or;
     const _negate = negate ? _not : <T>(exp: T) => exp;
 
-    const ifStatements: ts.Expression[] = [], other: ts.Statement[] = [];
-    let condition = _negate(result.condition);
+    const ifStatements: ts.Expression[] = [];
+    let condition = _negate(result.condition), other: ts.Statement[] = [];
 
     /*
     if (result.ifTrue) {
@@ -365,8 +369,14 @@ export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate
         }
     }
 
-    if (result.before) {
-        if (ifStatements.length) other.push(_if(_join(ifStatements), error(ctx, result.error)));
+    if (result.before && ifStatements.length) {
+        const heavy = [], light = [];
+        for (const stmt of other) {
+            if (ts.isForStatement(stmt)) heavy.push(stmt);
+            else light.push(stmt);
+        }
+        light.push(_if(_join(ifStatements), error(ctx, result.error)));
+        other = [...light, ...heavy];
     }
     else condition = _join([condition, ...ifStatements]);
 

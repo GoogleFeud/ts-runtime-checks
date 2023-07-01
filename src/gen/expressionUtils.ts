@@ -192,8 +192,20 @@ export function _obj(props: Record<string, ts.Expression>) : ts.Expression {
     return factory.createObjectLiteralExpression(propNodes);
 }
 
-export function _binding_decl(elements: [string, ts.Identifier?][], value: ts.Expression) : ts.VariableDeclaration {
-    return factory.createVariableDeclaration(factory.createObjectBindingPattern(elements.map(e => factory.createBindingElement(undefined, e[1] ? e[0] : undefined, e[1] ? e[1] : e[0], undefined))), undefined, undefined, value);
+export function _obj_binding_decl(elements: [string, ts.Identifier?][], value: ts.Expression) : ts.VariableDeclaration {
+    return factory.createVariableDeclaration(
+        factory.createObjectBindingPattern(elements.map(e => factory.createBindingElement(undefined, e[1] ? e[0] : undefined, e[1] ? e[1] : e[0], undefined))), undefined, undefined, value);
+}
+
+export function _arr_binding_decl(elements: [number, ts.Identifier][], value: ts.Expression) : ts.VariableDeclaration {
+    const bindingEls = [];
+    for (const el of elements) {
+        bindingEls[el[0]] = factory.createBindingElement(undefined, undefined, el[1], undefined);
+    }
+    for (let i=0; i < bindingEls.length; i++) {
+        if (bindingEls[i] === undefined) bindingEls[i] = factory.createOmittedExpression();
+    }
+    return factory.createVariableDeclaration(factory.createArrayBindingPattern(bindingEls), undefined, undefined, value);
 }
 
 export const UNDEFINED = factory.createIdentifier("undefined");

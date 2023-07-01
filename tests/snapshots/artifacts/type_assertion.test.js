@@ -14,18 +14,18 @@ describe("Type assertions (as)", () => {
             }
             if (typeof b !== "object" || b === null)
                 throw new Error("Expected b to be an object");
-            const { d: d_1, c: c_1 } = b;
+            const { c: c_1 } = b;
             if (typeof b.a !== "number")
                 throw new Error("Expected b.a to be a number");
             if (typeof b.b !== "string")
                 throw new Error("Expected b.b to be a string");
-            if (!Array.isArray(d_1))
+            if (!Array.isArray(b.d))
                 throw new Error("Expected b.d to be an array");
-            if (typeof d_1[0] !== "string")
+            if (typeof b.d[0] !== "string")
                 throw new Error("Expected b.d[0] to be a string");
-            if (typeof d_1[1] !== "symbol")
+            if (typeof b.d[1] !== "symbol")
                 throw new Error("Expected b.d[1] to be a symbol");
-            if (typeof d_1[2] !== "number")
+            if (typeof b.d[2] !== "number")
                 throw new Error("Expected b.d[2] to be a number");
             if (c_1 !== undefined) {
                 if (!Array.isArray(c_1))
@@ -48,18 +48,18 @@ describe("Type assertions (as)", () => {
             }
             if (typeof b !== "object" || b === null)
                 throw new Error("Expected b to be an object");
-            const { d: d_2, c: c_2 } = b;
+            const { c: c_2 } = b;
             if (typeof b.a !== "number")
                 throw new Error("Expected b.a to be a number");
             if (typeof b.b !== "string")
                 throw new Error("Expected b.b to be a string");
-            if (!Array.isArray(d_2))
+            if (!Array.isArray(b.d))
                 throw new Error("Expected b.d to be an array");
-            if (typeof d_2[0] !== "string")
+            if (typeof b.d[0] !== "string")
                 throw new Error("Expected b.d[0] to be a string");
-            if (typeof d_2[1] !== "symbol")
+            if (typeof b.d[1] !== "symbol")
                 throw new Error("Expected b.d[1] to be a symbol");
-            if (typeof d_2[2] !== "number")
+            if (typeof b.d[2] !== "number")
                 throw new Error("Expected b.d[2] to be a number");
             if (c_2 !== undefined) {
                 if (!Array.isArray(c_2))

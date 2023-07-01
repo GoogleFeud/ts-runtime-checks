@@ -3,6 +3,12 @@ import ts from "typescript";
 import { Transformer } from "./transformer";
 import { ValidationResultType } from "./gen/nodes";
 
+declare module "typescript" {
+    interface IfStatement {
+        doNotMinify?: boolean
+    }
+}
+
 export function hasBit(thing: { flags: number }, bit: number) : boolean {
     return (thing.flags & bit) !== 0;
 }
