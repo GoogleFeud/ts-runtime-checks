@@ -208,4 +208,8 @@ export function _arr_binding_decl(elements: [number, ts.Identifier][], value: ts
     return factory.createVariableDeclaration(factory.createArrayBindingPattern(bindingEls), undefined, undefined, value);
 }
 
+export function _ternary(cond: ts.Expression, ifTrue: ts.Expression, ifFalse: ts.Expression) : ts.Expression {
+    return factory.createConditionalExpression(cond, undefined, ifTrue, undefined, ifFalse);
+}
+
 export const UNDEFINED = factory.createIdentifier("undefined");

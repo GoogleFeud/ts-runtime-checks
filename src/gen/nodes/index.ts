@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _var, _obj_binding_decl, _arr_binding_decl } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _var, _obj_binding_decl, _arr_binding_decl, _concise, _ternary } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
 export interface ValidationResultType {
@@ -339,14 +339,13 @@ export function validateType(validator: Validator, ctx: NodeGenContext, isOption
 }
 
 export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate?: boolean) : GenResult {
-    if (result.ifFalse || result.ifTrue) return result;
+    if (result.ifFalse) return result;
     const _join = negate ? _and : _or;
     const _negate = negate ? _not : <T>(exp: T) => exp;
 
     const ifStatements: ts.Expression[] = [];
     let condition = _negate(result.condition), other: ts.Statement[] = [];
 
-    /*
     if (result.ifTrue) {
         const block = _concise(result.ifTrue);
         if (ts.isExpression(block)) ifStatements.push(_negate(block));
@@ -356,11 +355,10 @@ export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate
                 if (ts.isEmptyStatement(nestedIf)) continue;
                 exps.push(_negate((nestedIf as ts.IfStatement).expression));
             }
-            condition = _or([negate ? condition : _not(condition), _join(exps)]);
+            condition = _ternary(condition, _join(exps), ctx.resultType.return as ts.Expression);
         }
         else return result;
     }
-    */
     
     if (result.after) {
         for (const stmt of result.after) {
