@@ -4,7 +4,7 @@ import * as Block from "./block";
 import { Transformer } from "./transformer";
 import { forEachVar, getCallSigFromType, resolveResultType } from "./utils";
 import { ValidationResultType, genNode, minimizeGenResult, validateType } from "./gen/nodes";
-import { genValidator, ResolveTypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
+import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
 
 export const enum MacroCallContext {
@@ -180,7 +180,7 @@ export type ThrowError<ErrorType = Error, _rawErrorData = false> = { __throw_err
 export interface ValidationError {
     valueName: string,
     value: unknown,
-    parts: string[]
+    expectedType: TypeData
 }
 
 export type Str<Settings extends {

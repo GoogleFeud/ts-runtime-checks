@@ -184,10 +184,18 @@ export function _for_in(arr: ts.Expression, elName: ts.Identifier | string, body
     return [factory.createForInStatement(initializerCreate.declarationList, arr, _stmt(body)), initializer];
 }
 
-export function _obj(props: Record<string, ts.Expression>) : ts.Expression {
+export function _obj(props: Record<string, ts.Expression|string|number|boolean|undefined>) : ts.Expression {
     const propNodes: ts.PropertyAssignment[] = [];
     for (const property in props) {
-        propNodes.push(factory.createPropertyAssignment(property, props[property] as ts.Expression));
+        const propValue = props[property];
+        let nodePropValue;
+        if (propValue === undefined) continue;
+        else if (typeof propValue === "string") nodePropValue = _str(propValue);
+        else if (typeof propValue === "number") nodePropValue = _num(propValue);
+        else if (propValue === true) nodePropValue = _bool(true);
+        else if (propValue === false) nodePropValue = _bool(false);
+        else nodePropValue = propValue as ts.Expression;
+        propNodes.push(factory.createPropertyAssignment(property, nodePropValue));
     }
     return factory.createObjectLiteralExpression(propNodes);
 }

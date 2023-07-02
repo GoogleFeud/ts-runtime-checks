@@ -124,8 +124,8 @@ If `rawErrors` is true, instead of an error string, the transformer will pass / 
     value: any
     // The name of the value
     valueName: string
-    // Extra parts that form the error string
-    parts: string[]
+    // Information about the expected type
+    expectedType: TypeData
 }
 ```
 

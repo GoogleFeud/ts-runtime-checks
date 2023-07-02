@@ -36,7 +36,7 @@ export function error(ctx: NodeGenContext, error?: GenResultError, isFull = fals
     const finalMsg = ctx.resultType.rawErrors ? _obj({
         value: error[0].expression(),
         valueName: _bin_chain(joinElements(error[0].path()), ts.SyntaxKind.PlusToken),
-        parts: ts.factory.createArrayLiteralExpression(error[1])
+        expectedType: _obj(error[0].typeData as unknown as Record<string, ts.Expression>)
     }) : _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0].path(), " ", ...error[1]]), ts.SyntaxKind.PlusToken);
     if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
     else if (ctx.resultType.throw) return _throw(_new(ctx.resultType.throw, [finalMsg]));
