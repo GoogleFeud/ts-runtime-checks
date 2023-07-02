@@ -269,9 +269,14 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             errorMessages.push(...concat`to have a length less than ${validator.typeData.maxLen}`);
         }
 
+        const childType = validator.children[0];
+        if (!childType) return {
+            condition: _or(checks),
+            error: [validator, joinElements(errorMessages, ", ")],
+        };
+        
         const [lenStmt, len] = _var("len", _access(validator.expression(), "length"), ts.NodeFlags.Const);
 
-        const childType = validator.children[0] as Validator;
         let index: ts.Identifier;
         if (typeof childType.name === "object") index = childType.name;
         else {

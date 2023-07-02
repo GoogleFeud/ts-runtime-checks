@@ -20,8 +20,8 @@ function greet(name: Assert<string>, age: AssertNum) : string {
 
 // Transpiles to:
 function greet(name, age) {
-    if (typeof name !== "string") throw new Error("Expected name to be string.");
-    if (typeof age !== "number") throw new Error("Expected age to be number.");
+    if (typeof name !== "string") throw new Error("Expected name to be a string");
+    if (typeof age !== "number") throw new Error("Expected age to be a number");
     return `Hello ${name}! I'm ${age} too!`;
 }
 ```
@@ -103,11 +103,12 @@ function addPlayer(player: Assert<{name: string, id: number}>) : void {
 
 // Transpiles to:
 function addPlayer(player) {
-    if (typeof player !== "object") throw new Error("Expected player to be { name: string; id: number; }.");
-    if (typeof player["name"] !== "string") throw new Error("Expected player.name to be string.");
-    if (typeof player["id"] !== "number") throw new Error("Expected player.id to be number.");
+    if (typeof player !== "object" || player === null) throw new Error("Expected player to be an object");
+    if (typeof player.name !== "string") throw new Error("Expected player.name to be a string");
+    if (typeof player.id !== "number") throw new Error("Expected player.id to be a number");
     players.push(player);
 }
+
 ```
 
 For `Action`, you can provide the following types:
@@ -150,11 +151,11 @@ Allows you to check if the number is greater than / less than an amount, or if i
 ```ts
 const someNum = 50;
 
-type AssertRange<min> = Num<{
+type AssertRange<min> = Assert<Num<{
     type: "int",
     min: min,
     max: Expr<"someNum">
-}>
+}>>
 
 function test(num1: AssertRange<1>, num2: AssertRange<10>, num3: AssertRange<Expr<"someNum">>) {
     // Your code
@@ -162,14 +163,10 @@ function test(num1: AssertRange<1>, num2: AssertRange<10>, num3: AssertRange<Exp
 
 // Transpiles to:
 function test(num1, num2, num3) {
-    if (typeof num1 !== "number" || num1 % 1 !== 0 || num1 < 1 || num1 > someNum)
-        throw new Error("Expected num1 to be an integer, to be greater than 1 and to be less than someNum.");
-    if (typeof num2 !== "number" || num2 % 1 !== 0 || num2 < 10 || num2 > someNum)
-        throw new Error("Expected num2 to be an integer, to be greater than 10 and to be less than someNum.");
-    if (typeof num3 !== "number" || num3 % 1 !== 0 || num3 < someNum || num3 > someNum)
-        throw new Error("Expected num3 to be an integer, to be greater than someNum and to be less than someNum.");
+    if (typeof num1 !== "number" || num1 % 1 !== 0 || num1 < 1 || num1 > someNum) throw new Error("Expected num1 to be an integer, to be greater than 1, to be less than " + someNum);
+    if (typeof num2 !== "number" || num2 % 1 !== 0 || num2 < 10 || num2 > someNum) throw new Error("Expected num2 to be an integer, to be greater than 10, to be less than " + someNum);
+    if (typeof num3 !== "number" || num3 % 1 !== 0 || num3 < someNum || num3 > someNum) throw new Error("Expected num3 to be an integer, to be greater than " + someNum + ", to be less than " + someNum);
 }
-
 ```
 
 #### Str<settings>
@@ -188,8 +185,7 @@ function test(a: Assert<Str<{
 
 // Transpiles to:
 function test(a) {
-    if (typeof a !== "string" || a.length < 3 || a.length > 100 || !/abc/.test(a))
-        throw new Error("Expected a to be a string, to have a minimum length of 3, to have a maximum length of 100 and to match /abc/.");
+    if (typeof a !== "string" || !/abc/.test(a) || a.length < 3 || a.length > 100) throw new Error("Expected a to be a string, to match /abc/, to have a length greater than 3, to have a length less than 100");
 }
 ```
 
@@ -208,15 +204,14 @@ function test(a: Assert<Arr<number, {
 
 // Transpiles to:
 function test(a) {
-    if (!(a instanceof Array) || a.length < 1 || a.length > 10)
-        throw new Error("Expected a to be an Array, to have a minimum length of 1 and to have a maximum length of 10.");
-    for (let i_1 = 0; i_1 < a.length; i_1++) {
-        const x_1 = a[i_1];
-        if (typeof x_1 !== "number")
-            throw new Error("Expected " + ("a[" + i_1 + "]") + " to be number.");
+    if (!Array.isArray(a) || a.length < 1 || a.length > 10)
+        throw new Error("Expected a to be an array, to have a length greater than 1, to have a length less than 10");
+    const len_1 = a.length;
+    for (let i_1 = 0; i_1 < len_1; i_1++) {
+        if (typeof a[i_1] !== "number")
+            throw new Error("Expected a[" + i_1 + "] to be a number");
     }
 }
-
 ```
 
 #### NoCheck<Type>
@@ -227,7 +222,7 @@ Skips validating the value.
 interface UserRequest {
     name: string,
     id: string,
-    value: NoCheck<unknown>
+    child: NoCheck<UserRequest>
 }
 
 function test(req: Assert<UserRequest>) {
@@ -236,9 +231,9 @@ function test(req: Assert<UserRequest>) {
 
 // Transpiles to:
 function test(req) {
-    if (typeof req !== "object") throw new Error("Expected req to be UserRequest.");
-    if (typeof req["name"] !== "string") throw new Error("Expected req.name to be string.");
-    if (typeof req["id"] !== "string") throw new Error("Expected req.id to be string.");
+    if (typeof req !== "object" || req === null) throw new Error("Expected req to be an object");
+    if (typeof req.name !== "string") throw new Error("Expected req.name to be a string");
+    if (typeof req.id !== "string") throw new Error("Expected req.id to be a string");
 }
 ```
 
@@ -256,16 +251,16 @@ function test(req: unknown) {
 }
 
 // Transpiles to:
+
 function test(req) {
-    if (typeof req !== "object") throw new Error("Expected req to be { a: string; b: number; c: [string, number]; }.");
-    if (typeof req["a"] !== "string") throw new Error("Expected req.a to be string.");
-    if (typeof req["b"] !== "number") throw new Error("Expected req.b to be number.");
-    if (!(req["c"] instanceof Array)) throw new Error("Expected req.c to be [string, number].");
-    if (typeof req["c"][0] !== "string") throw new Error("Expected " + ("req.c[" + 0 + "]") + " to be string.");
-    if (typeof req["c"][1] !== "number") throw new Error("Expected " + ("req.c[" + 1 + "]") + " to be number.");
-    for (let name_1 in req) {
-        if (name_1 !== "a" && name_1 !== "b" && name_1 !== "c")
-            throw new Error("Property " + ("req[" + name_1 + "]") + " is excessive.");
+    if (typeof req !== "object" || req === null) throw new Error("Expected req to be an object");
+    if (typeof req.a !== "string") throw new Error("Expected req.a to be a string");
+    if (typeof req.b !== "number") throw new Error("Expected req.b to be a number");
+    if (!Array.isArray(req.c)) throw new Error("Expected req.c to be an array");
+    if (typeof req.c[0] !== "string") throw new Error("Expected req.c[0] to be a string");
+    if (typeof req.c[1] !== "number") throw new Error("Expected req.c[1] to be a number");
+    for (let p_1 in req) {
+        if (p_1 !== "a" && p_1 !== "b" && p_1 !== "c") throw new Error("Property req." + p_1 + " is excessive");
     }
     return req;
 }
@@ -273,13 +268,13 @@ function test(req) {
 
 #### If<Type, Condition, FullCheck>
 
-Allows you to create custom comparisons by providing a string containing javascript code. You can use `$self` in the expression, it'll be replaced by the expression of the value that's currently being validated. 
+Allows you to create custom comparisons by providing a string containing javascript code. You can use `$self` in the expression, it'll be replaced by the expression of the value that's currently being validated.
 
 `FullCheck` is a boolean - if it's set to true, then validation code will be generated for `Type`, if it's set to false (which is the default), only the condition which you provide will be enough to validate it. 
 
 ```ts
 // Creating a less flexible version of the Range marker
-type Range<min extends number, max extends number> = Assert<If<number, `$self < ${min} && $self > ${max}`>>;
+type Range<min extends number, max extends number> = Assert<If<number, `$self > ${min} && $self < ${max}`>>;
 
 function test(num: Range<1, 5>) {
     // Your code...
@@ -287,8 +282,7 @@ function test(num: Range<1, 5>) {
 
 // Transpiles to:
 function test(num) {
-    if (!(num < 1 && num > 5)) throw new Error("Expected num to satisfy `$self < 1 && $self > 5`.");
-    // Your code...
+    if (num < 1 || num > 5) throw new Error("Expected num to satisfy \"$self > 1 && $self < 5\"");
 }
 ```
 
@@ -436,19 +430,19 @@ const args = JSON.parse(process.argv[2] as Assert<string>) as Assert<Args>;
 
 // Transpiles to:
 if (typeof process.argv[2] !== "string")
-    throw new Error("Expected process.argv[2] to be string.");
-const temp_1 = JSON.parse(process.argv[2]);
-if (typeof temp_1 !== "object")
-    throw new Error("Expected value to be Args.");
-if (typeof temp_1["name"] !== "string")
-    throw new Error("Expected value.name to be string.");
-if (typeof temp_1["path"] !== "string")
-    throw new Error("Expected value.path to be string.");
-if (typeof temp_1["output"] !== "string")
-    throw new Error("Expected value.output to be string.");
-if ("clusters" in temp_1 && typeof temp_1["clusters"] !== "number")
-    throw new Error("Expected value.clusters to be number.");
-const args = temp_1;
+    throw new Error("Expected process.argv[2] to be a string");
+const value_1 = JSON.parse(process.argv[2]);
+if (typeof value_1 !== "object" || value_1 === null)
+    throw new Error("Expected value to be an object");
+if (typeof value_1.name !== "string")
+    throw new Error("Expected value.name to be a string");
+if (typeof value_1.path !== "string")
+    throw new Error("Expected value.path to be a string");
+if (typeof value_1.output !== "string")
+    throw new Error("Expected value.output to be a string");
+if (value_1.clusters !== undefined && typeof value_1.clusters !== "number")
+    throw new Error("Expected value.clusters to be a number");
+const args = value_1;
 ```
 
 ### `is<Type>(value)` utility function
@@ -464,13 +458,8 @@ if (is<[string, number]>(val)) {
 // Transpiles to:
 
 const val = JSON.parse("[\"Hello\", \"World\"]");
-if ((() => {
-    if (!(val instanceof Array)) return false;
-    if (typeof val[0] !== "string") return false;
-    if (typeof val[1] !== "number") return false;
-    return true;
-})()) { 
-    // Your code...
+if (Array.isArray(val) && typeof val[0] === "string" && typeof val[1] === "number") {
+    // Your code
 }
 ```
 
@@ -486,9 +475,9 @@ if (errors.length) console.log(errors);
 
 const value = JSON.parse("[\"Hello\", \"World\"]");
 const errors = [];
-if (!(value instanceof Array)) errors.push("Expected value to be [string, number].");
-if (typeof value[0] !== "string") errors.push("Expected " + ("value[" + 0 + "]") + " to be string.");
-if (typeof value[1] !== "number") errors.push("Expected " + ("value[" + 1 + "]") + " to be number.");
+if (!Array.isArray(value)) errors.push("Expected value to be an array");
+if (typeof value[0] !== "string") errors.push("Expected value[0] to be a string");
+if (typeof value[1] !== "number") errors.push("Expected value[1] to be a number");
 if (errors.length) console.log(errors);
 ```
 
@@ -508,11 +497,7 @@ function test({user: { skills: [skill1, skill2, skill3] }}: Assert<{
 }
 
 // Transpiles to:
-function test({
-    user: {
-        skills: [skill1, skill2, skill3]
-    }
-}) {
+function test({ user: { skills: [skill1, skill2, skill3] } }) {
     if (typeof skill1 !== "string") return undefined;
     if (skill2 !== undefined && typeof skill2 !== "string") return undefined;
     if (skill3 !== undefined && typeof skill3 !== "string") return undefined;
@@ -541,11 +526,11 @@ function test(a: $User) {
 // Transpiles to:
 
 function test(a) {
-    if (typeof a !== "object") throw new TypeError("Expected a to be User.");
-    if (typeof a["name"] !== "string") throw new TypeError("Expected a.name to be string.");
-    if (typeof a["id"] !== "number") throw new TypeError("Expected a.id to be number.");
-    if (typeof a["age"] !== "number") throw new TypeError("Expected a.age to be number.");
-    if (!(a["friends"] instanceof Array)) throw new TypeError("Expected a.friends to be NoCheck<User>[].");
+    if (typeof a !== "object" || a === null)
+        return undefined;
+    const { friends: friends_1 } = a;
+    if (typeof a.name !== "string" || typeof a.id !== "number" || typeof a.age !== "number" || !Array.isArray(friends_1))
+        return undefined;
 }
 ```
 
