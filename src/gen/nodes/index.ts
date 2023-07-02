@@ -145,6 +145,11 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         condition: _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken),
         error: [validator, [_str("to be undefined")]]
     };
+    // Only way this will run is if the type parameter is optional and cannot be resolved from the call site
+    case TypeDataKinds.Resolve: return {
+        condition: _bool(false),
+        error: [validator, [_str("to be a type parameter")]]
+    };
     case TypeDataKinds.Tuple: {
         const large: [number, ts.Identifier][] = [];
         const after = [];

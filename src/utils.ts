@@ -81,13 +81,20 @@ export function getCallSigFromType(checker: ts.TypeChecker, type: ts.Type) : ts.
 
 export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: ts.Type[], sig: ts.Signature) : ts.Type[] {
     if (!sig.mapper) return [];
-    const resolvedTypes = [];
-    if (sig.mapper.kind === ts.TypeMapKind.Simple && sig.mapper.source === typeParam[0]) resolvedTypes.push(getApparentType(checker, sig.mapper.target));
+    const resolvedTypes: ts.Type[] = [];
+    let sources, targets;
+    if (sig.mapper.kind === ts.TypeMapKind.Simple && sig.mapper.source === typeParam[0]) {
+        sources = [sig.mapper.source];
+        targets = [sig.mapper.target];
+    }
     else if (sig.mapper.kind === ts.TypeMapKind.Array && sig.mapper.targets) {
-        for (let i=0; i < sig.mapper.sources.length; i++) {
-            const typeParamInd = typeParam.indexOf(sig.mapper.sources[i] as ts.Type);
-            if (typeParamInd !== -1) resolvedTypes[typeParamInd] = getApparentType(checker, sig.mapper.targets[i] as ts.Type);
-        }
+        sources = sig.mapper.sources;
+        targets = sig.mapper.targets;
+    }
+    else return resolvedTypes;
+    for (let i=0; i < typeParam.length; i++) {
+        const sourceIndex = sources.indexOf(typeParam[i] as ts.Type);
+        if (sourceIndex !== -1) resolvedTypes.push(getApparentType(checker, targets[sourceIndex] as ts.Type));
     }
     return resolvedTypes;
 }
