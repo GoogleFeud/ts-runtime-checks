@@ -297,31 +297,29 @@ function test(num) {
 You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it inside the function body.
 
 ```ts
-export const validate = <Body>(req: { body: Body }) => {
-    const [body, errors] = check<Infer<Body>>(req.body);
-};
+export function test<T>(body: Assert<Infer<T>>) {
+    return true;
+}
 
 // in fileA.ts
-validate({
-    body: { a: "hello" }
-});
+test(123);
 
 // in FileB.ts
-validate({
-    body: { something: true, a: 123 }
-});
+test([1, 2, 3]);
 
 // Transpiles to:
-const validate = (req) => {
-    const body = req.body;
-    const errors = [];
-    if (typeof body !== "object" && body !== null)
-        errors.push("Expected body to be an object");
-    if (typeof body.a !== "string" && typeof body.a !== "number")
-        errors.push("Expected body.a to be one of string, number");
-    if (typeof body.something !== "boolean")
-        errors.push("Expected body.something to be a boolean");
-};
+function test(body) {
+    if (typeof body !== "number")
+        if (!Array.isArray(body))
+            throw new Error("Expected body to be one of number, number[]");
+        else {
+            for (let i_1 = 0; i_1 < len_1; i_1++) {
+                if (typeof body[i_1] !== "number")
+                    throw new Error("Expected body[" + i_1 + "] to be a number");
+            }
+        }
+    return true;
+}
 ```
 
 #### Resolve<Type>

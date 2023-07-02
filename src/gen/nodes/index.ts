@@ -47,7 +47,7 @@ export function error(ctx: NodeGenContext, error?: GenResultError, isFull = fals
 export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     switch (validator.typeData.kind) {
     case TypeDataKinds.Number: {
-        if (validator.typeData.literal) return {
+        if (validator.typeData.literal !== undefined) return {
             condition: _bin(validator.expression(), _num(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken),
             error: [validator, concat`to be equal to ${validator.typeData.literal.toString()}`]
         };
@@ -79,7 +79,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.String: {
-        if (validator.typeData.literal) return {
+        if (validator.typeData.literal !== undefined) return {
             condition: _bin(validator.expression(), _str(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken),
             error: [validator, concat`to be equal to "${validator.typeData.literal}"`]
         };
@@ -215,7 +215,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 
         if (objectTypes.length) compoundTypes.push({
             condition: _obj_check(validator.expression()),
-            after: [_if_nest(0, objectTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be an object")]]))]
+            after: [_if_nest(0, objectTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))]
         });
 
         if (!compoundTypes.length) return {

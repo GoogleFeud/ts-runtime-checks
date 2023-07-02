@@ -111,10 +111,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 if (!resolvedType) return;
                 const validator = genValidator(transformer, resolvedType, "", exp, parent);
                 if (!validator) return;
-                const existing = possibleTypes.findIndex(v => v.typeData.kind === validator.typeData.kind);
-                if (existing !== -1) possibleTypes[existing] = (possibleTypes[existing] as Validator).merge(validator);
-                else possibleTypes.push(validator);
-                return;
+                possibleTypes.push(validator);
             });
             if (!possibleTypes.length) return;
             else if (possibleTypes.length === 1) {

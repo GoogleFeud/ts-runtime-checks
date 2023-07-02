@@ -277,45 +277,4 @@ export class Validator {
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
     }
 
-    merge(other: Validator) : Validator {
-        if (this.typeData.kind !== other.typeData.kind) {
-            const thisName = this.name;
-            this.setName("");
-            other.setName("");
-            return new Validator(this._original, thisName, { kind: TypeDataKinds.Union }, this.customExp, this.parent, [this, other]);
-        }
-        switch (this.typeData.kind) {
-        case TypeDataKinds.Object: {
-            const takenIndexes = [];
-            const newChildren = [];
-            for (const child of this.children) {
-                const otherChildInd = other.children.findIndex(c => c.name === child.name);
-                if (otherChildInd !== -1) {
-                    takenIndexes.push(otherChildInd);
-                    const otherChild = other.children[otherChildInd] as Validator;
-                    newChildren.push(child.merge(otherChild));
-                }
-                else newChildren.push(child);
-            }
-            for (let i=0; i < other.children.length; i++) {
-                if (takenIndexes.includes(i)) continue;
-                else newChildren.push(other.children[i]);
-            }
-            return new Validator(this._original, this.name, this.typeData, this.customExp, this.parent, newChildren as Validator[]);
-        }
-        case TypeDataKinds.Array: {
-            const thisChild = this.children[0];
-            const otherChild = other.children[0];
-            if (!thisChild) return other;
-            else if (!otherChild) return this;
-            thisChild.setName("");
-            otherChild.setName("");
-            const v = new Validator(this._original, this.name, this.typeData, this.customExp, this.parent, [thisChild.merge(otherChild)]);
-            return v;
-        }
-        case TypeDataKinds.Union: return new Validator(this._original, this.name, this.typeData, this.customExp, this.parent, [...this.children, ...other.children]);
-        default: return this;
-        }
-    }
-
 }
