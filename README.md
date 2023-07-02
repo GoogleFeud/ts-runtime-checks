@@ -125,7 +125,7 @@ If `rawErrors` is true, instead of an error string, the transformer will pass / 
     // The name of the value
     valueName: string
     // Extra parts that form the error string
-    parts: string
+    parts: string[]
 }
 ```
 
