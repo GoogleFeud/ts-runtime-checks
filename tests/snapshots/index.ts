@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs";
 import readline from "readline";
 import { diffLines } from "diff";
+import { EOL } from "os";
 
 const rl = readline.createInterface(process.stdin, process.stdout);
 
@@ -16,7 +17,7 @@ export const red = (text: string): string => `\x1b[31m${text}\x1b[0m`;
 export const gray = (text: string): string => `\x1b[90m${text}\x1b[0m`;
 export const cyan = (text: string): string => `\x1b[36m${text}\x1b[0m`;
 export const green = (text: string): string => `\x1b[32m${text}\x1b[0m`;
- 
+
 const artifactsPath = path.join(process.cwd(), "../tests/snapshots/artifacts");
 const integrated = path.join(process.cwd(), "../tests/dist/integrated");
 
@@ -27,14 +28,14 @@ if (!fs.existsSync(artifactsPath)) fs.mkdirSync(artifactsPath);
     const wrongful: Array<string> = [];
     for (const [fileName, dirName, passedDirs] of eachFile(integrated, "")) {
         const newFilePath = path.join(dirName, fileName);
-        const newFile = fs.readFileSync(path.join(dirName, fileName), "utf-8");
+        const newFile = normalizeEOL(fs.readFileSync(path.join(dirName, fileName), "utf-8"));
         const targetFilePath = path.join(artifactsPath, passedDirs.replace("/", "_") + fileName);
         if (!fs.existsSync(targetFilePath)) fs.writeFileSync(targetFilePath, newFile);
         else {
-            const oldFile = fs.readFileSync(targetFilePath, "utf-8");
+            const oldFile = normalizeEOL(fs.readFileSync(targetFilePath, "utf-8"));
             if (oldFile === newFile) continue;
             const diffs = diffLines(oldFile, newFile);
-    
+
             console.log(`[${cyan("FILE CHANGED")}]: ${red(passedDirs + fileName)}`);
             let final = "";
             for (const change of diffs) {
@@ -80,4 +81,9 @@ async function askYesOrNo(q: string) : Promise<boolean> {
         if (answer === "y") return true;
         else if (answer === "n") return false;
     }
+}
+
+function normalizeEOL(input: string): string {
+    const lines = input.split(/\r\n|\r|\n/);
+    return lines.join(EOL);
 }
