@@ -1,7 +1,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { FnCallFn, Functions, MacroCallContext, MarkerFn, Markers } from "./markers";
-import { getResolvedTypesFromCallSig, getStringFromType, hasBit, resolveAsChain } from "./utils";
+import { TransformerError, getResolvedTypesFromCallSig, getStringFromType, hasBit, resolveAsChain } from "./utils";
 import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
 import { ValidationResultType, validateType } from "./gen/nodes";
@@ -80,7 +80,7 @@ export class Transformer {
                     const statements: ts.Statement[] = [], variables: ts.Identifier[] = [], defineVars = [];
                     for (let i=0; i < decl.parameters.length; i++) {
                         const param = decl.parameters[i] as ts.ParameterDeclaration;
-                        if (!ts.isIdentifier(param.name)) continue;
+                        if (!ts.isIdentifier(param.name)) throw TransformerError(param, "You cannot deconstruct a parameter which contains a Resolve<T> type.");
                         const valueExp = node.arguments[i] || param.initializer || UNDEFINED;
                         if (ts.isIdentifier(valueExp)) variables.push(valueExp);
                         else {

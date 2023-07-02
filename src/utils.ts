@@ -126,3 +126,24 @@ export function forEachVar(prop: ts.Expression|ts.BindingName|ts.QualifiedName,
     }
     else return cb(prop);
 }
+
+export function TransformerError(callSite: ts.Node, msg: string) : void {
+    TransformerErrorWrapper(callSite.pos, callSite.end - callSite.pos, msg, callSite.getSourceFile());
+    process.exit();
+}
+
+export function TransformerErrorWrapper(start: number, length: number, msg: string, file: ts.SourceFile) : void {
+    if (!ts.sys || typeof process !== "object") throw new Error(msg);
+    console.error(ts.formatDiagnosticsWithColorAndContext([{
+        category: ts.DiagnosticCategory.Error,
+        code: 8000,
+        file,
+        start,
+        length,
+        messageText: msg
+    }], {
+        getNewLine: () => "\r\n",
+        getCurrentDirectory: ts.sys.getCurrentDirectory,
+        getCanonicalFileName: (fileName) => fileName
+    }));
+}
