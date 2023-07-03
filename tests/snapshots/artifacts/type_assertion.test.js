@@ -30,6 +30,7 @@ describe("Type assertions (as)", () => {
             if (c_1 !== undefined) {
                 if (!Array.isArray(c_1))
                     throw new Error("Expected b.c to be an array");
+                const len_2 = c_1.length;
                 for (let i_2 = 0; i_2 < len_2; i_2++) {
                     if (typeof c_1[i_2] !== "string")
                         throw new Error("Expected b.c[" + i_2 + "] to be a string");
@@ -64,6 +65,7 @@ describe("Type assertions (as)", () => {
             if (c_2 !== undefined) {
                 if (!Array.isArray(c_2))
                     throw new Error("Expected b.c to be an array");
+                const len_4 = c_2.length;
                 for (let i_4 = 0; i_4 < len_4; i_4++) {
                     if (typeof c_2[i_4] !== "string")
                         throw new Error("Expected b.c[" + i_4 + "] to be a string");

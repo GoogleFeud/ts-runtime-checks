@@ -5,6 +5,15 @@ import { Transformer } from "../../transformer";
 
 export function genValidator(transformer: Transformer, type: ts.Type | undefined, name: ValidatorTargetName, exp?: ts.Expression, parent?: Validator, tags?: readonly ts.JSDocTag[]) : Validator | undefined {
     if (!type) return;
+
+    if (parent) {
+        const recurive = parent.getParentWithType(type);
+        if (recurive) {
+            recurive.isRecursiveOrigin = true;
+            return new Validator(type, name, { kind: TypeDataKinds.Recursive }, exp, parent);
+        }
+    }
+    
     if (type.isStringLiteral()) return new Validator(type, name, { kind: TypeDataKinds.String, literal: type.value}, exp, parent);
     else if (type.isNumberLiteral()) return new Validator(type, name, { kind: TypeDataKinds.Number, literal: type.value }, exp, parent);
     else if (hasBit(type, ts.TypeFlags.String) || hasBit(type, ts.TypeFlags.TemplateLiteral)) return new Validator(type, name, { kind: TypeDataKinds.String, ...(tags ? parseJsDocTags(transformer, tags, ["minLen", "maxLen", "length", "matches"]) : {}) }, exp, parent);
@@ -19,22 +28,18 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     else if (type.getCallSignatures().length === 1) return new Validator(type, name, { kind: TypeDataKinds.Function }, exp, parent);
     else if (type.isClass()) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
     else if (type.isTypeParameter()) return;
-    else if (transformer.checker.isTupleType(type)) {
-        const validators = transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i)).filter(t => t) as Validator[];
-        return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, validators);
-    }
+    else if (transformer.checker.isTupleType(type)) return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, (parent: Validator) => transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i, undefined, parent)));
     else if (transformer.checker.isArrayType(type)) {
-        const validator = genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], "");
-        return new Validator(type, name, { kind: TypeDataKinds.Array, ...(tags ? parseJsDocTags(transformer, tags, ["minLen", "maxLen", "length"]) : {}) }, exp, parent, validator ? [validator] : []);
+        return new Validator(type, name, { kind: TypeDataKinds.Array, ...(tags ? parseJsDocTags(transformer, tags, ["minLen", "maxLen", "length"]) : {}) }, exp, parent, (parent) => [genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], "", undefined, parent)]);
     }
     else {
         const utility = transformer.getUtilityType(type);
         if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) {
-            if (type.isUnion()) return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, type.types.map(t => genValidator(transformer, t, "", exp)).filter(t => t) as Validator[]);
-            const properties = type.getProperties().map(sym => {
+            if (type.isUnion()) return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, (parent) => type.types.map(t => genValidator(transformer, t, "", undefined, parent)));
+            const properties = (parent: Validator) => type.getProperties().map(sym => {
                 const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
-                return genValidator(transformer, typeOfProp, sym.name, undefined, undefined, sym.valueDeclaration ? ts.getJSDocTags(sym.valueDeclaration) : undefined);
-            }).filter(p => p) as Validator[];
+                return genValidator(transformer, typeOfProp, sym.name, undefined, parent, sym.valueDeclaration ? ts.getJSDocTags(sym.valueDeclaration) : undefined);
+            });
             return new Validator(type, name, { kind: TypeDataKinds.Object }, exp, parent, properties);
         }
         switch (utility.aliasSymbol.name) { 
@@ -65,7 +70,6 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             }, exp, parent);
         }
         case "Arr": {
-            const innerType = genValidator(transformer, getTypeArg(utility, 0), 0);
             const settings = getObjectFromType(transformer.checker, utility, 1);
             const minLen = settings.minLen ? transformer.typeValueToNode(settings.minLen) : undefined;
             const maxLen = settings.maxLen ? transformer.typeValueToNode(settings.maxLen) : undefined;
@@ -75,7 +79,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 minLen,
                 maxLen,
                 length
-            }, exp, parent, innerType ? [innerType] : []);
+            }, exp, parent, (parent) => [genValidator(transformer, getTypeArg(utility, 0), 0, undefined, parent)]);
         }
         case "NoCheck": return;
         case "If": {
@@ -83,22 +87,18 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             const stringifiedExp = getStringFromType(utility, 1);
             const fullCheck = isTrueType(utility.aliasTypeArguments[2]);
             if (!innerType || !stringifiedExp) return;
-            const innerTypeValidator = genValidator(transformer, innerType, "");
             return new Validator(type, name, {
                 kind: TypeDataKinds.If,
                 expression: stringifiedExp,
                 fullCheck,
-            }, exp, parent, innerTypeValidator ? [innerTypeValidator] : undefined);
+            }, exp, parent, (parent) => [genValidator(transformer, innerType, "", undefined, parent)]);
         }
         case "ExactProps": {
-            const obj = genValidator(transformer, getTypeArg(utility, 0), "");
-            if (!obj) return;
-            const remove = isTrueType(getTypeArg(utility, 1));
-            return new Validator(type, name, {
-                kind: TypeDataKinds.Object,
-                exact: remove ? ObjectTypeDataExactOptions.RemoveExtra : ObjectTypeDataExactOptions.RaiseError,
-                useDeleteOperator: isTrueType(getTypeArg(utility, 2))
-            }, exp, parent, obj.children);
+            const obj = genValidator(transformer, getTypeArg(utility, 0), name, exp, parent);
+            if (!obj || obj.typeData.kind !== TypeDataKinds.Object) return;
+            obj.typeData.exact = isTrueType(getTypeArg(utility, 1)) ? ObjectTypeDataExactOptions.RemoveExtra : ObjectTypeDataExactOptions.RaiseError;
+            obj.typeData.useDeleteOperator = isTrueType(getTypeArg(utility, 2));
+            return obj;
         }
         case "Infer": {
             const typeParam = utility.aliasTypeArguments[0];

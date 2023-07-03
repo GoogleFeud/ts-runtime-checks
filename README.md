@@ -398,6 +398,8 @@ const variable = value_1;
     - `typeof value === "bigint"`
 - `null`
     - `value === null`
+- `undefined`
+    - `value === undefined`
 - Tuples (`[a, b, c]`)
     - `Array.isArray(value)`
     - Each type in the tuple gets checked individually.
@@ -412,7 +414,12 @@ const variable = value_1;
     - `value instanceof Class`
 - Enums
 - Unions (`a | b | c`)
-    - Object unions - If you want to have a union of multiple possible objects, each object must have at least 1 key that's either a string or a number literal.
+    - Object unions - If you want to have a union of multiple possible objects, each object must have at least one value that's either a string or a number literal.
+- Function type parameters
+    - Via `Resolve` or `Infer` utility types
+- Recursive types
+    - A function gets generated for recursive types, with the validation code inside.
+    - **Note:** Because of limitations, errors in recursive types are a lot more limited.
 
 ### `as` assertions
 
@@ -447,7 +454,7 @@ const args = value_1;
 
 ### `is<Type>(value)` utility function
 
-Utility function. Every call to this function gets replaced with an immediately-invoked arrow function, which returns `true` if the value matches the type, `false` otherwise.
+Every call to this function gets replaced with an immediately-invoked arrow function, which returns `true` if the value matches the type, `false` otherwise.
 
 ```ts
 const val = JSON.parse("[\"Hello\", \"World\"]");;
@@ -465,7 +472,7 @@ if (Array.isArray(val) && typeof val[0] === "string" && typeof val[1] === "numbe
 
 ### `check<Type>(value)` utility function
 
-Utility function. Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array of errors.
+Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array of errors.
 
 ```ts
 const [value, errors] = check<[string, number]>(JSON.parse("[\"Hello\", \"World\"]"));

@@ -3,7 +3,7 @@ import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
 import { forEachVar, getCallSigFromType, resolveResultType } from "./utils";
-import { ValidationResultType, genNode, minimizeGenResult, validateType } from "./gen/nodes";
+import { ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, validateType } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
 
@@ -37,10 +37,7 @@ export const Markers: Record<string, MarkerFn> = {
             block.nodes.push(...forEachVar(exp, (i, patternType) => {
                 const validator = createValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i, resultType, optional);
                 if (!validator) return [];
-                return validateType(validator, {
-                    resultType,
-                    transformer: trans
-                }, optional);
+                return validateType(validator, createContext(trans, resultType), optional);
             }));
             return;
         } else {
@@ -52,10 +49,7 @@ export const Markers: Record<string, MarkerFn> = {
             }
             const validator = createValidator(trans, parameters[0]!, ts.isIdentifier(callBy) ? callBy.text : callBy.getText(), callBy, resultType, optional);
             if (!validator) return;
-            block.nodes.push(...validateType(validator, {
-                transformer: trans,
-                resultType
-            }));
+            block.nodes.push(...validateType(validator, createContext(trans, resultType)));
             return callBy;
         }
     }
@@ -67,17 +61,16 @@ export const Functions: Record<string, FnCallFn> = {
         if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
         const validator = genValidator(transformer, data.type, ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
         if (!validator) return;
-        const ctx = { transformer, resultType: { return: ts.factory.createTrue() }};
-        const nodes = minimizeGenResult(genNode(validator, ctx), ctx, true);
+        const ctx = createContext(transformer, { return: ts.factory.createFalse() });
+        const nodes = minimizeGenResult(genNode(validator, ctx), ctx);
         if (nodes.minimzed && !nodes.after && !nodes.before) {
-            if (stmt) (data.block.parent || data.block).nodes.push(stmt);
-            return nodes.condition;
+            const block = data.block.parent || data.block;
+            if (stmt) block.nodes.push(stmt);
+            if (ctx.recursiveFns.length) block.nodes.push(...ctx.recursiveFns);
+            return _not(nodes.condition);
         } else {
             if (stmt) data.block.nodes.push(stmt);
-            const generated = validateType(validator, {
-                resultType: { return: ts.factory.createFalse() },
-                transformer
-            }, false);
+            const generated = genStatements([nodes], ctx);
             const last = generated.pop() as ts.Statement;
             if (ts.isIfStatement(last) && ts.isReturnStatement(last.thenStatement)) data.block.nodes.push(...generated, ts.factory.createReturnStatement(_not(last.expression)));
             else data.block.nodes.push(...generated, last, ts.factory.createReturnStatement(ts.factory.createTrue()));
@@ -116,12 +109,9 @@ export const Functions: Record<string, FnCallFn> = {
         block.nodes.push(arrIntitialize);
         const validator = genValidator(transformer, data.type, dataVariable.text, dataVariable);
         if (!validator) return;
-        block.nodes.push(...validateType(validator, {
-            resultType: {
-                custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
-            },
-            transformer,
-        }));
+        block.nodes.push(...validateType(validator, createContext(transformer, {
+            custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
+        })));
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
     }
 };

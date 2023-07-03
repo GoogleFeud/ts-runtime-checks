@@ -194,7 +194,8 @@ export function _obj(props: Record<string, ts.Expression|string|number|boolean|u
         else if (typeof propValue === "number") nodePropValue = _num(propValue);
         else if (propValue === true) nodePropValue = _bool(true);
         else if (propValue === false) nodePropValue = _bool(false);
-        else nodePropValue = propValue as ts.Expression;
+        else if ("kind" in propValue) nodePropValue = propValue as ts.Expression;
+        else continue;
         propNodes.push(factory.createPropertyAssignment(property, nodePropValue));
     }
     return factory.createObjectLiteralExpression(propNodes);

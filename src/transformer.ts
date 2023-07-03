@@ -4,7 +4,7 @@ import { FnCallFn, Functions, MacroCallContext, MarkerFn, Markers } from "./mark
 import { TransformerError, getResolvedTypesFromCallSig, getStringFromType, hasBit, resolveAsChain } from "./utils";
 import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
-import { ValidationResultType, validateType } from "./gen/nodes";
+import { ValidationResultType, createContext, validateType } from "./gen/nodes";
 
 interface ToBeResolved {
     validators: Validator[],
@@ -102,10 +102,7 @@ export class Transformer {
                             }
                         }
                         statements.push(
-                            ...validateType(data.top, {
-                                transformer: this,
-                                resultType: data.resultType,
-                            }, data.optional)
+                            ...validateType(data.top, createContext(this, data.resultType), data.optional)
                         );
                     }
                     return ts.factory.createImmediatelyInvokedArrowFunction([

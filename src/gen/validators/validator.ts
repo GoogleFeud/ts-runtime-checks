@@ -16,7 +16,12 @@ export const enum TypeDataKinds {
     Function,
     If,
     Union,
-    Resolve
+    Resolve,
+    Recursive
+}
+
+export interface RecursiveTypeData {
+    kind: TypeDataKinds.Recursive
 }
 
 export interface ResolveTypeData {
@@ -111,7 +116,7 @@ export interface IfTypeData {
     expression: string
 }
 
-export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | IfTypeData | UndefinedTypeData | ResolveTypeData;
+export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | IfTypeData | UndefinedTypeData | ResolveTypeData | RecursiveTypeData;
 
 export type ValidatorTargetName = string | number | ts.Identifier;
 
@@ -123,13 +128,18 @@ export class Validator {
     parent?: Validator;
     typeData: TypeData;
     children!: Validator[];
-    constructor(original: ts.Type, targetName: ValidatorTargetName, data: TypeData, exp?: ts.Expression, parent?: Validator, children?: Validator[]) {
+    isRecursiveOrigin?: boolean;
+    constructor(original: ts.Type, targetName: ValidatorTargetName, data: TypeData, exp?: ts.Expression, parent?: Validator, children?: ((parent: Validator) => Array<Validator|undefined>)|Validator[]) {
         this._original = original;
         this.name = targetName;
         this.typeData = data;
         this.customExp = exp;
         if (parent) this.setParent(parent);
-        this.setChildren(children || []);
+        if (children) {
+            if (typeof children === "function") this.setChildren(children(this).filter(c => c) as Validator[]);
+            else this.setChildren(children, true);
+        }
+        else this.children = [];
     }
 
     nameAsExpression() : ts.Expression {
@@ -156,14 +166,20 @@ export class Validator {
         return this._exp = _access(this.parent.expression(), this.name);
     }
 
+    isRedirect() : boolean {
+        return this.typeData.kind === TypeDataKinds.Recursive || (this.typeData.kind === TypeDataKinds.Union && this.children.length === 2 && this.hasChildrenOfKind(TypeDataKinds.Undefined, TypeDataKinds.Recursive));
+    }
+
     setParent(parent: Validator) {
         this.parent = parent;
         delete this._exp;
     }
 
-    setChildren(children: Validator[]) {
-        for (const child of children) {
-            child.setParent(this);
+    setChildren(children: Validator[], setParent?: boolean) {
+        if (setParent) {
+            for (const child of children) {
+                child.parent = this;
+            }
         }
         children.sort((a, b) => a.weigh() - b.weigh());
         this.children = children;
@@ -214,6 +230,16 @@ export class Validator {
     getFirstLiteralChild() : Validator|undefined {
         for (const child of this.children) {
             if ((child.typeData.kind === TypeDataKinds.String && child.typeData.literal !== undefined) || (child.typeData.kind === TypeDataKinds.Number && child.typeData.literal !== undefined)) return child;
+        }
+        return;
+    }
+
+    getParentWithType(t: ts.Type) : Validator|undefined {
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        let parent: Validator|undefined = this;
+        while (parent) {
+            if (parent._original === t) return parent;
+            parent = parent.parent;
         }
         return;
     }
@@ -273,6 +299,9 @@ export class Validator {
         case TypeDataKinds.Object:
             if (this.typeData.exact) sum += 8;
             sum += 2;
+            break;
+        case TypeDataKinds.Recursive:
+            return 10;
         }
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
     }

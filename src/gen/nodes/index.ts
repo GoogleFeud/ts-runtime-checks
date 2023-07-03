@@ -14,7 +14,18 @@ export interface ValidationResultType {
 
 export interface NodeGenContext {
     transformer: Transformer,
-    resultType: ValidationResultType
+    resultType: ValidationResultType,
+    recursiveFns: ts.FunctionDeclaration[],
+    recursiveFnNames: Map<ts.Type, ts.Identifier>
+}
+
+export function createContext(transformer: Transformer, resultType: ValidationResultType) : NodeGenContext {
+    return {
+        transformer,
+        resultType,
+        recursiveFns: [],
+        recursiveFnNames: new Map()
+    };
 }
 
 export type GenResultError = [validator: Validator, message: ts.Expression[]];
@@ -27,6 +38,10 @@ export interface GenResult {
     after?: ts.Statement[],
     before?: ts.Statement[],
     minimzed?: boolean
+}
+
+export function joinResultStmts(result: GenResult) : ts.Statement[] {
+    return [...(result.before || []), ...(result.after || [])];
 }
 
 export function error(ctx: NodeGenContext, error?: GenResultError, isFull = false) : ts.Statement {
@@ -45,6 +60,29 @@ export function error(ctx: NodeGenContext, error?: GenResultError, isFull = fals
 }
 
 export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
+    if (validator.isRecursiveOrigin) {
+        validator.isRecursiveOrigin = false;
+        const originalCustomExp = validator.customExp;
+        const name = typeof validator.name === "string" ? _ident(validator.name) : _ident("_recursive");
+        const paramName = _ident("param");
+        validator.customExp = paramName;
+        ctx.recursiveFnNames.set(validator._original, name);
+        const statements = validateType(validator, {
+            ...ctx,
+            resultType: { return: _bool(false) }
+        });
+        ctx.recursiveFns.push(ts.factory.createFunctionDeclaration(undefined, undefined, name, undefined,
+            [ts.factory.createParameterDeclaration(undefined, undefined, paramName, undefined, undefined, undefined)],
+            undefined,
+            ts.factory.createBlock(statements[0] && ts.isIfStatement(statements[0]) && !statements[0].elseStatement ? [ts.factory.createReturnStatement(_not(statements[0].expression))] : [...statements, ts.factory.createReturnStatement(_bool(true))])
+        ));
+        validator.customExp = originalCustomExp;
+        validator.isRecursiveOrigin = true;
+        return {
+            condition: _not(_call(name, [validator.expression()])),
+            error: [validator, [_str(`to be ${ctx.transformer.checker.typeToString(validator._original)}`)]]
+        };
+    }
     switch (validator.typeData.kind) {
     case TypeDataKinds.Number: {
         if (validator.typeData.literal !== undefined) return {
@@ -150,11 +188,19 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         condition: _bool(false),
         error: [validator, [_str("to be a type parameter")]]
     };
+    case TypeDataKinds.Recursive: {
+        if (!ctx.recursiveFnNames.has(validator._original)) return { condition: _bool(false) };
+        const fnName = ctx.recursiveFnNames.get(validator._original) as ts.Identifier;
+        return {
+            condition: _not(_call(fnName, [validator.expression()])),
+            error: [validator, [_str(`to be ${ctx.transformer.checker.typeToString(validator._original)}`)]]
+        };
+    }
     case TypeDataKinds.Tuple: {
         const large: [number, ts.Identifier][] = [];
         const after = [];
         for (const child of validator.children) {
-            if (child.weigh() > 5 && typeof child.name === "number") large.push([child.name, child.setAlias(() => _ident("t"))]);
+            if (!child.isRedirect() && child.weigh() > 5 && typeof child.name === "number") large.push([child.name, child.setAlias(() => _ident("t"))]);
             after.push(...validateType(child, ctx));
         }
 
@@ -220,7 +266,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 
         if (objectTypes.length) compoundTypes.push({
             condition: _obj_check(validator.expression()),
-            after: [_if_nest(0, objectTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))]
+            after: [_if_nest(0, objectTypes.map(t => [t.condition, joinResultStmts(t)]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))]
         });
 
         if (!compoundTypes.length) return {
@@ -235,19 +281,19 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                     condition: isNullableNode(validator),
                     ifTrue: [
                         _if(firstCompound.condition, error(ctx, firstCompound.error)),
-                        ...(firstCompound.after || []),
-                        _if_nest(0, compoundTypes.map(t => [t.condition, t.after || []]), ts.factory.createEmptyStatement())
+                        ...joinResultStmts(firstCompound),
+                        _if_nest(0, compoundTypes.map(t => [t.condition, joinResultStmts(t)]), ts.factory.createEmptyStatement())
                     ]
                 };
                 else return {
                     condition: isNullable ? isNullableNode(validator) : firstCompound.condition,
-                    ifTrue: isNullable ? _if(firstCompound.condition, _if_nest(0, compoundTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))) : _if_nest(0, compoundTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]])),
-                    ifFalse: firstCompound.after
+                    ifTrue: isNullable ? _if(firstCompound.condition, _if_nest(0, compoundTypes.map(t => [t.condition, joinResultStmts(t)]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))) : _if_nest(0, compoundTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]])),
+                    ifFalse: joinResultStmts(firstCompound)
                 };
             }
             else return {
                 condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
-                ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, t.after || []]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))
+                ifTrue: _if_nest(0, compoundTypes.map(t => [t.condition, joinResultStmts(t)]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))
             };
         }
     }
@@ -295,7 +341,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         const checks: ts.Statement[] = [];
         const names: [string, ts.Identifier][] = [];
         for (const child of validator.children) {
-            if (child.weigh() > 5 && typeof child.name === "string") names.push([child.name, child.setAlias(() => _ident(child.name as string))]);
+            if (!child.isRedirect() && child.weigh() > 5 && typeof child.name === "string") names.push([child.name, child.setAlias(() => _ident(child.name as string))]);
             checks.push(...validateType(child, ctx));
         }
 
@@ -332,7 +378,7 @@ export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.St
         if (genResult.before) result.push(...genResult.before);
         if (genResult.after) result.push(...genResult.after);
     }
-    return result;
+    return [...ctx.recursiveFns, ...result];
 }
 
 export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean, gen?: GenResult) : ts.Statement[] {
