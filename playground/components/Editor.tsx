@@ -21,7 +21,5 @@ export function TextEditor(props: {
         monaco.editor.createModel(Markers, "typescript", monaco.Uri.parse(filename));
     }, [monaco]);
 
-    return <Editor height="calc(90vh - 50px)" language="typescript" theme="vs-dark" value={props.code} onChange={props.onChange}>
-
-    </Editor>;
+    return <Editor height="calc(90vh - 50px)" language="typescript" theme="vs-dark" value={props.code} onChange={props.onChange} />;
 }
