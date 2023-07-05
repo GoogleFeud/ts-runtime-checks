@@ -53,7 +53,7 @@ export function genTranspile(lib: string) : (str: string) => { code?: string, er
         const CompilerHost: ts.CompilerHost = {
             getSourceFile: (fileName) => {
                 if (fileName.endsWith(".d.ts")) return LibFile;
-                return SourceFile;
+                else if (fileName === "module.ts") return SourceFile;
             },
             getDefaultLibFileName: () => "lib.d.ts",
             useCaseSensitiveFileNames: () => false,
@@ -66,12 +66,7 @@ export function genTranspile(lib: string) : (str: string) => { code?: string, er
             directoryExists: () => true,
             getDirectories: () => []
         };
-    
         const program = ts.createProgram(["module.ts"], CompilerOptions, CompilerHost);
-        //@ts-expect-error Set globals
-        window.checker = program.getTypeChecker();
-        //@ts-expect-error Set globals
-        window.source = SourceFile;
         try {
             program.emit(undefined, undefined, undefined, undefined, { before: [ TsChecks(program) as unknown as ts.TransformerFactory<ts.SourceFile> ]});
         } catch (err: unknown) {

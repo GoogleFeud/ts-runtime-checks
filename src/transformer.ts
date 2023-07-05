@@ -42,7 +42,7 @@ export class Transformer {
         return block.nodes;
     } 
 
-    visitor(node: ts.Node, body: Block.Block<ts.Node>) : ts.VisitResult<ts.Node> {
+    visitor(node: ts.Node, body: Block.Block<ts.Node>) : ts.VisitResult<ts.Node | undefined> {
         if ((ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isArrowFunction(node)) && !this.validatedDecls.has(node)) {
             if (!node.body) return node;
             this.validatedDecls.add(node);
@@ -51,7 +51,7 @@ export class Transformer {
             if (ts.isBlock(node.body)) this.visitEach(node.body.statements, fnBody);
             else {
                 const exp = ts.visitNode(node.body, (node) => this.visitor(node, fnBody));
-                fnBody.nodes.push(ts.factory.createReturnStatement(exp));
+                fnBody.nodes.push(ts.factory.createReturnStatement(exp as ts.Expression));
             }
             if (ts.isFunctionDeclaration(node)) return ts.factory.createFunctionDeclaration(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
             else if (ts.isArrowFunction(node)) return ts.factory.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, ts.factory.createBlock(fnBody.nodes, true));
@@ -220,7 +220,7 @@ export class Transformer {
             }
             return ts.visitEachChild(node, visitor, this.ctx);
         };
-        return ts.visitNode(firstStmt.expression, visitor);
+        return ts.visitNode(firstStmt.expression, visitor) as ts.Expression;
     }
 
     typeToString(type: ts.Type) : string {

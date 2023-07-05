@@ -60,6 +60,27 @@ Afterwards you must use the `ttsc` CLI command to transpile your typescript code
 </details>
 
 <details>
+    <summary>Usage with ts-patch</summary>
+
+```
+npm i --save-dev ts-patch
+```
+
+and add the ts-runtime-checks transformer to your tsconfig.json:
+
+```json
+"compilerOptions": {
+//... other options
+"plugins": [
+        { "transform": "ts-runtime-checks" }
+    ]
+}
+```
+
+Afterwards you must use the `tspc` CLI command to transpile your typescript code.
+</details>
+
+<details>
     <summary>Usage with ts-loader</summary>
 
 ```js
@@ -416,10 +437,11 @@ const variable = value_1;
 - Unions (`a | b | c`)
     - Object unions - If you want to have a union of multiple possible objects, each object must have at least one value that's either a string or a number literal.
 - Function type parameters
-    - Via `Resolve` or `Infer` utility types
+    - Inside the function as one big union with the `Infer` utility type.
+    - At the call site of the function with the `Resolve` utility type.
 - Recursive types
     - A function gets generated for recursive types, with the validation code inside.
-    - **Note:** Because of limitations, errors in recursive types are a lot more limited.
+    - **Note:** Currently, because of limitations, errors in recursive types are a lot more limited.
 
 ### `as` assertions
 

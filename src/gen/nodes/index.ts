@@ -74,7 +74,8 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         ctx.recursiveFns.push(ts.factory.createFunctionDeclaration(undefined, undefined, name, undefined,
             [ts.factory.createParameterDeclaration(undefined, undefined, paramName, undefined, undefined, undefined)],
             undefined,
-            ts.factory.createBlock(statements[0] && ts.isIfStatement(statements[0]) && !statements[0].elseStatement ? [ts.factory.createReturnStatement(_not(statements[0].expression))] : [...statements, ts.factory.createReturnStatement(_bool(true))])
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            ts.factory.createBlock(statements.length === 1 && ts.isIfStatement(statements[0]!) && !statements[0].elseStatement ? [ts.factory.createReturnStatement(_not(statements[0].expression))] : [...statements, ts.factory.createReturnStatement(_bool(true))])
         ));
         validator.customExp = originalCustomExp;
         validator.isRecursiveOrigin = true;
