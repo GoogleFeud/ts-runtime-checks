@@ -148,6 +148,12 @@ export class Validator {
         else return this.name;
     }
 
+    nameToString() : string {
+        if (typeof this.name === "string") return this.name;
+        else if (typeof this.name === "number") return this.name.toString();
+        else return this.name.text;
+    }
+
     path() : Stringifyable[] {
         if (!this.parent) return [this.nameAsExpression()];
         const parentPath = this.parent.path();
@@ -242,6 +248,14 @@ export class Validator {
             parent = parent.parent;
         }
         return;
+    }
+
+    getNonOptionalValue() : Validator | undefined {
+        if (this.typeData.kind === TypeDataKinds.Union && this.children.length === 2) {
+            if ((this.children[0] as Validator).typeData.kind === TypeDataKinds.Undefined) return this.children[1] as Validator;
+            else if ((this.children[1] as Validator).typeData.kind === TypeDataKinds.Undefined) return this.children[0] as Validator;
+        }
+        return undefined;
     }
 
     exactProps() : ObjectTypeDataExactOptions|undefined {

@@ -5,6 +5,9 @@ import { TransformerError, getResolvedTypesFromCallSig, getStringFromType, hasBi
 import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
 import { ValidationResultType, createContext, validateType } from "./gen/nodes";
+import { TsRuntimeChecksConfig } from ".";
+import { typeToJSONSchema } from "./gen/validators/jsonSchema";
+import path from "path";
 
 interface ToBeResolved {
     validators: Validator[],
@@ -15,12 +18,16 @@ interface ToBeResolved {
 
 export class Transformer {
     checker: ts.TypeChecker;
+    program: ts.Program;
+    config: TsRuntimeChecksConfig;
     ctx: ts.TransformationContext;
     toBeResolved: Map<ts.SignatureDeclaration, ToBeResolved[]>;
     validatedDecls: Set<ts.Declaration>;
-    constructor(program: ts.Program, ctx: ts.TransformationContext) {
+    constructor(program: ts.Program, ctx: ts.TransformationContext, config: TsRuntimeChecksConfig) {
         this.checker = program.getTypeChecker();
+        this.program = program;
         this.ctx = ctx;
+        this.config = config;
         this.toBeResolved = new Map();
         this.validatedDecls = new Set();
     }
@@ -138,7 +145,22 @@ export class Transformer {
                     }
                 }
             } 
-        } 
+        } else if (ts.isTypeDeclaration(node) && this.config.jsonSchema) {
+            if (this.config.jsonSchema?.types) {
+                if (!this.config.jsonSchema.types.includes(node.symbol.name)) return node;
+                const jsonSchemaVal = typeToJSONSchema(this, this.checker.getTypeAtLocation(node));
+                if (jsonSchemaVal) this.program.writeFile(path.join(this.config.jsonSchema.dist, `${node.symbol.name}.json`), JSON.stringify(jsonSchemaVal), false);
+            }
+            else if (this.config.jsonSchema.typePrefix) {
+                if (!node.symbol.name.startsWith(this.config.jsonSchema.typePrefix)) return node;
+                const jsonSchemaVal = typeToJSONSchema(this, this.checker.getTypeAtLocation(node));
+                if (jsonSchemaVal) this.program.writeFile(path.join(this.config.jsonSchema.dist, `${node.symbol.name}.json`), JSON.stringify(jsonSchemaVal), false);
+            }
+            else {
+                const jsonSchemaVal = typeToJSONSchema(this, this.checker.getTypeAtLocation(node));
+                if (jsonSchemaVal) this.program.writeFile(path.join(this.config.jsonSchema.dist, `${node.symbol.name}.json`), JSON.stringify(jsonSchemaVal), false);
+            }
+        }
         return ts.visitEachChild(node, (node) => this.visitor(node, body), this.ctx);
     }
 

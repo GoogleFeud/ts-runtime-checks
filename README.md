@@ -111,7 +111,7 @@ By far the most important marker is `Assert<T>`, which tells the transpiler to v
 - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Num.min/max` and `Str.matches` for example.
 - `Infer<Type>` / `Resolve<Type>` - Creating validation for type parameters.
 
-#### Assert<Type, Action>
+#### `Assert<Type, Action>`
 
 The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, the code will either return a value or throw an error, depending on what `Action` is.
 
@@ -165,7 +165,7 @@ function getType(element) {
 }
 ```
 
-#### Num<{min, max, type}>
+#### `Num<{min, max, type}>`
 
 Allows you to check if the number is greater than / less than an amount, or if it's a floating point or an integer.
 
@@ -190,7 +190,7 @@ function test(num1, num2, num3) {
 }
 ```
 
-#### Str<settings>
+#### `Str<settings>`
 
 Allows you to check whether the string matches a regex, or whether it's a certain length.
 
@@ -210,7 +210,7 @@ function test(a) {
 }
 ```
 
-#### Arr<Type, settings>
+#### `Arr<Type, settings>`
 
 Allows you to validate the array's length.
 
@@ -235,7 +235,7 @@ function test(a) {
 }
 ```
 
-#### NoCheck<Type>
+#### `NoCheck<Type>`
 
 Skips validating the value.
 
@@ -258,7 +258,7 @@ function test(req) {
 }
 ```
 
-#### ExactProps<Type, removeExtra, useDeleteOperator> 
+#### `ExactProps<Type, removeExtra, useDeleteOperator>`
 
 Checks if an object has any "excessive" properties (properties which are not on the type but they are on the object).
 
@@ -287,7 +287,7 @@ function test(req) {
 }
 ```
 
-#### If<Type, Condition, FullCheck>
+#### `If<Type, Condition, FullCheck>`
 
 Allows you to create custom comparisons by providing a string containing javascript code. You can use `$self` in the expression, it'll be replaced by the expression of the value that's currently being validated.
 
@@ -307,7 +307,7 @@ function test(num) {
 }
 ```
 
-#### Infer<Type>
+#### `Infer<Type>`
 
 You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it inside the function body.
 
@@ -337,7 +337,7 @@ function test(body) {
 }
 ```
 
-#### Resolve<Type>
+#### `Resolve<Type>`
 
 Pass a type parameter to `Resolve<Type>` to *move* the validation logic to the call site, where the type parameter is resolved to an actual type.
 
@@ -562,6 +562,37 @@ function test(a) {
         return undefined;
 }
 ```
+
+### Generating JSON Schemas from your types
+
+The transformer allows you to turn any of the types you use in your project into [JSON Schemas](https://json-schema.org/) with the `jsonSchema` configuration option:
+
+```js
+"compilerOptions": {
+//... other options
+"plugins": [
+        { 
+            "transform": "ts-runtime-checks",
+            "jsonSchema": {
+                "dist": "./schemas"
+            }
+        }
+    ]
+}
+```
+
+Using the configuration above, all types in your project will be turned into JSON Schemas and be saved in the `./schemas` directory, each one in different file. You can also filter types by using either the `types` option or the `typePrefix` option:
+
+```js
+"jsonSchema": {
+    "dist": "./schemas",
+    // Only specific types will be turned to schemas
+    "types": ["User", "Member", "Guild"],
+    // Only types with names that start with a specific prefix will be turned to schemas
+    "typePrefix": "$"
+}
+```
+
 
 ## Contributing
 
