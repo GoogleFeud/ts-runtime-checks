@@ -1,7 +1,6 @@
-import { genValidator } from "./genValidator";
-import { NumberTypes, TypeDataKinds, Validator } from "./validator";
-import ts from "typescript";
+import { genValidator, NumberTypes, TypeDataKinds, Validator } from "../validators";
 import { Transformer } from "../../transformer";
+import ts from "typescript";
 
 export type JSONSchema = Record<string, unknown>;
 

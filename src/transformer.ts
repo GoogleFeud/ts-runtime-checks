@@ -6,7 +6,7 @@ import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
 import { ValidationResultType, createContext, validateType } from "./gen/nodes";
 import { TsRuntimeChecksConfig } from ".";
-import { typeToJSONSchema } from "./gen/validators/jsonSchema";
+import { typeToJSONSchema } from "./gen/jsonSchema";
 import path from "path";
 
 interface ToBeResolved {
