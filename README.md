@@ -12,16 +12,14 @@ Here is a very simple example:
 ```ts
 import type { Assert } from "ts-runtime-checks";
 
-type AssertNum = Assert<number>;
-
-function greet(name: Assert<string>, age: AssertNum) : string {
+function greet(name: Assert<string, undefined>, age: Assert<number>) : string {
     return `Hello ${name}! I'm ${age} too!`;
 }
 
 // Transpiles to:
 function greet(name, age) {
-    if (typeof name !== "string") throw new Error("Expected name to be a string");
-    if (typeof age !== "number") throw new Error("Expected age to be a number");
+    if (typeof name !== "string") return undefined;
+    if (typeof age !== "number") throw new Error("Expected age to be a number");;
     return `Hello ${name}! I'm ${age} too!`;
 }
 ```

@@ -1,5 +1,6 @@
 import ts from "typescript";
 import { _access, Stringifyable } from "../expressionUtils";
+import { isInt } from "../../utils";
 
 export const enum TypeDataKinds {
     Number,
@@ -143,9 +144,9 @@ export class Validator {
     }
 
     nameAsExpression() : ts.Expression {
-        if (typeof this.name === "string") return ts.factory.createStringLiteral(this.name);
-        else if (typeof this.name === "number") return ts.factory.createNumericLiteral(this.name);
-        else return this.name;
+        if (typeof this.name === "object") return this.name;
+        else if (isInt(this.name))  return ts.factory.createNumericLiteral(this.name);
+        else return ts.factory.createStringLiteral(this.name as string);
     }
 
     nameToString() : string {
@@ -158,9 +159,9 @@ export class Validator {
         if (!this.parent) return [this.nameAsExpression()];
         const parentPath = this.parent.path();
         if (this.name === "") return parentPath;
-        if (typeof this.name === "string") parentPath.push(`.${this.name}`);
-        else if (typeof this.name === "number") parentPath.push(`[${this.name}]`);
-        else parentPath.push("[", this.name, "]");
+        if (typeof this.name === "object") parentPath.push("[", this.name, "]");
+        else if (isInt(this.name)) parentPath.push(`[${this.name}]`);
+        else parentPath.push(`.${this.name}`);
         return parentPath;
     }
 

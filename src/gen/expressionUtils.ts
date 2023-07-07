@@ -1,4 +1,5 @@
 import ts, { factory } from "typescript";
+import { isInt } from "../utils";
 
 export type Stringifyable = string | ts.Expression;
 export type BlockLike = ts.Expression | ts.Statement | ts.Block | Array<ts.Statement>;
@@ -161,7 +162,10 @@ export function _not(exp: ts.Expression) : ts.Expression {
 
 
 export function _access(exp: ts.Expression, key: string | number | ts.Expression) : ts.Expression {
-    if (typeof key === "string") return ts.factory.createPropertyAccessExpression(exp, key);
+    if (typeof key === "string") {
+        if (isInt(key)) return factory.createElementAccessExpression(exp, ts.factory.createNumericLiteral(key));
+        return ts.factory.createPropertyAccessExpression(exp, key);
+    }
     else return factory.createElementAccessExpression(exp, key);
 }
 

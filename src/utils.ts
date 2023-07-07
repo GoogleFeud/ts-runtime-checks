@@ -134,6 +134,10 @@ export function forEachVar(prop: ts.Expression|ts.BindingName|ts.QualifiedName,
     else return cb(prop);
 }
 
+export function isInt(str: string|number) : boolean {
+    return !isNaN(+str);
+}
+
 export function TransformerError(callSite: ts.Node, msg: string) : void {
     TransformerErrorWrapper(callSite.pos, callSite.end - callSite.pos, msg, callSite.getSourceFile());
     process.exit();
