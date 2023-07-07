@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator } from "../validators";
+import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator, genValidator } from "../validators";
 import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _var, _obj_binding_decl, _arr_binding_decl, _concise, _ternary } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 
@@ -353,6 +353,25 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                 _if(
                     _and(validator.children.filter(c => typeof c.name === "string").map(c => _bin(name, _str(c.name as string), ts.SyntaxKind.ExclamationEqualsEqualsToken))),
                     exactProps === ObjectTypeDataExactOptions.RaiseError ? error(ctx, [validator, joinElements(["Property ", ...validator.path(), ".", name, " is excessive"])], true) : validator.typeData.useDeleteOperator ? ts.factory.createDeleteExpression(_access(validator.expression(), name)) : _bin(_access(validator.expression(), name), UNDEFINED, ts.SyntaxKind.EqualsToken)
+                )
+            ])[0]);
+        }
+
+        if (validator.typeData.numberIndexType || validator.typeData.stringIndexType) {
+            const innerChecks = [];
+            const keyName = _ident("p");
+            if (validator.typeData.numberIndexType) {
+                const numberKeyValidator = genValidator(ctx.transformer, validator.typeData.numberIndexType, keyName, undefined, validator);
+                if (numberKeyValidator) innerChecks.push(_if(_not(_call(_ident("isNaN", true), [keyName])), validateType(numberKeyValidator, ctx)));
+            }
+            if (validator.typeData.stringIndexType) {
+                const stringKeyValidator = genValidator(ctx.transformer, validator.typeData.stringIndexType, keyName, undefined, validator);
+                if (stringKeyValidator) innerChecks.push(_if(_typeof_cmp(keyName, "string"), validateType(stringKeyValidator, ctx)));
+            }
+            checks.push(_for_in(validator.expression(), keyName, [
+                _if(
+                    _and(validator.children.filter(c => typeof c.name === "string").map(c => _bin(keyName, _str(c.name as string), ts.SyntaxKind.ExclamationEqualsEqualsToken))),
+                    innerChecks
                 )
             ])[0]);
         }

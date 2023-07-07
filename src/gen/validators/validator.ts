@@ -108,6 +108,8 @@ export const enum ObjectTypeDataExactOptions {
 export interface ObjectTypeData {
     kind: TypeDataKinds.Object,
     exact?: ObjectTypeDataExactOptions,
+    stringIndexType?: ts.Type,
+    numberIndexType?: ts.Type,
     useDeleteOperator?: boolean
 }
 
@@ -312,7 +314,7 @@ export class Validator {
             sum += 2;
             break;
         case TypeDataKinds.Object:
-            if (this.typeData.exact) sum += 8;
+            if (this.typeData.exact || this.typeData.stringIndexType || this.typeData.numberIndexType) sum += 8;
             sum += 2;
             break;
         case TypeDataKinds.Recursive:

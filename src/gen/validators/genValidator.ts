@@ -40,7 +40,11 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
                 return genValidator(transformer, typeOfProp, sym.name, undefined, parent, sym.valueDeclaration ? ts.getJSDocTags(sym.valueDeclaration) : undefined);
             });
-            return new Validator(type, name, { kind: TypeDataKinds.Object }, exp, parent, properties);
+            return new Validator(type, name, { 
+                kind: TypeDataKinds.Object,
+                stringIndexType: type.getStringIndexType(),
+                numberIndexType: type.getNumberIndexType()
+            }, exp, parent, properties);
         }
         switch (utility.aliasSymbol.name) { 
         case "Num": {
