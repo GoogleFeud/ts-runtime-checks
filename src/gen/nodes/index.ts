@@ -2,6 +2,7 @@ import ts from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator, genValidator } from "../validators";
 import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _var, _obj_binding_decl, _arr_binding_decl, _concise, _ternary } from "../expressionUtils";
 import { Transformer } from "../../transformer";
+import { isSingleIfStatement } from "../../utils";
 
 export interface ValidationResultType {
     throw?: string,
@@ -75,7 +76,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             [ts.factory.createParameterDeclaration(undefined, undefined, paramName, undefined, undefined, undefined)],
             undefined,
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            ts.factory.createBlock(statements.length === 1 && ts.isIfStatement(statements[0]!) && !statements[0].elseStatement ? [ts.factory.createReturnStatement(_not(statements[0].expression))] : [...statements, ts.factory.createReturnStatement(_bool(true))])
+            ts.factory.createBlock(statements.length === 1 && isSingleIfStatement(statements[0]!) ? [ts.factory.createReturnStatement(_not(statements[0].expression))] : [...statements, ts.factory.createReturnStatement(_bool(true))])
         ));
         validator.customExp = originalCustomExp;
         validator.isRecursiveOrigin = true;
@@ -438,7 +439,7 @@ export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate
     
     if (result.after) {
         for (const stmt of result.after) {
-            if (ts.isIfStatement(stmt) && ts.isReturnStatement(stmt.thenStatement) && !stmt.elseStatement) ifStatements.push(_negate(stmt.expression));
+            if (isSingleIfStatement(stmt)) ifStatements.push(_negate(stmt.expression));
             else other.push(stmt);
         }
     }

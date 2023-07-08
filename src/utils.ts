@@ -138,6 +138,10 @@ export function isInt(str: string|number) : boolean {
     return !isNaN(+str);
 }
 
+export function isSingleIfStatement(stmt: ts.Statement) : stmt is ts.IfStatement {
+    return ts.isIfStatement(stmt) && ts.isReturnStatement(stmt.thenStatement) && !stmt.elseStatement;
+}
+
 export function TransformerError(callSite: ts.Node, msg: string) : void {
     TransformerErrorWrapper(callSite.pos, callSite.end - callSite.pos, msg, callSite.getSourceFile());
     process.exit();
