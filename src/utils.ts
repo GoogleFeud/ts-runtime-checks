@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import ts, { factory } from "typescript";
+import ts from "typescript";
+import { Transformer } from "./transformer";
+import { ValidationResultType } from "./gen/nodes";
 
 export function hasBit(thing: { flags: number }, bit: number) : boolean {
     return (thing.flags & bit) !== 0;
@@ -11,8 +13,23 @@ export function isTrueType(t: ts.Type|undefined) : boolean {
     return t.intrinsicName === "true";
 }
 
+export function parseJsDocTags(transformer: Transformer, tags: readonly ts.JSDocTag[], expected: string[]) : Record<string, ts.Expression> {
+    const result: Record<string, ts.Expression> = {};
+    for (const tag of tags) {
+        if (!expected.includes(tag.tagName.text) || typeof tag.comment !== "string") continue;
+        const tagValue = tag.comment[0] === "{" ? tag.comment.slice(1, -1) : tag.comment;
+        const exp = transformer.stringToNode(tagValue);
+        result[tag.tagName.text] = exp;
+    }
+    return result;
+}
+
 export function isErrorMessage(t: ts.Type) : boolean {
     return Boolean(t.getProperty("__error_msg"));
+}
+
+export function isErrorType(t: ts.Type) : ts.Symbol|undefined {
+    return t.getProperty("__throw_err");
 }
 
 export function resolveAsChain(exp: ts.Expression) : ts.Expression {
@@ -20,158 +37,6 @@ export function resolveAsChain(exp: ts.Expression) : ts.Expression {
         exp = exp.expression;
     }
     return exp;
-}
-
-export function genIf(condition: ts.Expression, action: ts.Node | Array<ts.Node>, otherwise?: ts.Node | Array<ts.Node>) : ts.IfStatement {
-    return factory.createIfStatement(condition, 
-        genStmt(action),
-        otherwise && genStmt(otherwise)
-    );
-}
-
-function _genIfElseChain(ind: number, check: Array<[ts.Expression, Array<ts.Node>]>, last?: ts.Statement) : ts.IfStatement | undefined {
-    if (ind >= check.length) return;
-    return factory.createIfStatement(check[ind]![0], genStmt(check[ind]![1]), _genIfElseChain(ind + 1, check, last) || last);
-}
-
-export function genIfElseChain(checks: Array<[ts.Expression, Array<ts.Node>]>, last?: ts.Node | Array<ts.Node>) : ts.IfStatement {
-    const chain = _genIfElseChain(0, checks, last ? genStmt(last) : undefined)!;
-    return chain;
-}
-
-/**
- * Compares the two expressions (strict equality).
- */
-export function genCmp(a: ts.Expression, b: ts.Expression, not = true) : ts.Expression {
-    return factory.createBinaryExpression(a, not ? ts.SyntaxKind.ExclamationEqualsEqualsToken : ts.SyntaxKind.EqualsEqualsEqualsToken, b);
-}
-
-/**
- * Compares the type of the expression with `type`:
- * ```
- * typeof exp === "type"
- * ```
- */
-export function genTypeCmp(a: ts.Expression, type: string, not = true) : ts.Expression {
-    return factory.createBinaryExpression(factory.createTypeOfExpression(a), 
-        not ? ts.SyntaxKind.ExclamationEqualsEqualsToken : ts.SyntaxKind.EqualsEqualsEqualsToken, factory.createStringLiteral(type));
-}
-
-export function genBinaryChain(syntax: ts.BinaryOperator, exps: Array<ts.Expression>) : ts.Expression {
-    if (exps.length === 1) return exps[0]!;
-    let start = factory.createBinaryExpression(exps[0] as ts.Expression, syntax, exps[1] as ts.Expression);
-    for (let i=2; i < exps.length; i++) {
-        start = factory.createBinaryExpression(start, syntax, exps[i] as ts.Expression);
-    }
-    return start;
-}
-
-export function genLogicalOR(...exps: Array<ts.Expression>) : ts.Expression {
-    return genBinaryChain(ts.SyntaxKind.BarBarToken, exps);
-}
-
-export function genLogicalAND(...exps: Array<ts.Expression>) : ts.Expression {
-    return genBinaryChain(ts.SyntaxKind.AmpersandAmpersandToken, exps);
-}
-
-export function genThrow(val: ts.Expression) : ts.Statement {
-    return factory.createThrowStatement(val);
-}
-
-export function genNew(inst: string, parameters: string|Array<ts.Expression>) : ts.Expression {
-    return factory.createNewExpression(
-        factory.createIdentifier(inst),
-        undefined,
-        typeof parameters === "string" ? [factory.createStringLiteral(parameters)] : parameters
-    );
-}
-
-export function genInstanceof(exp: ts.Expression, inst: string | ts.Identifier) : ts.Expression {
-    return factory.createBinaryExpression(exp, ts.SyntaxKind.InstanceOfKeyword, typeof inst === "string" ? factory.createIdentifier(inst) : inst);
-}
-
-export function genPropAccess(exp: ts.Expression, thing: string|ts.Expression) : ts.Expression {
-    return typeof thing === "string" ? factory.createPropertyAccessExpression(exp, thing) : factory.createElementAccessExpression(exp, thing);
-}
-
-export function genForLoop(arr: ts.Expression, indName: ts.Identifier | string, body: ts.Expression | Array<ts.Statement>) : [loop: ts.Statement, index: ts.Expression] {
-    const [initializerCreate, initializer] = genIdentifier(indName, factory.createNumericLiteral(0));
-    return [factory.createForStatement(
-        initializerCreate.declarationList,
-        factory.createBinaryExpression(initializer, ts.SyntaxKind.LessThanToken, factory.createPropertyAccessExpression(arr, "length")),
-        factory.createPostfixIncrement(initializer),
-        genStmt(body)
-    ), initializer];
-}
-
-export function genForInLoop(arr: ts.Expression, elName: ts.Identifier | string, body: ts.Expression | Array<ts.Statement>) : [loop: ts.Statement, variable: ts.Identifier] {
-    const [initializerCreate, initializer] = genIdentifier(elName);
-    return [factory.createForInStatement(initializerCreate.declarationList, arr, genStmt(body)), initializer];
-} 
-
-export function genNot(exp: ts.Expression) : ts.Expression {
-    return factory.createPrefixUnaryExpression(ts.SyntaxKind.ExclamationToken, exp);
-}
-
-export function genAdd(a: ts.Expression, b: ts.Expression) {
-    return factory.createAdd(a, b);
-}
-
-export function genStr(str: string) {
-    return factory.createStringLiteral(str);
-}
-
-export function genNum(num: number) {
-    return factory.createNumericLiteral(num);
-}
-
-export function genStmt(exp: ts.Node | Array<ts.Node>) : ts.Statement {
-    if (Array.isArray(exp)) return factory.createBlock(exp.map(genStmt), true);
-    if (exp.kind > ts.SyntaxKind.EmptyStatement && exp.kind < ts.SyntaxKind.DebuggerStatement) return exp as ts.Statement;
-    return factory.createExpressionStatement(exp as ts.Expression);
-}
-
-export function genIdentifier(name: ts.Identifier | string, initializer?: ts.Expression, flag = ts.NodeFlags.Let) : [ts.VariableStatement, ts.Identifier] {
-    const ident = typeof name === "string" ? factory.createUniqueName(name) : name;
-    return [factory.createVariableStatement(undefined, factory.createVariableDeclarationList([
-        factory.createVariableDeclaration(ident, undefined, undefined, initializer),
-    ], flag)), ident];
-}
-
-export function genNegate(exp: ts.Expression) : ts.Expression {
-    if (ts.isBinaryExpression(exp)) {
-        switch(exp.operatorToken.kind) {
-        case ts.SyntaxKind.EqualsEqualsToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.ExclamationEqualsToken, exp.right); 
-        case ts.SyntaxKind.ExclamationEqualsToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.EqualsEqualsToken, exp.right);
-        case ts.SyntaxKind.EqualsEqualsEqualsToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.ExclamationEqualsEqualsToken, exp.right); 
-        case ts.SyntaxKind.ExclamationEqualsEqualsToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.EqualsEqualsEqualsToken, exp.right);
-        case ts.SyntaxKind.GreaterThanToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanToken, exp.right);
-        case ts.SyntaxKind.GreaterThanEqualsToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanEqualsToken, exp.right);
-        case ts.SyntaxKind.LessThanToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanToken, exp.right);
-        case ts.SyntaxKind.LessThanEqualsToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanEqualsToken, exp.right);
-        }
-    }
-    else if (ts.isPrefixUnaryExpression(exp) && exp.operator === ts.SyntaxKind.ExclamationToken) return exp.operand;
-    return genNot(exp);
-}
-
-export function genArrayPush(arr: ts.Expression, item: ts.Expression) : ts.Expression {
-    return factory.createCallExpression(
-        factory.createPropertyAccessExpression(
-            arr,
-            factory.createIdentifier("push")
-        ),
-        undefined,
-        [item]
-    );
 }
 
 export function getStringFromType(t: ts.Type, argNum: number) : string|undefined {
@@ -202,5 +67,94 @@ export function getTypeArg(t: ts.Type, argNum: number) : ts.Type | undefined {
     return t.aliasTypeArguments?.[argNum];
 }
 
+export function getApparentType(checker: ts.TypeChecker, t: ts.Type) : ts.Type {
+    if (t.isStringLiteral()) return checker.getStringType();
+    else if (t.isNumberLiteral()) return checker.getNumberType();
+    else return t;
+}
 
-export const UNDEFINED = factory.createIdentifier("undefined");
+export function getCallSigFromType(checker: ts.TypeChecker, type: ts.Type) : ts.Signature|undefined {
+    const sym = type.getSymbol();
+    if (!sym || !sym.declarations?.length) return;
+    return checker.getSignatureFromDeclaration((sym.declarations[0] as ts.TypeParameterDeclaration).parent as ts.CallSignatureDeclaration);
+}
+
+export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: ts.Type[], sig: ts.Signature) : ts.Type[] {
+    if (!sig.mapper) return [];
+    const resolvedTypes: ts.Type[] = [];
+    let sources, targets;
+    if (sig.mapper.kind === ts.TypeMapKind.Simple && sig.mapper.source === typeParam[0]) {
+        sources = [sig.mapper.source];
+        targets = [sig.mapper.target];
+    }
+    else if (sig.mapper.kind === ts.TypeMapKind.Array && sig.mapper.targets) {
+        sources = sig.mapper.sources;
+        targets = sig.mapper.targets;
+    }
+    else return resolvedTypes;
+    for (let i=0; i < typeParam.length; i++) {
+        const sourceIndex = sources.indexOf(typeParam[i] as ts.Type);
+        if (sourceIndex !== -1) resolvedTypes.push(getApparentType(checker, targets[sourceIndex] as ts.Type));
+    }
+    return resolvedTypes;
+}
+
+export function resolveResultType(transformer: Transformer, type?: ts.Type) : ValidationResultType {
+    if (!type) return { throw: "Error" };
+    const rawErrors = type.getProperty("__raw_error") && isTrueType(transformer.checker.getTypeOfSymbol(type.getProperty("__raw_error") as ts.Symbol));
+    if (type.getProperty("__error_msg")) return { returnErr: true, rawErrors };
+    else if (type.getProperty("__throw_err")) return { throw: transformer.checker.typeToString(transformer.checker.getTypeOfSymbol(type.getProperty("__throw_err") as ts.Symbol)), rawErrors };
+    else return { return: transformer.typeValueToNode(type), rawErrors };
+}
+
+export const enum BindingPatternTypes {
+    Object,
+    Array
+}
+
+export function forEachVar(prop: ts.Expression|ts.BindingName|ts.QualifiedName, 
+    cb: (i: ts.Expression, bindingPatternType?: BindingPatternTypes) => Array<ts.Statement>,
+    parentType?: BindingPatternTypes) : Array<ts.Statement> {
+    if (ts.isIdentifier(prop)) return cb(prop, parentType);
+    else if (ts.isQualifiedName(prop)) return cb(prop.right, parentType);
+    else if (ts.isObjectBindingPattern(prop)) {
+        const result = [];
+        for (const el of prop.elements) {
+            result.push(...forEachVar(el.name, cb, BindingPatternTypes.Object));
+        }
+        return result;
+    } else if (ts.isArrayBindingPattern(prop)) {
+        const result = [];
+        for (const el of prop.elements) {
+            if (ts.isOmittedExpression(el)) continue;
+            result.push(...forEachVar(el.name, cb, BindingPatternTypes.Array));
+        }
+        return result;
+    }
+    else return cb(prop);
+}
+
+export function isInt(str: string|number) : boolean {
+    return !isNaN(+str);
+}
+
+export function TransformerError(callSite: ts.Node, msg: string) : void {
+    TransformerErrorWrapper(callSite.pos, callSite.end - callSite.pos, msg, callSite.getSourceFile());
+    process.exit();
+}
+
+export function TransformerErrorWrapper(start: number, length: number, msg: string, file: ts.SourceFile) : void {
+    if (!ts.sys || typeof process !== "object") throw new Error(msg);
+    console.error(ts.formatDiagnosticsWithColorAndContext([{
+        category: ts.DiagnosticCategory.Error,
+        code: 8000,
+        file,
+        start,
+        length,
+        messageText: msg
+    }], {
+        getNewLine: () => "\r\n",
+        getCurrentDirectory: ts.sys.getCurrentDirectory,
+        getCanonicalFileName: (fileName) => fileName
+    }));
+}

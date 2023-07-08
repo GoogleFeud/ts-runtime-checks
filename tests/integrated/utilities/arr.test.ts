@@ -11,11 +11,11 @@ describe("Arr", () => {
         }
 
         it("Throw when the correct length is not provided", () => {
-            expect(call(test, ["aaaa", "bbbb", "cccc", "dddddd"])).to.throw("Expected a to be an Array and to have a length of 6.");
+            expect(call(test, ["aaaa", "bbbb", "cccc", "dddddd"])).to.throw("Expected a to be an array, to have a length of 6");
         });
 
         it("Throw when the inner type is not validated correctly", () => {
-            expect(call(test, ["aaaa", "bbbb", "cccc", "dddddd", "eeee", "mmmm"])).to.throw("Expected a[3] to be a string and to have a length of 4.");
+            expect(call(test, ["aaaa", "bbbb", "cccc", "dddddd", "eeee", "mmmm"])).to.throw("Expected a[3] to be a string, to have a length of 4");
         });
 
         it("Not throw when the correct length is provided", () => {
@@ -32,7 +32,7 @@ describe("Arr", () => {
         }
 
         it("Throw when the correct length is not provided", () => {
-            expect(call(test, [1, 2])).to.throw("Expected a to be an Array and to have a minimum length of 3.");
+            expect(call(test, [1, 2])).to.throw("Expected a to be an array, to have a length greater than 3");
         });
 
         it("Not throw when the correct length is provided", () => {
@@ -49,7 +49,7 @@ describe("Arr", () => {
         }
 
         it("Throw when the correct length is not provided", () => {
-            expect(call(test, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])).to.throw("Expected a to be an Array and to have a maximum length of 6.");
+            expect(call(test, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])).to.throw("Expected a to be an array, to have a length less than 6");
         });
 
         it("Not throw when the correct length is provided", () => {

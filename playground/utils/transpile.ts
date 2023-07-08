@@ -3,9 +3,14 @@ import ts from "typescript";
 import TsChecks from "../../dist/index";
 
 export const Markers = `
-type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType> };
-type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
-type ErrorMsg = { __error_msg: true };
+type Assert<T, ReturnValue = ThrowError<Error>> = T & { __marker?: Assert<T, ReturnValue> };
+type ErrorMsg<_rawErrorData = false> = { __error_msg: true, __raw_error: _rawErrorData };
+type ThrowError<ErrorType = Error, _rawErrorData = false> = { __throw_err: ErrorType, __raw_error: _rawErrorData };
+interface ValidationError {
+    valueName: string,
+    value: unknown,
+    parts: string[]
+};
 type Num<Settings extends {
     min?: number|Expr<"">,
     max?: number|Expr<"">,
@@ -23,9 +28,11 @@ type Arr<T, Settings extends {
     minLen?: number|Expr<"">,
     maxLen?: number|Expr<"">
 }> = Array<T> & { __utility?: Arr<T, Settings> };
-type ExactProps<Obj extends object, removeExcessive extends boolean = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive> };
+type ExactProps<Obj extends object, removeExcessive = false, useDeleteOperator = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive, useDeleteOperator> };
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
+type Infer<Type> = Type & { __utility?: Infer<Type> };
+type Resolve<Type, ReturnValue = ThrowError<Error>> = Type & { __utility?: Resolve<Type, ReturnValue> };
 declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
 
@@ -46,7 +53,7 @@ export function genTranspile(lib: string) : (str: string) => { code?: string, er
         const CompilerHost: ts.CompilerHost = {
             getSourceFile: (fileName) => {
                 if (fileName.endsWith(".d.ts")) return LibFile;
-                return SourceFile;
+                else if (fileName === "module.ts") return SourceFile;
             },
             getDefaultLibFileName: () => "lib.d.ts",
             useCaseSensitiveFileNames: () => false,
@@ -59,12 +66,7 @@ export function genTranspile(lib: string) : (str: string) => { code?: string, er
             directoryExists: () => true,
             getDirectories: () => []
         };
-    
         const program = ts.createProgram(["module.ts"], CompilerOptions, CompilerHost);
-        //@ts-expect-error Set globals
-        window.checker = program.getTypeChecker();
-        //@ts-expect-error Set globals
-        window.source = SourceFile;
         try {
             program.emit(undefined, undefined, undefined, undefined, { before: [ TsChecks(program) as unknown as ts.TransformerFactory<ts.SourceFile> ]});
         } catch (err: unknown) {

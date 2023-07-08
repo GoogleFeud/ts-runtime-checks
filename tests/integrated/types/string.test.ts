@@ -12,8 +12,8 @@ describe("String", () => {
             return a;
         }
         it("Throw when a string is not provided", () => {
-            expect(call(test, 12)).to.throw("Expected a to be string.");
-            expect(call(test)).to.throw("Expected a to be string.");
+            expect(call(test, 12)).to.throw("Expected a to be a string");
+            expect(call(test)).to.throw("Expected a to be a string");
         });
     
         it("Not throw when a string is provided", () => {
@@ -21,7 +21,7 @@ describe("String", () => {
         });
 
         it("Throw when the string literal is not the same", () => {
-            expect(call(test2, "abcd")).to.throw("Expected a to be \"abc\".");
+            expect(call(test2, "abcd")).to.throw("Expected a to be equal to \"abc\"");
         });
 
         it("Not throw when the string literal is the same", () => {

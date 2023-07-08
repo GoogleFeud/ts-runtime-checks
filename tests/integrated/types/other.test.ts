@@ -13,8 +13,8 @@ describe("Symbol / Bigint", () => {
         });
 
         it("Throw when wrong types are provided", () => {
-            expect(call(test, 123, 123n)).to.throw("Expected a to be symbol.");
-            expect(call(test, Symbol(), 123)).to.throw("Expected b to be bigint.");
+            expect(call(test, 123, 123n)).to.throw("Expected a to be a symbol");
+            expect(call(test, Symbol(), 123)).to.throw("Expected b to be a bigint");
         });
 
     });

@@ -14,8 +14,8 @@ describe("Check function", () => {
                 d: 44
             }
         });
-        expect(errs[0]).to.be.equal("Expected value.b to be string.");
-        expect(errs[1]).to.be.equal("Expected value.c.d to be a number, to be greater than 1 and to be less than 10.");
+        expect(errs[0]).to.be.equal("Expected value.b to be a string");
+        expect(errs[1]).to.be.equal("Expected value.c.d to be a number, to be greater than 1, to be less than 10");
     });
 
 });

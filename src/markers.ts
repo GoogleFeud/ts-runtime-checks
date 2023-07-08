@@ -2,11 +2,10 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
-import { genArrayPush, isErrorMessage } from "./utils";
-import { validate, ValidationContext } from "./validation";
-import { ValidationResultType } from "./validation/context";
-import { genIdentifier, UNDEFINED } from "./utils";
-
+import { forEachVar, getCallSigFromType, resolveResultType } from "./utils";
+import { ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, validateType } from "./gen/nodes";
+import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
+import { _access, _call, _not, _var } from "./gen/expressionUtils";
 
 export const enum MacroCallContext {
     As,
@@ -19,7 +18,6 @@ export interface MarkerCallData {
     ctx: MacroCallContext,
     optional?: boolean,
     exp: ts.Expression | ts.BindingName,
-    resultType?: ValidationResultType
 }
 
 export interface FnCallData {
@@ -30,61 +28,28 @@ export interface FnCallData {
 }
 
 export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Expression|undefined;
-export type FnCallFn = (transformer: Transformer, data: FnCallData) => void;
+export type FnCallFn = (transformer: Transformer, data: FnCallData) => ts.Expression|void;
 
 export const Markers: Record<string, MarkerFn> = {
     Assert: (trans, {ctx, exp, block, parameters, optional}) => {
+        const resultType = resolveResultType(trans, parameters[1]);
         if (ctx === MacroCallContext.Parameter) {
-            block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
-                return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
-                    errorTypeName: parameters[1]?.symbol?.name,
-                    transformer: trans,
-                    depth: [],
-                    propName: ts.isIdentifier(i) ? i.text : i,
-                }), optional);
+            block.nodes.push(...forEachVar(exp, (i, patternType) => {
+                const validator = createValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i, resultType, optional);
+                if (!validator) return [];
+                return validateType(validator, createContext(trans, resultType), optional);
             }));
-            return undefined;
+            return;
         } else {
             let callBy = exp as ts.Expression;
             if (!ts.isIdentifier(callBy) && !ts.isPropertyAccessExpression(callBy) && !ts.isElementAccessExpression(callBy)) {
-                const [decl, ident] = genIdentifier("temp", callBy as ts.Expression, ts.NodeFlags.Const);
+                const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
                 block.nodes.push(decl);
                 callBy = ident;
             }
-            block.nodes.push(...validate(parameters[0]!, callBy, new ValidationContext({
-                errorTypeName: parameters[1]?.symbol?.name,
-                transformer: trans,
-                depth: [],
-                propName: callBy.pos === -1 ? "value" : callBy.getText()
-            })));
-            return callBy;
-        }
-    },
-    EarlyReturn: (trans, { ctx, exp, block, parameters, optional}) => {
-        const resultType = parameters[1] ? isErrorMessage(parameters[1]) ? { returnErr: true } : { return: trans.typeValueToNode(parameters[1], true) } : { return: UNDEFINED };
-        if (ctx === MacroCallContext.Parameter) {
-            block.nodes.push(...genValidateForProp(exp, (i, patternType) => {
-                return validate(patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, i, new ValidationContext({
-                    resultType,
-                    transformer: trans,
-                    depth: [],
-                    propName: ts.isIdentifier(i) ? i.text : i
-                }), optional);
-            }));
-            return undefined;
-        } else {
-            let callBy = exp as ts.Expression;
-            if (!ts.isIdentifier(callBy) && !ts.isPropertyAccessExpression(callBy) && !ts.isElementAccessExpression(callBy)) {
-                const [decl, ident] = genIdentifier("temp", callBy as ts.Expression, ts.NodeFlags.Const);
-                block.nodes.push(decl);
-                callBy = ident;
-            }
-            block.nodes.push(...validate(parameters[0]!, callBy, new ValidationContext({
-                resultType,
-                transformer: trans,
-                depth: [],
-                propName: callBy.pos === -1 ? "value" : callBy.getText()
-            })));
+            const validator = createValidator(trans, parameters[0]!, ts.isIdentifier(callBy) ? callBy.text : callBy.getText(), callBy, resultType, optional);
+            if (!validator) return;
+            block.nodes.push(...validateType(validator, createContext(trans, resultType)));
             return callBy;
         }
     }
@@ -92,18 +57,25 @@ export const Markers: Record<string, MarkerFn> = {
 
 export const Functions: Record<string, FnCallFn> = {
     is: (transformer, data) => {
-        let arg = data.call.arguments[0]!;
-        if (!ts.isIdentifier(arg)) {
-            const [stmt, newArg] = genIdentifier("temp", arg, ts.NodeFlags.Const);
-            arg = newArg;
-            data.block.nodes.push(stmt);
+        let arg = data.call.arguments[0]!, stmt;
+        if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
+        const validator = genValidator(transformer, data.type, ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
+        if (!validator) return;
+        const ctx = createContext(transformer, { return: ts.factory.createFalse() });
+        const nodes = minimizeGenResult(genNode(validator, ctx), ctx);
+        if (nodes.minimzed && !nodes.after && !nodes.before) {
+            const block = data.block.parent || data.block;
+            if (stmt) block.nodes.push(stmt);
+            if (ctx.recursiveFns.length) block.nodes.push(...ctx.recursiveFns);
+            return _not(nodes.condition);
+        } else {
+            if (stmt) data.block.nodes.push(stmt);
+            const generated = genStatements([nodes], ctx);
+            const last = generated.pop() as ts.Statement;
+            if (ts.isIfStatement(last) && ts.isReturnStatement(last.thenStatement)) data.block.nodes.push(...generated, ts.factory.createReturnStatement(_not(last.expression)));
+            else data.block.nodes.push(...generated, last, ts.factory.createReturnStatement(ts.factory.createTrue()));
+            return;
         }
-        data.block.nodes.push(...validate(data.type, arg, new ValidationContext({
-            resultType: { return: ts.factory.createFalse() },
-            transformer,
-            depth: [],
-            propName: arg.pos === -1 ? "value" : arg.getText()
-        })), ts.factory.createReturnStatement(ts.factory.createTrue()));
     },
     check: (transformer, data) => {
         let dataVariable: ts.Identifier;
@@ -114,63 +86,60 @@ export const Functions: Record<string, FnCallFn> = {
             const name = data.call.parent.name;
             if (name.elements[0] && ts.isBindingElement(name.elements[0]) && ts.isIdentifier(name.elements[0].name)) {
                 dataVariable = name.elements[0].name;
-                dataInitialize = genIdentifier(dataVariable, data.call.arguments[0], ts.NodeFlags.Const)[0];
+                dataInitialize = _var(dataVariable, data.call.arguments[0], ts.NodeFlags.Const)[0];
             }
             else {
-                if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = genIdentifier("temp", data.call.arguments[0], ts.NodeFlags.Const);
+                if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = _var("value", data.call.arguments[0], ts.NodeFlags.Const);
                 else dataVariable = data.call.arguments[0]!;
             }
             if (name.elements[1] && ts.isBindingElement(name.elements[1]) && ts.isIdentifier(name.elements[1].name)) {
                 arrVariable = name.elements[1].name;
-                arrIntitialize = genIdentifier(arrVariable!, ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const)[0];
+                arrIntitialize = _var(arrVariable!, ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const)[0];
             } else {
-                [arrIntitialize, arrVariable] = genIdentifier("temp", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
+                [arrIntitialize, arrVariable] = _var("value", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
             }
             block = data.prevBlock;
             Block.listen(block, () => block.nodes.pop());
         } else {
-            if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = genIdentifier("temp", data.call.arguments[0], ts.NodeFlags.Const);
+            if (!ts.isIdentifier(data.call.arguments[0]!)) [dataInitialize, dataVariable] = _var("value", data.call.arguments[0], ts.NodeFlags.Const);
             else dataVariable = data.call.arguments[0]!;
-            [arrIntitialize, arrVariable] = genIdentifier("temp", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
+            [arrIntitialize, arrVariable] = _var("value", ts.factory.createArrayLiteralExpression(), ts.NodeFlags.Const);
         }
         if (dataInitialize) block.nodes.push(dataInitialize);
         block.nodes.push(arrIntitialize);
-        block.nodes.push(...validate(data.type, dataVariable, new ValidationContext({
-            resultType: {
-                custom: (msg) => ts.factory.createExpressionStatement(genArrayPush(arrVariable, msg))
-            },
-            transformer,
-            depth: [],
-            propName: dataVariable.pos === -1 ? "value" : dataVariable.getText()
+        const validator = genValidator(transformer, data.type, dataVariable.text, dataVariable);
+        if (!validator) return;
+        block.nodes.push(...validateType(validator, createContext(transformer, {
+            custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
         })));
-        if (block === data.block) block.nodes.push(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable]));
+        if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
     }
 };
 
-export const enum BindingPatternTypes {
-    Object,
-    Array
-}
-
-function genValidateForProp(prop: ts.Expression|ts.BindingName, 
-    cb: (i: ts.Expression, bindingPatternType?: BindingPatternTypes) => Array<ts.Statement>,
-    parentType?: BindingPatternTypes) : Array<ts.Statement> {
-    if (ts.isIdentifier(prop)) return cb(prop, parentType);
-    else if (ts.isObjectBindingPattern(prop)) {
-        const result = [];
-        for (const el of prop.elements) {
-            result.push(...genValidateForProp(el.name, cb, BindingPatternTypes.Object));
+function createValidator(transformer: Transformer, type: ts.Type, name: ValidatorTargetName, exp: ts.Expression, resultType: ValidationResultType, optional?: boolean) : Validator|undefined {
+    const validator = genValidator(transformer, type, name, exp);
+    if (!validator) return;
+    const resolveTypes = validator.getChildrenOfKind(TypeDataKinds.Resolve);
+    if (resolveTypes.length) {
+        const callSig = getCallSigFromType(transformer.checker, ((resolveTypes[0] as Validator).typeData as ResolveTypeData).type);
+        if (callSig) {
+            const toBeResolved = transformer.toBeResolved.get(callSig.declaration as ts.CallSignatureDeclaration);
+            if (toBeResolved) toBeResolved.push({
+                validators: resolveTypes,
+                optional,
+                top: validator,
+                resultType
+            });
+            else transformer.toBeResolved.set(callSig.declaration as ts.CallSignatureDeclaration, [{
+                validators: resolveTypes,
+                optional,
+                top: validator,
+                resultType
+            }]);
+            return;
         }
-        return result;
-    } else if (ts.isArrayBindingPattern(prop)) {
-        const result = [];
-        for (const el of prop.elements) {
-            if (ts.isOmittedExpression(el)) continue;
-            result.push(...genValidateForProp(el.name, cb, BindingPatternTypes.Array));
-        }
-        return result;
     }
-    else return cb(prop);
+    return validator;
 }
 
 /**
@@ -194,31 +163,15 @@ function genValidateForProp(prop: ts.Expression|ts.BindingName,
  * }
  * ```
  */
-export type Assert<T, ErrorType = Error> = T & { __marker?: Assert<T, ErrorType> };
+export type Assert<T, ReturnValue = ThrowError<Error>> = T & { __marker?: Assert<T, ReturnValue> };
+export type ErrorMsg<_rawErrorData = false> = { __error_msg: true, __raw_error: _rawErrorData };
+export type ThrowError<ErrorType = Error, _rawErrorData = false> = { __throw_err: ErrorType, __raw_error: _rawErrorData };
 
-/**
- * Makes sure the value matches the provided type by generating code which validates the value. Returns the provided
- * `ReturnValue` (or `undefiend` if a return value is not provided) if the value doesn't match the type. 
- * You can provide the `ErrorMsg` type to make it return the error strings.
- * 
- * This marker can be used in function parameters and in the the `as` expression.
- * 
- * @example
- * ```ts
- * function test(a: EarlyReturn<string>, b?: EarlyReturn<number, "Expected b to be number...">) {
- *    // Your code
- * }
- * ```
- * ```js
- * function test(a, b) {
- *   if (typeof a !== "string") return;
- *   else if (b !== undefined && typeof b !== "number") return "Expected b to be number...";
- *   // Your code
- * }
- * ```
- */
-export type EarlyReturn<T, ReturnValue = undefined> = T & { __marker?: EarlyReturn<T, ReturnValue> };
-export type ErrorMsg = { __error_msg: true }
+export interface ValidationError {
+    valueName: string,
+    value: unknown,
+    expectedType: TypeData
+}
 
 export type Str<Settings extends {
     length?: number|Expr<"">,
@@ -267,7 +220,7 @@ export type NoCheck<T> = T & { __utility?: NoCheck<T> };
  * }
  * ```
  */
-export type ExactProps<Obj extends object, removeExcessive extends boolean = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive> };
+export type ExactProps<Obj extends object, removeExcessive = false, useDeleteOperator = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive, useDeleteOperator> };
 
 export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 
@@ -297,6 +250,76 @@ export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
  * ```
  */
 export type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
+
+/**
+ * You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it.
+ * 
+ * ```ts
+ * export const validate = <Body>(req: { body: Body }) => {
+ *    const [body, errors] = check<Infer<Body>>(req.body);
+ * };
+ *
+ * // in fileA.ts
+ * validate({
+ *   body: { a: "hello" }
+ * });
+ *
+ * // in FileB.ts
+ * validate({
+ *   body: { something: true, a: 123 }
+ * });
+ *
+ * // Transpiles to:
+ * const validate = (req) => {
+ *   const body = req.body;
+ *   const errors = [];
+ *   if (typeof body !== "object" && body !== null)
+ *       errors.push("Expected body to be an object");
+ *   if (typeof body.a !== "string" && typeof body.a !== "number")
+ *       errors.push("Expected body to be one of string, number");
+ *   if (typeof body.something !== "boolean")
+ *       errors.push("Expected body.something to be a boolean");
+ * };
+``` 
+ */
+export type Infer<Type> = Type & { __utility?: Infer<Type> };
+
+/**
+ * Pass a type parameter to `Resolve<Type>` to *move* the validation logic to the call site, where the type parameter is resolved to an actual type.
+ *
+ * Currently, this marker has some limitations:
+ * - Can only be used in `Assert` markers (so you can't use it in `check` or `is`).
+ * - If used in a parameter declaration, the parameter name **has** to be an identifier (no deconstructions).
+ * - Cannot be used on rest parameters.
+ *
+ * ```ts
+ * function validateBody<T>(data: Assert<{ body: Resolve<T> }>) {
+ *    return data.body;
+ * }
+ *
+ * const validatedBody = validateBody<{
+ *   name: string,
+ *   other: boolean
+ * }>({ body: JSON.parse(process.argv[2]) });
+ *
+ * // Transpiles to:
+ * function validateBody(data) {
+ *    return data.body;
+ * }
+ * 
+ * const validatedBody = (() => {
+ *   const data = { body: JSON.parse(process.argv[2]) };
+ *   if (typeof data.body !== "object" && data.body !== null)
+ *       throw new Error("Expected data.body to be an object");
+ *   if (typeof data.body.name !== "string")
+ *       throw new Error("Expected data.body.name to be a string");
+ *   if (typeof data.body.other !== "boolean")
+ *       throw new Error("Expected data.body.other to be a boolean");
+ *   return validateBody(data);
+ * })();
+```
+ */
+export type Resolve<Type> = Type & { __utility?: Resolve<Type> };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;

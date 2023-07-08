@@ -10,7 +10,7 @@ describe("Str", () => {
             return a;
         }
         it("Throw when the regex doesn't match", () => {
-            expect(call(test, "hello")).to.throw("Expected a to be a string and to match /foo*/g.");
+            expect(call(test, "hello")).to.throw("Expected a to be a string, to match /foo*/g");
         });
     
         it("Not throw when the regex matches", () => {
@@ -18,8 +18,8 @@ describe("Str", () => {
         });
     
         it("Throw when the provided value is not string", () => {
-            expect(call(test, 12)).to.throw("Expected a to be a string and to match /foo*/g.");
-            expect(call(test)).to.throw("Expected a to be a string and to match /foo*/g.");
+            expect(call(test, 12)).to.throw("Expected a to be a string, to match /foo*/g");
+            expect(call(test)).to.throw("Expected a to be a string, to match /foo*/g");
         });
     
         function test2(a: Assert<Str<{
@@ -30,7 +30,7 @@ describe("Str", () => {
     
         it("Check only if the parameter is a string, if regex is not provided", () => {
             expect(call(test2, "hello")).to.not.throw();
-            expect(call(test2, 123)).to.throw("Expected a to be a string.");
+            expect(call(test2, 123)).to.throw("Expected a to be a string");
         });
     
     });
@@ -43,7 +43,7 @@ describe("Str", () => {
         }
 
         it("Throw when the length doesn't match", () => {
-            expect(call(test, "hello")).to.throw("Expected a to be a string and to have a length of 32.");
+            expect(call(test, "hello")).to.throw("Expected a to be a string, to have a length of 32");
         });
     
         it("Not throw when the regex matches", () => {
@@ -61,7 +61,7 @@ describe("Str", () => {
         }
 
         it("Throw when the length doesn't match", () => {
-            expect(call(test, "foofoo")).to.throw("Expected a to be a string, to have a length of 12 and to match /foo*/g.");
+            expect(call(test, "foofoo")).to.throw("Expected a to be a string, to have a length of 12, to match /foo*/g");
         });
     
         it("Not throw when the regex matches", () => {
@@ -78,7 +78,7 @@ describe("Str", () => {
         }
 
         it("Throw when the correct length is not provided", () => {
-            expect(call(test, "abede")).to.throw("Expected a to be a string and to have a minimum length of 6.");
+            expect(call(test, "abede")).to.throw("Expected a to be a string, to have a length greater than 6");
         });
 
         it("Not throw when the correct length is provided", () => {
@@ -95,7 +95,7 @@ describe("Str", () => {
         }
 
         it("Throw when the correct length is not provided", () => {
-            expect(call(test, "abwdwdwdwdwdwdwdwdwdwdwdwdwd")).to.throw("Expected a to be a string and to have a maximum length of 9.");
+            expect(call(test, "abwdwdwdwdwdwdwdwdwdwdwdwdwd")).to.throw("Expected a to be a string, to have a length less than 9");
         });
 
         it("Not throw when the correct length is provided", () => {

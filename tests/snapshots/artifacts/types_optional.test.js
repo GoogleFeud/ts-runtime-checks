@@ -5,18 +5,18 @@ const chai_1 = require("chai");
 describe("Optional / nullable parameters", () => {
     function test(c, a, b) {
         if (typeof c !== "number")
-            throw new Error("Expected c to be number.");
+            throw new Error("Expected c to be a number");
         if (a !== undefined && typeof a !== "string")
-            throw new Error("Expected a to be string.");
+            throw new Error("Expected a to be a string");
         if (b !== undefined) {
-            if (!(b instanceof Array))
-                throw new Error("Expected b to be [string, string, (number | undefined)?].");
+            if (!Array.isArray(b))
+                throw new Error("Expected b to be an array");
             if (typeof b[0] !== "string")
-                throw new Error("Expected " + ("b[" + 0 + "]") + " to be string.");
+                throw new Error("Expected b[0] to be a string");
             if (typeof b[1] !== "string")
-                throw new Error("Expected " + ("b[" + 1 + "]") + " to be string.");
+                throw new Error("Expected b[1] to be a string");
             if (b[2] !== undefined && typeof b[2] !== "number")
-                throw new Error("Expected " + ("b[" + 2 + "]") + " to be number.");
+                throw new Error("Expected b[2] to be a number");
         }
         return [a, b, c];
     }

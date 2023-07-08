@@ -12,8 +12,8 @@ describe("Type assertions (as)", () => {
         }
 
         it("No difference between parameter assertions and as assetions", () => {
-            expect(call(test, [1, 2, 3], { a: 123, b: "abc", d: ["abc", Symbol(), "dec"]})).to.throw("Expected b.d[2] to be number.");
-            expect(call(test1, [1, 2, 3], { a: 123, b: "abc", d: ["abc", Symbol(), "dec"]})).to.throw("Expected b.d[2] to be number.");
+            expect(call(test, [1, 2, 3], { a: 123, b: "abc", d: ["abc", Symbol(), "dec"]})).to.throw("Expected b.d[2] to be a number");
+            expect(call(test1, [1, 2, 3], { a: 123, b: "abc", d: ["abc", Symbol(), "dec"]})).to.throw("Expected b.d[2] to be a number");
         });
     
 

@@ -9,17 +9,17 @@ describe("Tuple", () => {
         }
 
         it("Throw when one of the values is undefined", () => {
-            expect(call(test, ["abc"])).to.throw("Expected a[1] to be \"123\".");
+            expect(call(test, ["abc"])).to.throw("Expected a[1] to be equal to \"123\"");
         });
 
         it("Throw when the tuple is not provided", () => {
-            expect(call(test)).to.throw("Expected a to be [string, \"123\", (number | undefined)?].");
+            expect(call(test)).to.throw("Expected a to be an array");
         });
     
         it("Throw when one of the values has a wrong type", () => {
-            expect(call(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be number.");
-            expect(call(test, ["abc", 123, "Hello"])).to.throw("Expected a[1] to be \"123\".");
-            expect(call(test, [Symbol(), 123, "Hello"])).to.throw("Expected a[0] to be string.");
+            expect(call(test, ["abc", "123", "Hello"])).to.throw("Expected a[2] to be a number");
+            expect(call(test, ["abc", 123, "Hello"])).to.throw("Expected a[1] to be equal to \"123\"");
+            expect(call(test, [Symbol(), "123", "Hello"])).to.throw("Expected a[0] to be a string");
         });
 
         it("Not throw when all the types are correct", () => {

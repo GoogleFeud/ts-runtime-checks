@@ -11,7 +11,7 @@ describe("NoCheck", () => {
         it("Not throw when a wrong type is provided", () => {
             expect(call(test, 123, "abc")).to.not.throw();
             expect(call(test, [123, "AAA"], "abc")).to.not.throw();
-            expect(call(test, undefined, 123)).to.throw("Expected b to be string.");
+            expect(call(test, undefined, 123)).to.throw("Expected b to be a string");
         });
     
     });

@@ -15,7 +15,7 @@ describe("Is function", () => {
     it("Return true when the value matches the type", () => {
         expect(is<boolean>(true)).to.be.equal(true);
         expect(is<[string, number]>(["a", 123])).to.be.equal(true);
-        expect(is<string | { a: number }>({a: "Hello"})).to.equal(true);
+        expect(is<string | { a: number }>({a: "Hello"})).to.equal(false);
     });
 
 });

@@ -14,7 +14,7 @@ describe("Object deconstruction", () => {
         }
 
         it("Throw when one of the deconstructed properties has a wrong type", () => {
-            expect(call(test, {a: "Hello", b: "..."})).to.throw("Expected a to be number.");
+            expect(call(test, {a: "Hello", b: "..."})).to.throw("Expected a to be a number");
         });
     
         it("Not throw when a non-deconstructed property has a wrong type", () => {
@@ -22,7 +22,7 @@ describe("Object deconstruction", () => {
         });
 
         it("Throw when one of the nested deconstructed properties has a wrong type", () => {
-            expect(call(test2, {a: 123, d: { c: 456}})).to.throw("Expected c to be 123.");
+            expect(call(test2, {a: 123, d: { c: 456}})).to.throw("Expected c to be equal to 123");
         });
     
         it("Not throw when a nested non-deconstructed property has a wrong type", () => {

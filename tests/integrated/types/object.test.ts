@@ -17,17 +17,17 @@ describe("Object", () => {
             expect(call(test, {
                 a: "ABC",
                 c: 123
-            })).to.throw("Expected a.c to be string[].");
+            })).to.throw("Expected a.c to be an array");
             expect(call(test, {
                 a: "ABC",
                 b: "adc",
                 c: 123
-            })).to.throw("Expected a.b to be number.");
+            })).to.throw("Expected a.b to be a number");
             expect(call(test, {
                 a: "ABC",
                 b: 123,
                 c: [1]
-            })).to.throw("Expected a.c[0] to be string.");
+            })).to.throw("Expected a.c[0] to be a string");
         });
     
         it("Not throw when all of the values are of the same type", () => {
