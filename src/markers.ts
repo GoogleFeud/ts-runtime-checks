@@ -7,17 +7,11 @@ import { ValidationResultType, createContext, genNode, genStatements, minimizeGe
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
 
-export const enum MacroCallContext {
-    As,
-    Parameter
-}
-
 export interface MarkerCallData {
     parameters: Array<ts.Type>,
     block: Block.Block<unknown>,
-    ctx: MacroCallContext,
     optional?: boolean,
-    exp: ts.Expression | ts.BindingName,
+    exp: ts.Expression | ts.BindingName
 }
 
 export interface FnCallData {
@@ -31,27 +25,20 @@ export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Ex
 export type FnCallFn = (transformer: Transformer, data: FnCallData) => ts.Expression|void;
 
 export const Markers: Record<string, MarkerFn> = {
-    Assert: (trans, {ctx, exp, block, parameters, optional}) => {
+    Assert: (trans, {exp, block, parameters, optional}) => {
         const resultType = resolveResultType(trans, parameters[1]);
-        if (ctx === MacroCallContext.Parameter) {
-            block.nodes.push(...forEachVar(exp, (i, patternType) => {
-                const validator = createValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i, resultType, optional);
-                if (!validator) return [];
-                return validateType(validator, createContext(trans, resultType), optional);
-            }));
-            return;
-        } else {
-            let callBy = exp as ts.Expression;
-            if (!ts.isIdentifier(callBy) && !ts.isPropertyAccessExpression(callBy) && !ts.isElementAccessExpression(callBy)) {
-                const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
-                block.nodes.push(decl);
-                callBy = ident;
-            }
-            const validator = createValidator(trans, parameters[0]!, ts.isIdentifier(callBy) ? callBy.text : callBy.getText(), callBy, resultType, optional);
-            if (!validator) return;
-            block.nodes.push(...validateType(validator, createContext(trans, resultType)));
-            return callBy;
+        let callBy = exp as ts.Expression;
+        if (!ts.isIdentifier(callBy) && !ts.isBindingName(callBy)) {
+            const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
+            block.nodes.push(decl);
+            callBy = ident;
         }
+        block.nodes.push(...forEachVar(callBy, (i, patternType) => {
+            const validator = createValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i, resultType, optional);
+            if (!validator) return [];
+            return validateType(validator, createContext(trans, resultType), optional);
+        }));
+        return callBy;
     }
 };
 
