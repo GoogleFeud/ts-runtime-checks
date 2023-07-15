@@ -221,13 +221,12 @@ export class Transformer {
         const result = ts.createSourceFile("expr", str, ts.ScriptTarget.ESNext, false, ts.ScriptKind.JS);
         const firstStmt = result.statements[0];
         if (!firstStmt || !ts.isExpressionStatement(firstStmt)) return UNDEFINED;
-        if (!replacements) return firstStmt.expression;
         const visitor = (node: ts.Node): ts.Node => {
             if (ts.isIdentifier(node)) {
-                if (replacements[node.text] && typeof replacements[node.text] === "object") return replacements[node.text] as ts.Expression;
+                if (replacements && replacements[node.text] && typeof replacements[node.text] === "object") return replacements[node.text] as ts.Expression;
                 return ts.factory.createIdentifier(node.text);
             }
-            else if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && replacements[node.expression.text] && typeof replacements[node.expression.text] === "function") return (replacements[node.expression.text] as (...args: ts.Expression[]) => ts.Node)(...node.arguments);
+            else if (replacements && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && replacements[node.expression.text] && typeof replacements[node.expression.text] === "function") return (replacements[node.expression.text] as (...args: ts.Expression[]) => ts.Node)(...node.arguments);
             return ts.visitEachChild(node, visitor, this.ctx);
         };
         return ts.visitNode(firstStmt.expression, visitor) as ts.Expression;
