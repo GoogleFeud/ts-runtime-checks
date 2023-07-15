@@ -1,4 +1,4 @@
-import ts from "typescript";
+import ts, { isNumericLiteral } from "typescript";
 import { NumberTypes, ObjectTypeDataExactOptions, TypeDataKinds, Validator, genValidator } from "../validators";
 import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, Stringifyable, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _var, _obj_binding_decl, _arr_binding_decl, _concise, _ternary } from "../expressionUtils";
 import { Transformer } from "../../transformer";
@@ -214,14 +214,23 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.If: {
+        const stringifiedCode = ctx.transformer.stringToNode(validator.typeData.expression, { 
+            $self: validator.expression(),
+            $parent: (index?: ts.Expression) => {
+                let parentToGet = index && isNumericLiteral(index) ? +index.text : 0; 
+                let parent = validator.parent;
+                while (parent && parentToGet--) parent = parent.parent;
+                return parent ? parent.expression() : UNDEFINED;
+            }
+        });
         if (validator.typeData.fullCheck) {
             const innerGen = genNode(validator.children[0] as Validator, ctx);
             return {
                 ...innerGen,
-                after: [_if(_not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })), error(ctx, [validator, [_str(`to satisfy "${validator.typeData.expression}"`)]])), ...(innerGen.after || [])]
+                after: [_if(_not(stringifiedCode), error(ctx, [validator, [_str(`to satisfy "${validator.typeData.expression}"`)]])), ...(innerGen.after || [])]
             };
         } else return {
-            condition: _not(ctx.transformer.stringToNode(validator.typeData.expression, { $self: validator.expression() })),
+            condition: _not(stringifiedCode),
             error: [validator, [_str(`to satisfy "${validator.typeData.expression}"`)]]
         };
     }

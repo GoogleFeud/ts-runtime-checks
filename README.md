@@ -287,7 +287,10 @@ function test(req) {
 
 #### `If<Type, Condition, FullCheck>`
 
-Allows you to create custom comparisons by providing a string containing javascript code. You can use `$self` in the expression, it'll be replaced by the expression of the value that's currently being validated.
+Allows you to create custom comparisons by providing a string containing javascript code.
+
+- You can use the `$self` variable to get the value that's currently being validated.
+- You can use the `$parent` function to get a parent of the value.
 
 `FullCheck` is a boolean - if it's set to true, then validation code will be generated for `Type`, if it's set to false (which is the default), only the condition which you provide will be enough to validate it. 
 
