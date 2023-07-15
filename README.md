@@ -82,11 +82,9 @@ npm i --save-dev ts-patch
 
 ```json
 "ts-node": {
-    // This can be omitted when using ts-patch
     "compiler": "ts-patch"
   },
   "compilerOptions": {
-    // plugin configuration is the same for both ts-patch and ttypescript
     "plugins": [
         { "transform": "ts-runtime-checks" }
     ]
