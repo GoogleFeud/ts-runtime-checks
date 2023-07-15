@@ -214,24 +214,24 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.If: {
-        const stringifiedCode = ctx.transformer.stringToNode(validator.typeData.expression, { 
+        const exprCtx = {
             $self: validator.expression(),
             $parent: (index?: ts.Expression) => {
                 let parentToGet = index && isNumericLiteral(index) ? +index.text : 0; 
                 let parent = validator.parent;
                 while (parent && parentToGet--) parent = parent.parent;
                 return parent ? parent.expression() : UNDEFINED;
-            }
-        });
+            }};
+        const stringifiedCode = validator.typeData.expressions.map(exp => _not(ctx.transformer.stringToNode(exp, exprCtx)));
         if (validator.typeData.fullCheck) {
             const innerGen = genNode(validator.children[0] as Validator, ctx);
             return {
                 ...innerGen,
-                after: [_if(_not(stringifiedCode), error(ctx, [validator, [_str(`to satisfy "${validator.typeData.expression}"`)]])), ...(innerGen.after || [])]
+                after: [_if(_or(stringifiedCode), error(ctx, [validator, [_str(`to satisfy "${validator.typeData.expressions.join(" && ")}"`)]])), ...(innerGen.after || [])]
             };
         } else return {
-            condition: _not(stringifiedCode),
-            error: [validator, [_str(`to satisfy "${validator.typeData.expression}"`)]]
+            condition: _or(stringifiedCode),
+            error: [validator, [_str(`to satisfy "${validator.typeData.expressions.join(" && ")}"`)]]
         };
     }
     case TypeDataKinds.Union: {

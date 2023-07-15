@@ -116,7 +116,7 @@ export interface ObjectTypeData {
 export interface IfTypeData {
     kind: TypeDataKinds.If,
     fullCheck: boolean,
-    expression: string
+    expressions: string[]
 }
 
 export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | IfTypeData | UndefinedTypeData | ResolveTypeData | RecursiveTypeData;
