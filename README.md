@@ -37,27 +37,6 @@ npm i --save-dev ts-runtime-checks
 Sadly, `tsc` doesn't allow you to add custom transformers, so you must use a tool which adds them:
 
 <details>
-    <summary>Usage with ttypescript</summary>
-
-```
-npm i --save-dev ttypescript
-```
-
-and add the ts-runtime-checks transformer to your tsconfig.json:
-
-```json
-"compilerOptions": {
-//... other options
-"plugins": [
-        { "transform": "ts-runtime-checks" }
-    ]
-}
-```
-
-Afterwards you must use the `ttsc` CLI command to transpile your typescript code.
-</details>
-
-<details>
     <summary>Usage with ts-patch</summary>
 
 ```
@@ -89,6 +68,29 @@ options: {
         before: [TsRuntimeChecks(program)]
       }
 }
+```
+</details>
+
+<details>
+    <summary>Usage with ts-node</summary>
+
+To use transformers with ts-node, you'll have to change the compiler in the `tsconfig.json`:
+
+```
+npm i --save-dev ts-patch
+```
+
+```json
+"ts-node": {
+    // This can be omitted when using ts-patch
+    "compiler": "ts-patch"
+  },
+  "compilerOptions": {
+    // plugin configuration is the same for both ts-patch and ttypescript
+    "plugins": [
+        { "transform": "ts-runtime-checks" }
+    ]
+  }
 ```
 </details>
 
