@@ -175,16 +175,17 @@ export class Transformer {
         })];
     }
 
+    getSymbolType(t?: ts.Symbol) : ts.Type | undefined {
+        if (!t || !t.valueDeclaration) return;
+        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(t, t.valueDeclaration));
+    }
+
     resolveActualType(t: ts.Type) : ts.Type | undefined {
-        const prop = t.getProperty("__marker");
-        if (!prop || !prop.valueDeclaration) return;
-        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
+        return this.getSymbolType(t.getProperty("__marker"));
     }
     
     getUtilityType(type: ts.Type) : ts.Type|undefined {
-        const prop = type.getProperty("__utility");
-        if (!prop || !prop.valueDeclaration) return;
-        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
+        return this.getSymbolType(type.getProperty("__utility"));
     }
 
     typeValueToNode(t: ts.Type, firstOnly?: true, exprReplacements?: Record<string, ts.Expression>) : ts.Expression;

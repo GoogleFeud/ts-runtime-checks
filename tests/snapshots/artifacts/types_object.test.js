@@ -14,8 +14,7 @@ describe("Object", () => {
                 throw new Error("Expected a.b to be a number");
             if (!Array.isArray(c_1))
                 throw new Error("Expected a.c to be an array");
-            const len_1 = c_1.length;
-            for (let i_1 = 0; i_1 < len_1; i_1++) {
+            for (let i_1 = 0; i_1 < c_1.length; i_1++) {
                 if (typeof c_1[i_1] !== "string")
                     throw new Error("Expected a.c[" + i_1 + "] to be a string");
             }

@@ -211,32 +211,18 @@ export type ExactProps<Obj extends object, removeExcessive = false, useDeleteOpe
 
 export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 
-/**
- * Allows you to create custom comparisons. You can use `$self` in `Expression` - it will turn to value 
- * that's currently being validated. If `FullCheck` is set to false, then any additional checks regarding the
- * type of the value will **not** be generated.
- * 
- * @example
- * ```ts
- * type Assert123 = Assert<If<{a: number, b: string}, "$self.a === 123", true>>;
- *
- *  function test(a?: Assert123) {
- *    return a;
- *  }
- * ```
- * ```js
- * function text(a) {
- *   if (a !== undefined) {
- *       if (typeof a !== "object") throw new Error("Expected a to be { a: number; b: string; }.");
- *       if (typeof a["a"] !== "number") throw new Error("Expected a.a to be number.");
- *       if (typeof a["b"] !== "string") throw new Error("Expected a.b to be string.");
- *       if (a.a !== 123) throw new Error("Expected a to satisfy `self.a === 123`.");
- *   }
- *   return a;
- * }
- * ```
- */
-export type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
+export type Check<T extends string, E extends string = never, N extends string = never, V extends string|number = never> = unknown & { __check?: T, __error?: E, __utility?: Check<T, E, N, V> };
+
+export type Min<T extends string | number> = Check<`$self > ${T}`, `to be greater than ${T}`, "min", T>;
+export type Max<T extends string | number> = Check<`$self < ${T}`, `to be less than ${T}`, "max", T>;
+export type Float = Check<"!Number.isInteger($self)", "to be a float", "float">;
+export type Int = Check<"Number.isInteger($self)", "to be an int", "int">;
+export type MinLen<T extends string | number> = Check<`$self.length > ${T}`, `to have a length greater than ${T}`, "minLen", T>;
+export type MaxLen<T extends string | number> = Check<`$self.length < ${T}`, `to have a length less than ${T}`, "maxLen", T>;
+export type Length<T extends string | number> = Check<`$self.length === ${T}`, `to have a length equal to ${T}`, "length", T>;
+export type Matches<T extends string> = Check<`${T}.test($self)`, `to match ${T}`, "matches", T>;
+export type Not<T extends Check<string, string>> = Check<`!(${T["__check"]})`, `not ${T["__error"]}`>;
+export type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<`${L["__check"]} || ${R["__check"]}`, `${L["__error"]} or ${R["__error"]}`>;
 
 /**
  * You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it.

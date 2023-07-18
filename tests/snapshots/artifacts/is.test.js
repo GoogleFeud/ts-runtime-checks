@@ -8,7 +8,7 @@ describe("Is function", () => {
         const value_2 = { a: "Hello", b: 3.14 };
         (0, chai_1.expect)(typeof value_2 === "object" && value_2 !== null && typeof value_2.a === "number" && typeof value_2.b === "string").to.be.equal(false);
         const value_3 = -1;
-        (0, chai_1.expect)(typeof value_3 === "string" || (typeof value_3 === "number" && value_3 > 1 && value_3 < 100)).to.be.equal(false);
+        (0, chai_1.expect)(typeof value_3 === "string").to.be.equal(false);
     });
     it("Return true when the value matches the type", () => {
         const value_4 = true;

@@ -7,8 +7,7 @@ describe("Array", () => {
         function test(a) {
             if (!Array.isArray(a))
                 throw new Error("Expected a to be an array");
-            const len_1 = a.length;
-            for (let i_1 = 0; i_1 < len_1; i_1++) {
+            for (let i_1 = 0; i_1 < a.length; i_1++) {
                 if (typeof a[i_1] !== "number")
                     throw new Error("Expected a[" + i_1 + "] to be a number");
             }

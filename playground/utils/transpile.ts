@@ -11,31 +11,25 @@ interface ValidationError {
     value: unknown,
     parts: string[]
 };
-type Num<Settings extends {
-    min?: number|Expr<"">,
-    max?: number|Expr<"">,
-    type?: "int" | "float"
-}> = number & { __utility?: Num<Settings> };
 type NoCheck<T> = T & { __utility?: NoCheck<T> };
-type Str<Settings extends {
-    length?: number|Expr<"">,
-    minLen?: number|Expr<"">,
-    maxLen?: number|Expr<"">,
-    matches?: string|Expr<"">
-}> = string & { __utility?: Str<Settings> };
-type Arr<T, Settings extends {
-    length?: number|Expr<"">,
-    minLen?: number|Expr<"">,
-    maxLen?: number|Expr<"">
-}> = Array<T> & { __utility?: Arr<T, Settings> };
 type ExactProps<Obj extends object, removeExcessive = false, useDeleteOperator = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive, useDeleteOperator> };
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
+type Check<T extends string, E extends string = never, N extends string = never, V extends string|number = never> = unknown & { __check?: T, __error?: E, __utility?: Check<T, E, N, V> };
+type Min<T extends string | number> = Check<\`$self > \${T}\`, \`to be more than \${T}\`, "min", T>;
+type Max<T extends string | number> = Check<\`$self < \${T}\`, \`to be less than \${T}\`, "max", T>;
+type Float = Check<"!Number.isInteger($self)", "to be a float", "float">;
+type Int = Check<"Number.isInteger($self)", "to be an int", "int">;
+type MinLen<T extends string | number> = Check<\`$self.length > \${T}\`, \`to have a length more than \${T}\`, "minLen", T>;
+type MaxLen<T extends string | number> = Check<\`$self.length < \${T}\`, \`to have a length less than \${T}\`, "maxLen", T>;
+type Length<T extends string | number> = Check<\`$self.length === \${T}\`, \`to have a length equal to \${T}\`, "length", T>;
+type Matches<T extends string> = Check<\`\${T}.test($self)\`, \`to match \${T}\`, "matches", T>;
+type Not<T extends Check<string, string>> = Check<\`!(\${T["__check"]})\`, \`not \${T["__error"]}\`>;
+type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<\`\${L["__check"]} || \${R["__check"]}\`, \`\${L["__error"]} or \${R["__error"]}\`>;
 type Infer<Type> = Type & { __utility?: Infer<Type> };
 type Resolve<Type, ReturnValue = ThrowError<Error>> = Type & { __utility?: Resolve<Type, ReturnValue> };
 declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
-
 `;
 
 export const CompilerOptions: ts.CompilerOptions = {
