@@ -98,7 +98,7 @@ export const Functions: Record<string, FnCallFn> = {
         if (!validator) return;
         block.nodes.push(...validateType(validator, createContext(transformer, {
             custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
-        })));
+        }, true)));
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
     }
 };

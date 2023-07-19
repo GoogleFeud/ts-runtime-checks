@@ -16,14 +16,16 @@ export interface ValidationResultType {
 export interface NodeGenContext {
     transformer: Transformer,
     resultType: ValidationResultType,
+    useElse?: boolean,
     recursiveFns: ts.FunctionDeclaration[],
     recursiveFnNames: Map<ts.Type, ts.Identifier>
 }
 
-export function createContext(transformer: Transformer, resultType: ValidationResultType) : NodeGenContext {
+export function createContext(transformer: Transformer, resultType: ValidationResultType, useElse?: boolean) : NodeGenContext {
     return {
         transformer,
         resultType,
+        useElse,
         recursiveFns: [],
         recursiveFnNames: new Map()
     };
@@ -338,9 +340,12 @@ export function isNullableNode(validator: Validator) : ts.Expression {
 export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.Statement[] {
     const result = [];
     for (const genResult of results) {
-        result.push(_if(genResult.condition, (genResult.ifTrue ? genResult.ifTrue : error(ctx, genResult.error)) as BlockLike, genResult.ifFalse));
-        if (genResult.before) result.push(...genResult.before);
-        if (genResult.after) result.push(...genResult.after);
+        if (ctx.useElse && genResult.after) result.push(_if(genResult.condition, error(ctx, genResult.error), joinResultStmts(genResult)));
+        else {
+            result.push(_if(genResult.condition, (genResult.ifTrue ? genResult.ifTrue : error(ctx, genResult.error)) as BlockLike, genResult.ifFalse));
+            if (genResult.before) result.push(...genResult.before);
+            if (genResult.after) result.push(...genResult.after);
+        }
     }
     return [...ctx.recursiveFns, ...result];
 }
