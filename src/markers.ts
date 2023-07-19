@@ -7,17 +7,11 @@ import { ValidationResultType, createContext, genNode, genStatements, minimizeGe
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
 
-export const enum MacroCallContext {
-    As,
-    Parameter
-}
-
 export interface MarkerCallData {
     parameters: Array<ts.Type>,
     block: Block.Block<unknown>,
-    ctx: MacroCallContext,
     optional?: boolean,
-    exp: ts.Expression | ts.BindingName,
+    exp: ts.Expression | ts.BindingName
 }
 
 export interface FnCallData {
@@ -31,27 +25,20 @@ export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Ex
 export type FnCallFn = (transformer: Transformer, data: FnCallData) => ts.Expression|void;
 
 export const Markers: Record<string, MarkerFn> = {
-    Assert: (trans, {ctx, exp, block, parameters, optional}) => {
+    Assert: (trans, {exp, block, parameters, optional}) => {
         const resultType = resolveResultType(trans, parameters[1]);
-        if (ctx === MacroCallContext.Parameter) {
-            block.nodes.push(...forEachVar(exp, (i, patternType) => {
-                const validator = createValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i, resultType, optional);
-                if (!validator) return [];
-                return validateType(validator, createContext(trans, resultType), optional);
-            }));
-            return;
-        } else {
-            let callBy = exp as ts.Expression;
-            if (!ts.isIdentifier(callBy) && !ts.isPropertyAccessExpression(callBy) && !ts.isElementAccessExpression(callBy)) {
-                const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
-                block.nodes.push(decl);
-                callBy = ident;
-            }
-            const validator = createValidator(trans, parameters[0]!, ts.isIdentifier(callBy) ? callBy.text : callBy.getText(), callBy, resultType, optional);
-            if (!validator) return;
-            block.nodes.push(...validateType(validator, createContext(trans, resultType)));
-            return callBy;
+        let callBy = exp as ts.Expression;
+        if (!ts.isIdentifier(callBy) && !ts.isBindingName(callBy)) {
+            const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
+            block.nodes.push(decl);
+            callBy = ident;
         }
+        block.nodes.push(...forEachVar(callBy, (i, patternType) => {
+            const validator = createValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i, resultType, optional);
+            if (!validator) return [];
+            return validateType(validator, createContext(trans, resultType), optional);
+        }));
+        return callBy;
     }
 };
 
@@ -111,7 +98,7 @@ export const Functions: Record<string, FnCallFn> = {
         if (!validator) return;
         block.nodes.push(...validateType(validator, createContext(transformer, {
             custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
-        })));
+        }, true)));
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
     }
 };
@@ -173,25 +160,6 @@ export interface ValidationError {
     expectedType: TypeData
 }
 
-export type Str<Settings extends {
-    length?: number|Expr<"">,
-    minLen?: number|Expr<"">,
-    maxLen?: number|Expr<"">,
-    matches?: string|Expr<"">
-}> = string & { __utility?: Str<Settings> };
-
-export type Num<Settings extends {
-    min?: number|Expr<"">,
-    max?: number|Expr<"">,
-    type?: "int" | "float"
-}> = number & { __utility?: Num<Settings> };
-
-export type Arr<T, Settings extends {
-    length?: number|Expr<"">,
-    minLen?: number|Expr<"">,
-    maxLen?: number|Expr<"">
-}> = Array<T> & { __utility?: Arr<T, Settings> };
-
 /**
  * Does not validate the type inside the marker.
  */
@@ -225,31 +193,75 @@ export type ExactProps<Obj extends object, removeExcessive = false, useDeleteOpe
 export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 
 /**
- * Allows you to create custom comparisons. You can use `$self` in `Expression` - it will turn to value 
- * that's currently being validated. If `FullCheck` is set to false, then any additional checks regarding the
- * type of the value will **not** be generated.
+ * Allows you to create custom conditions by providing a string containing javascript code.
+ * 
+ * - You can use the `$self` variable to get the value that's currently being validated.
+ * - You can use the `$parent` function to get the parent object of the value. You can pass a number to get nested parents.
+ * 
+ * `Error` is a custom error string message that will get displayed if the check fails. `ID` and `Value` are parameters that the transformer uses internally, so you don't need to pass anything to them.
+ * 
+ * You can combine multiple checks using the `&` (intersection) operator.
  * 
  * @example
  * ```ts
- * type Assert123 = Assert<If<{a: number, b: string}, "$self.a === 123", true>>;
- *
- *  function test(a?: Assert123) {
- *    return a;
- *  }
- * ```
- * ```js
- * function text(a) {
- *   if (a !== undefined) {
- *       if (typeof a !== "object") throw new Error("Expected a to be { a: number; b: string; }.");
- *       if (typeof a["a"] !== "number") throw new Error("Expected a.a to be number.");
- *       if (typeof a["b"] !== "string") throw new Error("Expected a.b to be string.");
- *       if (a.a !== 123) throw new Error("Expected a to satisfy `self.a === 123`.");
- *   }
- *   return a;
+ * type StartsWith<T extends string> = Check<`$self.startsWith("${T}")`, `to start with "${T}"`>;
+ * 
+ * function test(a: Assert<string & StartsWith<"a"> & MaxLen<36> & MinLen<3>>) {
+ *   return true;
+ * }
+ * 
+ * // Transpiles to:
+ * function test(a) {
+ *   if (typeof a !== "string" || !a.startsWith("a") || a.length > 36 || a.length < 3)
+ *       throw new Error("Expected a to be a string, to start with \"a\", to have a length less than 36, to have a length greater than 3");
+ *   return true;
  * }
  * ```
  */
-export type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
+export type Check<Cond extends string, Err extends string = never, ID extends string = never, Value extends string|number = never> = unknown & { __check?: Cond, __error?: Err, __utility?: Check<Cond, Err, ID, Value> };
+
+/* Built-in Check types */
+
+/**
+ * Combine with the `number` type to guarantee that the value is at least `T`.
+ */
+export type Min<T extends string | number> = Check<`$self > ${T}`, `to be greater than ${T}`, "min", T>;
+/**
+ * Combine with the `number` type to guarantee that the value does not exceed `T`.
+ */
+export type Max<T extends string | number> = Check<`$self < ${T}`, `to be less than ${T}`, "max", T>;
+/**
+ * Combine with the `number` type to guarantee that the value is a floating point.
+ */
+export type Float = Check<"!Number.isInteger($self)", "to be a float", "float">;
+/**
+ * Combine with the `number` type to guarantee that the value an integer.
+ */
+export type Int = Check<"Number.isInteger($self)", "to be an int", "int">;
+/**
+ * Combine with any type which has a `length` property to guarantee that the value's length is at least `T`.
+ */
+export type MinLen<T extends string | number> = Check<`$self.length > ${T}`, `to have a length greater than ${T}`, "minLen", T>;
+/**
+ * Combine with any type which has a `length` property to guarantee that the value's length does not exceed `T`.
+ */
+export type MaxLen<T extends string | number> = Check<`$self.length < ${T}`, `to have a length less than ${T}`, "maxLen", T>;
+/**
+ * Combine with any type which has a `length` property to guarantee that the value's length is equal to `T`.
+ */
+export type Length<T extends string | number> = Check<`$self.length === ${T}`, `to have a length equal to ${T}`, "length", T>;
+/**
+ * Combine with the `string` type to guarantee that it matches the provided pattern `T`.
+ */
+export type Matches<T extends string> = Check<`${T}.test($self)`, `to match ${T}`, "matches", T>;
+/**
+ * Negate the check `T`.
+ */
+export type Not<T extends Check<string, string>> = Check<`!(${T["__check"]})`, `not ${T["__error"]}`>;
+/**
+ * The check passes if either `L` or `R` is true. Same behaviour as the logical OR (`||`) operator.
+ */
+export type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<`${L["__check"]} || ${R["__check"]}`, `${L["__error"]} or ${R["__error"]}`>;
 
 /**
  * You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it.

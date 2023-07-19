@@ -15,10 +15,22 @@ export const enum TypeDataKinds {
     Object,
     Class,
     Function,
-    If,
     Union,
     Resolve,
-    Recursive
+    Recursive,
+    Check
+}
+
+export interface CheckTypeHint {
+    name?: string,
+    error?: string,
+    value?: string | number
+}
+
+export interface CheckTypeData {
+    kind: TypeDataKinds.Check,
+    expressions: string[],
+    hints: CheckTypeHint[]
 }
 
 export interface RecursiveTypeData {
@@ -67,26 +79,14 @@ export interface UnionTypeData {
     kind: TypeDataKinds.Union
 }
 
-export const enum NumberTypes {
-    Integer,
-    Float
-}
-
 export interface NumberTypeData {
     kind: TypeDataKinds.Number,
-    type?: NumberTypes,
     literal?: number,
-    min?: ts.Expression,
-    max?: ts.Expression,
 }
 
 export interface StringTypeData {
     kind: TypeDataKinds.String,
-    literal?: string,
-    length?: ts.Expression,
-    matches?: ts.Expression,
-    minLen?: ts.Expression,
-    maxLen?: ts.Expression
+    literal?: string
 }
 
 /**
@@ -94,10 +94,7 @@ export interface StringTypeData {
  * class, in the children array.
  */
 export interface ArrayTypeData {
-    kind: TypeDataKinds.Array,
-    length?: ts.Expression,
-    minLen?: ts.Expression,
-    maxLen?: ts.Expression
+    kind: TypeDataKinds.Array
 }
 
 export const enum ObjectTypeDataExactOptions {
@@ -113,13 +110,7 @@ export interface ObjectTypeData {
     useDeleteOperator?: boolean
 }
 
-export interface IfTypeData {
-    kind: TypeDataKinds.If,
-    fullCheck: boolean,
-    expression: string
-}
-
-export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | IfTypeData | UndefinedTypeData | ResolveTypeData | RecursiveTypeData;
+export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | UndefinedTypeData | ResolveTypeData | RecursiveTypeData | CheckTypeData;
 
 export type ValidatorTargetName = string | number | ts.Identifier;
 
@@ -175,8 +166,29 @@ export class Validator {
         return this._exp = _access(this.parent.expression(), this.name);
     }
 
+    /**
+     * If the type is a recursive type, or an union of a recursive type and undefined
+     */
     isRedirect() : boolean {
         return this.typeData.kind === TypeDataKinds.Recursive || (this.typeData.kind === TypeDataKinds.Union && this.children.length === 2 && this.hasChildrenOfKind(TypeDataKinds.Undefined, TypeDataKinds.Recursive));
+    }
+
+    /**
+     * If it will take more than expressions to validate the type (for loops, if...else chains)
+     */
+    isComplexType() : boolean {
+        switch (this.typeData.kind) {
+        case TypeDataKinds.Check:
+            if (!this.children.length) return false;
+            else return (this.children[0] as Validator).isComplexType();
+        case TypeDataKinds.Object:
+        case TypeDataKinds.Tuple:
+        case TypeDataKinds.Union:
+        case TypeDataKinds.Array:
+            return true;
+        default:
+            return false;
+        }
     }
 
     setParent(parent: Validator) {
@@ -277,26 +289,16 @@ export class Validator {
         case TypeDataKinds.Number:
             if (this.typeData.literal) return 0;
             sum++;
-            if (this.typeData.type) sum += 2;
-            if (this.typeData.max) sum++;
-            if (this.typeData.min) sum++;
             break;
         case TypeDataKinds.String:
             if (this.typeData.literal) return 0;
             sum++;
-            if (this.typeData.maxLen) sum++;
-            if (this.typeData.minLen) sum++;
-            if (this.typeData.length) sum++;
-            if (this.typeData.matches) sum += 3;
             break;
         case TypeDataKinds.Boolean:
             if (this.typeData.literal) return 0;
             else return 1;
         case TypeDataKinds.Array:
             sum += 10;
-            if (this.typeData.minLen) sum++;
-            if (this.typeData.maxLen) sum++;
-            if (this.typeData.length) sum++;
             break;
         case TypeDataKinds.Union:
         case TypeDataKinds.Resolve:
@@ -306,9 +308,6 @@ export class Validator {
         case TypeDataKinds.Symbol:
         case TypeDataKinds.BigInt:
         case TypeDataKinds.Function:
-        case TypeDataKinds.If:
-            sum++;
-            break;
         case TypeDataKinds.Class:
         case TypeDataKinds.Tuple:
             sum += 2;
@@ -319,6 +318,8 @@ export class Validator {
             break;
         case TypeDataKinds.Recursive:
             return 10;
+        case TypeDataKinds.Check:
+            sum += this.typeData.expressions.length;
         }
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
     }

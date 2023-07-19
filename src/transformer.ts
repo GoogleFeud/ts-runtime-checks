@@ -1,6 +1,6 @@
 import ts from "typescript";
 import * as Block from "./block";
-import { FnCallFn, Functions, MacroCallContext, MarkerFn, Markers } from "./markers";
+import { FnCallFn, Functions, MarkerCallData, MarkerFn, Markers } from "./markers";
 import { TransformerError, getResolvedTypesFromCallSig, getStringFromType, hasBit, resolveAsChain } from "./utils";
 import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
@@ -54,7 +54,7 @@ export class Transformer {
             if (!node.body) return node;
             this.validatedDecls.add(node);
             const fnBody = Block.createBlock<ts.Statement>(body);
-            for (const param of node.parameters) this.callMarkerFromParameterDecl(param, fnBody);
+            for (const param of node.parameters) this.callMarker(param.type, fnBody, { exp: param.name, optional: Boolean(param.questionToken) });
             if (ts.isBlock(node.body)) this.visitEach(node.body.statements, fnBody);
             else {
                 const exp = ts.visitNode(node.body, (node) => this.visitor(node, fnBody));
@@ -72,7 +72,7 @@ export class Transformer {
                 body.cache.add(sym);
             }
             expOnly = ts.visitEachChild(expOnly, (node) => this.visitor(node, body), this.ctx);
-            const newIdent = this.callMarkerFromAsExpression(node, expOnly, body);
+            const newIdent = this.callMarker(node.type, body, { exp: expOnly })[1];
             if (!ts.isExpressionStatement(node.parent)) return newIdent;
             else return;
         } else if (ts.isBlock(node)) {
@@ -164,41 +164,28 @@ export class Transformer {
         return ts.visitEachChild(node, (node) => this.visitor(node, body), this.ctx);
     }
 
-    callMarkerFromParameterDecl(param: ts.ParameterDeclaration, block: Block.Block<unknown>) : void {
-        if (!param.type || !ts.isTypeReferenceNode(param.type)) return;
-        const type = this.resolveActualType(this.checker.getTypeAtLocation(param.type));
-        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return;
-        (Markers[type.aliasSymbol.name] as MarkerFn)(this, {
+    callMarker(node: ts.Node|undefined, block: Block.Block<unknown>, data: Pick<MarkerCallData, "exp"|"optional">) : [ts.Type?, ts.Expression?] {
+        if (!node || !ts.isTypeReferenceNode(node)) return [];
+        const type = this.resolveActualType(this.checker.getTypeAtLocation(node));
+        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return [type];
+        return [type, (Markers[type.aliasSymbol.name] as MarkerFn)(this, {
             block,
-            parameters: type.aliasTypeArguments as Array<ts.Type> || param.type.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
-            ctx: MacroCallContext.Parameter,
-            exp: param.name,
-            optional: Boolean(param.questionToken)
-        });
+            parameters: type.aliasTypeArguments as ts.Type[] || node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
+            ...data
+        })];
     }
 
-    callMarkerFromAsExpression(exp: ts.AsExpression, expOnly: ts.Expression, block: Block.Block<unknown>) : ts.Expression {
-        if (!ts.isTypeReferenceNode(exp.type)) return exp;
-        const type = this.resolveActualType(this.checker.getTypeAtLocation(exp.type));
-        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return exp;
-        return (Markers[type.aliasSymbol.name] as MarkerFn)(this, {
-            block,
-            parameters: type.aliasTypeArguments as Array<ts.Type> || exp.type.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
-            ctx: MacroCallContext.As,
-            exp: expOnly
-        }) || exp;
+    getSymbolType(t?: ts.Symbol) : ts.Type | undefined {
+        if (!t || !t.valueDeclaration) return;
+        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(t, t.valueDeclaration));
     }
 
     resolveActualType(t: ts.Type) : ts.Type | undefined {
-        const prop = t.getProperty("__marker");
-        if (!prop || !prop.valueDeclaration) return;
-        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
+        return this.getSymbolType(t.getProperty("__marker"));
     }
     
     getUtilityType(type: ts.Type) : ts.Type|undefined {
-        const prop = type.getProperty("__utility");
-        if (!prop || !prop.valueDeclaration) return;
-        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
+        return this.getSymbolType(type.getProperty("__utility"));
     }
 
     typeValueToNode(t: ts.Type, firstOnly?: true, exprReplacements?: Record<string, ts.Expression>) : ts.Expression;
@@ -231,15 +218,16 @@ export class Transformer {
         }
     }
 
-    stringToNode(str: string, replacements?: Record<string, ts.Expression>) : ts.Expression {
+    stringToNode(str: string, replacements?: Record<string, ts.Expression|((...args: ts.Expression[]) => ts.Node)>) : ts.Expression {
         const result = ts.createSourceFile("expr", str, ts.ScriptTarget.ESNext, false, ts.ScriptKind.JS);
         const firstStmt = result.statements[0];
         if (!firstStmt || !ts.isExpressionStatement(firstStmt)) return UNDEFINED;
         const visitor = (node: ts.Node): ts.Node => {
             if (ts.isIdentifier(node)) {
-                if (replacements && replacements[node.text]) return replacements[node.text] as ts.Expression;
+                if (replacements && replacements[node.text] && typeof replacements[node.text] === "object") return replacements[node.text] as ts.Expression;
                 return ts.factory.createIdentifier(node.text);
             }
+            else if (replacements && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && replacements[node.expression.text] && typeof replacements[node.expression.text] === "function") return (replacements[node.expression.text] as (...args: ts.Expression[]) => ts.Node)(...node.arguments);
             return ts.visitEachChild(node, visitor, this.ctx);
         };
         return ts.visitNode(firstStmt.expression, visitor) as ts.Expression;

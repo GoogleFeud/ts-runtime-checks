@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Num } from "../../dist";
+import { Min, Max } from "../../dist";
 
 // Only way to test it :/
 export declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
@@ -7,7 +7,7 @@ export declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T
 describe("Check function", () => {
     
     it("Return the correct value and errors", () => {
-        const [, errs] = check<{a: number, b: string, c: { d: Num<{min: 1, max: 10}> }}>({
+        const [, errs] = check<{a: number, b: string, c: { d: number & Min<1> & Max<10> }}>({
             a: 123,
             b: 456,
             c: {

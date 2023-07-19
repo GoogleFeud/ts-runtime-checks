@@ -8,8 +8,7 @@ describe("Recursive data structures", () => {
             return false; const { friends: friends_1 } = param_1; if (friends_1 !== undefined) {
             if (!Array.isArray(friends_1))
                 return false;
-            const len_1 = friends_1.length;
-            for (let i_1 = 0; i_1 < len_1; i_1++) {
+            for (let i_1 = 0; i_1 < friends_1.length; i_1++) {
                 if (!user_1(friends_1[i_1]))
                     return false;
             }
@@ -37,8 +36,7 @@ describe("Recursive data structures", () => {
             return false; const { friends: friends_2 } = param_2; if (friends_2 !== undefined) {
             if (!Array.isArray(friends_2))
                 return false;
-            const len_2 = friends_2.length;
-            for (let i_2 = 0; i_2 < len_2; i_2++) {
+            for (let i_2 = 0; i_2 < friends_2.length; i_2++) {
                 if (!value_2(friends_2[i_2]))
                     return false;
             }
@@ -55,8 +53,7 @@ describe("Recursive data structures", () => {
             return false; const { friends: friends_3 } = param_3; if (friends_3 !== undefined) {
             if (!Array.isArray(friends_3))
                 return false;
-            const len_3 = friends_3.length;
-            for (let i_3 = 0; i_3 < len_3; i_3++) {
+            for (let i_3 = 0; i_3 < friends_3.length; i_3++) {
                 if (!value_4(friends_3[i_3]))
                     return false;
             }

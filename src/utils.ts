@@ -13,17 +13,6 @@ export function isTrueType(t: ts.Type|undefined) : boolean {
     return t.intrinsicName === "true";
 }
 
-export function parseJsDocTags(transformer: Transformer, tags: readonly ts.JSDocTag[], expected: string[]) : Record<string, ts.Expression> {
-    const result: Record<string, ts.Expression> = {};
-    for (const tag of tags) {
-        if (!expected.includes(tag.tagName.text) || typeof tag.comment !== "string") continue;
-        const tagValue = tag.comment[0] === "{" ? tag.comment.slice(1, -1) : tag.comment;
-        const exp = transformer.stringToNode(tagValue);
-        result[tag.tagName.text] = exp;
-    }
-    return result;
-}
-
 export function isErrorMessage(t: ts.Type) : boolean {
     return Boolean(t.getProperty("__error_msg"));
 }
@@ -136,6 +125,10 @@ export function forEachVar(prop: ts.Expression|ts.BindingName|ts.QualifiedName,
 
 export function isInt(str: string|number) : boolean {
     return !isNaN(+str);
+}
+
+export function isSingleIfStatement(stmt: ts.Statement) : stmt is ts.IfStatement {
+    return ts.isIfStatement(stmt) && ts.isReturnStatement(stmt.thenStatement) && !stmt.elseStatement;
 }
 
 export function TransformerError(callSite: ts.Node, msg: string) : void {

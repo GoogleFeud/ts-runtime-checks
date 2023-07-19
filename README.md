@@ -37,27 +37,6 @@ npm i --save-dev ts-runtime-checks
 Sadly, `tsc` doesn't allow you to add custom transformers, so you must use a tool which adds them:
 
 <details>
-    <summary>Usage with ttypescript</summary>
-
-```
-npm i --save-dev ttypescript
-```
-
-and add the ts-runtime-checks transformer to your tsconfig.json:
-
-```json
-"compilerOptions": {
-//... other options
-"plugins": [
-        { "transform": "ts-runtime-checks" }
-    ]
-}
-```
-
-Afterwards you must use the `ttsc` CLI command to transpile your typescript code.
-</details>
-
-<details>
     <summary>Usage with ts-patch</summary>
 
 ```
@@ -92,6 +71,27 @@ options: {
 ```
 </details>
 
+<details>
+    <summary>Usage with ts-node</summary>
+
+To use transformers with ts-node, you'll have to change the compiler in the `tsconfig.json`:
+
+```
+npm i --save-dev ts-patch
+```
+
+```json
+"ts-node": {
+    "compiler": "ts-patch"
+  },
+  "compilerOptions": {
+    "plugins": [
+        { "transform": "ts-runtime-checks" }
+    ]
+  }
+```
+</details>
+
 ## `ts-runtime-checks` in depth
 
 ### Markers
@@ -100,14 +100,20 @@ Markers are typescript type aliases which are detected by the transformer. These
 
 By far the most important marker is `Assert<T>`, which tells the transpiler to validate the type `T`. There are also `utility` markers which can be used inside an `Assert` marker to customize the validation in some way or to add extra checks. Here's the list of all utility markers:
 
-- `Num<{min, max, type}>` - More detailed number requirements.
-- `Str<{matches, length}>` - More detailed string requirements.
-- `Arr<{length, minLen, maxLen}>` - More detailed array requirements.
+- `Check<Condition, Error, Id, Value>` - Checks if `Condition` is true for the value.
 - `NoCheck<Type>`- Doesn't generate checks for the provided type.
 - `ExactProps<Obj, removeExtra, useDeleteOperator>` - Makes sure the value doesn't have any excessive properties.
-- `If<Type, Condition, fullCheck>` - Checks if `Condition` is true for the value of type `Type`. 
-- `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value - `EarlyReturn`, `Num.min/max` and `Str.matches` for example.
+- `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value.
 - `Infer<Type>` / `Resolve<Type>` - Creating validation for type parameters.
+
+The library also exports a set of built-in `Check` type aliases, which can be used on existing types to add extra checks:
+
+- `Min<Size>` / `Max<Size>` - Used with the `number` type to check if a number is within bounds.
+- `Integer` / `Float` - Used with the `number` type to limit the value to integers / floating points.
+- `MaxLen<Size>` / `MinLen<Size>` / `Length<Size>` - Used with anything that has a `length` property to check if it's within bounds.
+- `Matches<Regex>` - Used with the `string` type to check if the value matches a pattern.
+- `Not` - Negates a `Check`.
+- `Or` - Logical OR operator for `Check`.
 
 #### `Assert<Type, Action>`
 
@@ -163,75 +169,46 @@ function getType(element) {
 }
 ```
 
-#### `Num<{min, max, type}>`
+#### `Check<Condition, Error, ID, Value>`
 
-Allows you to check if the number is greater than / less than an amount, or if it's a floating point or an integer.
+Allows you to create custom conditions by providing a string containing javascript code.
 
-```ts
-const someNum = 50;
+- You can use the `$self` variable to get the value that's currently being validated.
+- You can use the `$parent` function to get the parent object of the value. You can pass a number to get nested parents.
 
-type AssertRange<min> = Assert<Num<{
-    type: "int",
-    min: min,
-    max: Expr<"someNum">
-}>>
-
-function test(num1: AssertRange<1>, num2: AssertRange<10>, num3: AssertRange<Expr<"someNum">>) {
-    // Your code
-}
-
-// Transpiles to:
-function test(num1, num2, num3) {
-    if (typeof num1 !== "number" || num1 % 1 !== 0 || num1 < 1 || num1 > someNum) throw new Error("Expected num1 to be an integer, to be greater than 1, to be less than " + someNum);
-    if (typeof num2 !== "number" || num2 % 1 !== 0 || num2 < 10 || num2 > someNum) throw new Error("Expected num2 to be an integer, to be greater than 10, to be less than " + someNum);
-    if (typeof num3 !== "number" || num3 % 1 !== 0 || num3 < someNum || num3 > someNum) throw new Error("Expected num3 to be an integer, to be greater than " + someNum + ", to be less than " + someNum);
-}
-```
-
-#### `Str<settings>`
-
-Allows you to check whether the string matches a regex, or whether it's a certain length.
+`Error` is a custom error string message that will get displayed if the check fails. `ID` and `Value` are parameters that the transformer uses internally, so you don't need to pass anything to them.
 
 ```ts
-function test(a: Assert<Str<{
-    matches: "/abc/",
-    //length: 12,
-    minLen: 3,
-    maxLen: 100
-}>>) {
-   // Your code...
+type StartsWith<T extends string> = Check<`$self.startsWith("${T}")`, `to start with "${T}"`>;
+
+function test(a: Assert<string & StartsWith<"a">>) {
+    return true;
 }
 
 // Transpiles to:
 function test(a) {
-    if (typeof a !== "string" || !/abc/.test(a) || a.length < 3 || a.length > 100) throw new Error("Expected a to be a string, to match /abc/, to have a length greater than 3, to have a length less than 100");
+    if (typeof a !== "string" || !a.startsWith("a")) throw new Error("Expected a to be a string, to start with \"a\"");
+    return true;
 }
 ```
 
-#### `Arr<Type, settings>`
-
-Allows you to validate the array's length.
+You can combine checks using the `&` (intersection) operator:
 
 ```ts
-function test(a: Assert<Arr<number, {
-    // length: 10,
-    minLen: 1,
-    maxLen: 10
-}>>) {
-   // Your code...
+// MaxLen and MinLen are types included in the library
+function test(a: Assert<string & StartsWith<"a"> & MaxLen<36> & MinLen<3>>) {
+    return true;
 }
 
 // Transpiles to:
 function test(a) {
-    if (!Array.isArray(a) || a.length < 1 || a.length > 10)
-        throw new Error("Expected a to be an array, to have a length greater than 1, to have a length less than 10");
-    const len_1 = a.length;
-    for (let i_1 = 0; i_1 < len_1; i_1++) {
-        if (typeof a[i_1] !== "number")
-            throw new Error("Expected a[" + i_1 + "] to be a number");
-    }
+    if (typeof a !== "string" || !a.startsWith("a") || a.length > 36 || a.length < 3)
+        throw new Error("Expected a to be a string, to start with \"a\", to have a length less than 36, to have a length greater than 3");
+    return true;
 }
 ```
+
+You can also use `Check` types on their own, you don't need to combine them with a normal type like `string` or `number`.
 
 #### `NoCheck<Type>`
 
@@ -282,26 +259,6 @@ function test(req) {
         if (p_1 !== "a" && p_1 !== "b" && p_1 !== "c") throw new Error("Property req." + p_1 + " is excessive");
     }
     return req;
-}
-```
-
-#### `If<Type, Condition, FullCheck>`
-
-Allows you to create custom comparisons by providing a string containing javascript code. You can use `$self` in the expression, it'll be replaced by the expression of the value that's currently being validated.
-
-`FullCheck` is a boolean - if it's set to true, then validation code will be generated for `Type`, if it's set to false (which is the default), only the condition which you provide will be enough to validate it. 
-
-```ts
-// Creating a less flexible version of the Range marker
-type Range<min extends number, max extends number> = Assert<If<number, `$self > ${min} && $self < ${max}`>>;
-
-function test(num: Range<1, 5>) {
-    // Your code...
-}
-
-// Transpiles to:
-function test(num) {
-    if (num < 1 || num > 5) throw new Error("Expected num to satisfy \"$self > 1 && $self < 5\"");
 }
 ```
 
@@ -369,38 +326,6 @@ const validatedBody = (() => {
         throw new Error("Expected data.body.other to be a boolean");
     return validateBody(data);
 })();
-```
-
-#### `Str`, `Num` and `Arr` alternatives
-
-Instead of using the markers mentioned above, you can use JS Doc comments to specify the extra requirements of a certain type. The requirements have the same names:
-
-```ts
-interface Test {
-    /**
-     * @minLen 1
-     * @maxLen 10
-    */
-    name: string,
-    /**
-     * @min 17
-     * @max 100
-     * @type int 
-    */
-    age: number
-}
-
-const variable = {} as Assert<Test>;
-
-// Transpiles to:
-const value_1 = {};
-if (typeof value_1 !== "object" && value_1 !== null)
-    throw new Error("Expected value to be an object");
-if (typeof value_1.name !== "string" || value_1.name.length < 1 || value_1.name.length > 10)
-    throw new Error("Expected value.name to be a string, to have a length greater than 1, to have a length less than 10");
-if (typeof value_1.age !== "number" || value_1.age < 17 || value_1.age > 100)
-    throw new Error("Expected value.age to be a number, to be greater than 17, to be less than 100");
-const variable = value_1;
 ```
 
 ### Supported types and code generation
@@ -503,8 +428,10 @@ if (errors.length) console.log(errors);
 const value = JSON.parse("[\"Hello\", \"World\"]");
 const errors = [];
 if (!Array.isArray(value)) errors.push("Expected value to be an array");
-if (typeof value[0] !== "string") errors.push("Expected value[0] to be a string");
-if (typeof value[1] !== "number") errors.push("Expected value[1] to be a number");
+else {
+    if (typeof value[0] !== "string") errors.push("Expected value[0] to be a string");
+    if (typeof value[1] !== "number") errors.push("Expected value[1] to be a number");
+}
 if (errors.length) console.log(errors);
 ```
 

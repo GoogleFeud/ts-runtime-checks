@@ -1,4 +1,4 @@
-import { genValidator, NumberTypes, TypeDataKinds, Validator } from "../validators";
+import { genValidator, TypeDataKinds, Validator } from "../validators";
 import { Transformer } from "../../transformer";
 import ts from "typescript";
 
@@ -7,16 +7,32 @@ export type JSONSchema = Record<string, unknown>;
 export function validatorToJSONSchema(validator: Validator) : JSONSchema|undefined {
     switch (validator.typeData.kind) {
     case TypeDataKinds.String: return {
-        type: "string",
-        minLength: validator.typeData.minLen && ts.isNumericLiteral(validator.typeData.minLen) ? +validator.typeData.minLen.text : undefined,
-        maxLength: validator.typeData.maxLen && ts.isNumericLiteral(validator.typeData.maxLen) ? +validator.typeData.maxLen.text : undefined,
-        pattern: validator.typeData.matches && ts.isStringLiteral(validator.typeData.matches) ? +validator.typeData.matches.text : undefined
+        type: "string"
     };
     case TypeDataKinds.Number: return {
-        type: validator.typeData.type === NumberTypes.Integer ? "integer" : "number",
-        minimum: validator.typeData.min && ts.isNumericLiteral(validator.typeData.min) ? +validator.typeData.min.text : undefined,
-        maximum: validator.typeData.max && ts.isNumericLiteral(validator.typeData.max) ? +validator.typeData.max.text : undefined
+        type: "number"
     };
+    case TypeDataKinds.Check: {
+        if (!validator.children.length) return;
+        const childType = validator.children[0] as Validator;
+        const base = validatorToJSONSchema(childType);
+        if (!base) return;
+        for (const hint of validator.typeData.hints) {
+            if (hint.name === "int") base.type = "integer";
+            else if (hint.name === "min") base.minimum = hint.value;
+            else if (hint.name === "max") base.maximum = hint.value;
+            else if (hint.name === "minLen") {
+                if (childType.typeData.kind === TypeDataKinds.Array) base.minItems = hint.value; 
+                else base.minLength = hint.value;
+            }
+            else if (hint.name === "maxLen") {
+                if (childType.typeData.kind === TypeDataKinds.Array) base.maxItems = hint.value; 
+                else base.maxLength = hint.value;
+            }
+            else if (hint.name === "matches") base.pattern = hint.value;
+        }
+        return base;
+    }
     case TypeDataKinds.Object: {
         const properties: JSONSchema = {};
         const required = [];
@@ -34,9 +50,7 @@ export function validatorToJSONSchema(validator: Validator) : JSONSchema|undefin
     }
     case TypeDataKinds.Array: return {
         type: "array",
-        items: validator.children[0] ? validatorToJSONSchema(validator.children[0]) : undefined,
-        minItems: validator.typeData.minLen && ts.isNumericLiteral(validator.typeData.minLen) ? +validator.typeData.minLen.text : undefined,
-        maxItems: validator.typeData.maxLen && ts.isNumericLiteral(validator.typeData.maxLen) ? +validator.typeData.maxLen.text : undefined,
+        items: validator.children[0] ? validatorToJSONSchema(validator.children[0]) : undefined
     };
     case TypeDataKinds.Tuple: return {
         type: "array",
@@ -57,7 +71,6 @@ export function validatorToJSONSchema(validator: Validator) : JSONSchema|undefin
     case TypeDataKinds.BigInt:
     case TypeDataKinds.Class:
     case TypeDataKinds.Function:
-    case TypeDataKinds.If:
     case TypeDataKinds.Resolve:
     case TypeDataKinds.Symbol:
     case TypeDataKinds.Undefined:
