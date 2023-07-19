@@ -192,7 +192,7 @@ function test(a) {
 }
 ```
 
-You can also combine checks using the `&` (intersection) operator:
+You can combine checks using the `&` (intersection) operator:
 
 ```ts
 // MaxLen and MinLen are types included in the library
@@ -207,6 +207,8 @@ function test(a) {
     return true;
 }
 ```
+
+You can also use `Check` types on their own, you don't need to combine them with a normal type like `string` or `number`.
 
 #### `NoCheck<Type>`
 
@@ -426,8 +428,10 @@ if (errors.length) console.log(errors);
 const value = JSON.parse("[\"Hello\", \"World\"]");
 const errors = [];
 if (!Array.isArray(value)) errors.push("Expected value to be an array");
-if (typeof value[0] !== "string") errors.push("Expected value[0] to be a string");
-if (typeof value[1] !== "number") errors.push("Expected value[1] to be a number");
+else {
+    if (typeof value[0] !== "string") errors.push("Expected value[0] to be a string");
+    if (typeof value[1] !== "number") errors.push("Expected value[1] to be a number");
+}
 if (errors.length) console.log(errors);
 ```
 
