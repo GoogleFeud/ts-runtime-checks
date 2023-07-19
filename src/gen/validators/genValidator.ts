@@ -45,30 +45,46 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             }, exp, parent, properties);
         }
         else if (!utility.aliasSymbol || !utility.aliasTypeArguments) {
-            if (type.isIntersection() && utility.getProperty("__check")) {
-                const checks = [], hints: CheckTypeHint[] = [];
-                let firstNonCheckType: ts.Type|undefined;
-                for (const innerType of type.types) {
-                    const typeWithMapper = innerType as (ts.Type & { mapper: ts.TypeMapper });
-                    if (typeWithMapper.mapper) {
-                        if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) {
-                            checks.push(typeWithMapper.mapper.target.value);
-                            continue;
+            if (utility.getProperty("__check")) {
+                if (type.isIntersection()) {
+                    const checks = [], hints: CheckTypeHint[] = [];
+                    let firstNonCheckType: ts.Type|undefined;
+                    for (const innerType of type.types) {
+                        const typeWithMapper = innerType as (ts.Type & { mapper: ts.TypeMapper });
+                        if (typeWithMapper.mapper) {
+                            if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) {
+                                checks.push(typeWithMapper.mapper.target.value);
+                                continue;
+                            }
+                            else {
+                                const exp = getMappedType(typeWithMapper, 0);
+                                if (typeof exp === "string") checks.push(exp);
+                                else continue;
+                                hints.push({
+                                    error: getMappedType(typeWithMapper, 1) as string|undefined,
+                                    name: getMappedType(typeWithMapper, 2) as string|undefined,
+                                    value: getMappedType(typeWithMapper, 3)
+                                });
+                            }
                         }
+                        if (!firstNonCheckType) firstNonCheckType = innerType;
+                    }
+                    return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: checks, hints }, exp, parent, firstNonCheckType ? (parent) => [genValidator(transformer, firstNonCheckType, "", undefined, parent)] : undefined);
+                } else {
+                    const typeWithMapper = type as (ts.Type & { mapper: ts.TypeMapper });
+                    let check, error;
+                    if (typeWithMapper.mapper) {
+                        if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) check = typeWithMapper.mapper.target.value;
                         else {
                             const exp = getMappedType(typeWithMapper, 0);
-                            if (typeof exp === "string") checks.push(exp);
-                            else continue;
-                            hints.push({
-                                error: getMappedType(typeWithMapper, 1) as string|undefined,
-                                name: getMappedType(typeWithMapper, 2) as string|undefined,
-                                value: getMappedType(typeWithMapper, 3)
-                            });
+                            if (typeof exp === "string") check = exp;
+                            const errorText = getMappedType(typeWithMapper, 1);
+                            if (typeof errorText === "string") error = errorText;
                         }
                     }
-                    if (!firstNonCheckType) firstNonCheckType = innerType;
+                    if (!check) return;
+                    return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: [check], hints: [{error}]}, exp, parent);
                 }
-                return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: checks, hints }, exp, parent, firstNonCheckType ? (parent) => [genValidator(transformer, firstNonCheckType, "", undefined, parent)] : undefined);
             }
             else return;
         }

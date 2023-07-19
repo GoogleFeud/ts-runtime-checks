@@ -106,14 +106,14 @@ By far the most important marker is `Assert<T>`, which tells the transpiler to v
 - `Expr<string>` - Turns the string into an expression. Can be used in markers which require a javascript value.
 - `Infer<Type>` / `Resolve<Type>` - Creating validation for type parameters.
 
-The library also exports a set of pre-defined `Check` type aliases, which can be used on existing type to add extra checks:
+The library also exports a set of built-in `Check` type aliases, which can be used on existing types to add extra checks:
 
 - `Min<Size>` / `Max<Size>` - Used with the `number` type to check if a number is within bounds.
 - `Integer` / `Float` - Used with the `number` type to limit the value to integers / floating points.
 - `MaxLen<Size>` / `MinLen<Size>` / `Length<Size>` - Used with anything that has a `length` property to check if it's within bounds.
 - `Matches<Regex>` - Used with the `string` type to check if the value matches a pattern.
-- `Not` - Negates a check.
-- `Or` - `||` for checks.
+- `Not` - Negates a `Check`.
+- `Or` - Logical OR operator for `Check`.
 
 #### `Assert<Type, Action>`
 
@@ -176,8 +176,7 @@ Allows you to create custom conditions by providing a string containing javascri
 - You can use the `$self` variable to get the value that's currently being validated.
 - You can use the `$parent` function to get the parent object of the value. You can pass a number to get nested parents.
 
-`Error` is a custom error string message that will get displayed if the check fails.    
-`ID` and `Value` are parameters that the transformer uses internally, so you don't need to pass anything to them.
+`Error` is a custom error string message that will get displayed if the check fails. `ID` and `Value` are parameters that the transformer uses internally, so you don't need to pass anything to them.
 
 ```ts
 type StartsWith<T extends string> = Check<`$self.startsWith("${T}")`, `to start with "${T}"`>;
