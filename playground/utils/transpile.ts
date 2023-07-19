@@ -16,11 +16,11 @@ type ExactProps<Obj extends object, removeExcessive = false, useDeleteOperator =
 type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 type If<Type, Expression extends string, FullCheck extends boolean = false> = Type & { __utility?: If<Type, Expression, FullCheck> };
 type Check<T extends string, E extends string = never, N extends string = never, V extends string|number = never> = unknown & { __check?: T, __error?: E, __utility?: Check<T, E, N, V> };
-type Min<T extends string | number> = Check<\`$self > \${T}\`, \`to be more than \${T}\`, "min", T>;
+type Min<T extends string | number> = Check<\`$self > \${T}\`, \`to be greater than \${T}\`, "min", T>;
 type Max<T extends string | number> = Check<\`$self < \${T}\`, \`to be less than \${T}\`, "max", T>;
 type Float = Check<"!Number.isInteger($self)", "to be a float", "float">;
 type Int = Check<"Number.isInteger($self)", "to be an int", "int">;
-type MinLen<T extends string | number> = Check<\`$self.length > \${T}\`, \`to have a length more than \${T}\`, "minLen", T>;
+type MinLen<T extends string | number> = Check<\`$self.length > \${T}\`, \`to have a length greater than \${T}\`, "minLen", T>;
 type MaxLen<T extends string | number> = Check<\`$self.length < \${T}\`, \`to have a length less than \${T}\`, "maxLen", T>;
 type Length<T extends string | number> = Check<\`$self.length === \${T}\`, \`to have a length equal to \${T}\`, "length", T>;
 type Matches<T extends string> = Check<\`\${T}.test($self)\`, \`to match \${T}\`, "matches", T>;
