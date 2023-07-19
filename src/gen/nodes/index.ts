@@ -206,23 +206,21 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                 isNullable = true;
                 continue;
             }
-            else if (child.children.length) {
-                if (child.typeData.kind === TypeDataKinds.Object && objectKind > 1) {
-                    const idRepresent = child.getFirstLiteralChild();
-                    if (idRepresent) {
-                        child.children.splice(child.children.indexOf(idRepresent), 1);
-                        const node = genNode(child, ctx);
-                        const childNode = genNode(idRepresent, ctx);
-                        objectTypes.push({
-                            condition: childNode.condition,
-                            error: childNode.error,
-                            after: node.after
-                        });
-                    }
-                    else compoundTypes.push(genNode(child, ctx));
+            else if (child.children.length && child.typeData.kind === TypeDataKinds.Object && objectKind > 1) {
+                const idRepresent = child.getFirstLiteralChild();
+                if (idRepresent) {
+                    child.children.splice(child.children.indexOf(idRepresent), 1);
+                    const node = genNode(child, ctx);
+                    const childNode = genNode(idRepresent, ctx);
+                    objectTypes.push({
+                        condition: childNode.condition,
+                        error: childNode.error,
+                        after: node.after
+                    });
                 }
                 else compoundTypes.push(genNode(child, ctx));
             }
+            else if (child.isComplexType()) compoundTypes.push(genNode(child, ctx));
             else {
                 const node = genNode(child, ctx);
                 normalTypeConditions.push(node.condition);

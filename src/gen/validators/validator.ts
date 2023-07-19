@@ -166,8 +166,29 @@ export class Validator {
         return this._exp = _access(this.parent.expression(), this.name);
     }
 
+    /**
+     * If the type is a recursive type, or an union of a recursive type and undefined
+     */
     isRedirect() : boolean {
         return this.typeData.kind === TypeDataKinds.Recursive || (this.typeData.kind === TypeDataKinds.Union && this.children.length === 2 && this.hasChildrenOfKind(TypeDataKinds.Undefined, TypeDataKinds.Recursive));
+    }
+
+    /**
+     * If it will take more than expressions to validate the type (for loops, if...else chains)
+     */
+    isComplexType() : boolean {
+        switch (this.typeData.kind) {
+        case TypeDataKinds.Check:
+            if (!this.children.length) return false;
+            else return (this.children[0] as Validator).isComplexType();
+        case TypeDataKinds.Object:
+        case TypeDataKinds.Tuple:
+        case TypeDataKinds.Union:
+        case TypeDataKinds.Array:
+            return true;
+        default:
+            return false;
+        }
     }
 
     setParent(parent: Validator) {
