@@ -160,25 +160,6 @@ export interface ValidationError {
     expectedType: TypeData
 }
 
-export type Str<Settings extends {
-    length?: number|Expr<"">,
-    minLen?: number|Expr<"">,
-    maxLen?: number|Expr<"">,
-    matches?: string|Expr<"">
-}> = string & { __utility?: Str<Settings> };
-
-export type Num<Settings extends {
-    min?: number|Expr<"">,
-    max?: number|Expr<"">,
-    type?: "int" | "float"
-}> = number & { __utility?: Num<Settings> };
-
-export type Arr<T, Settings extends {
-    length?: number|Expr<"">,
-    minLen?: number|Expr<"">,
-    maxLen?: number|Expr<"">
-}> = Array<T> & { __utility?: Arr<T, Settings> };
-
 /**
  * Does not validate the type inside the marker.
  */
@@ -211,17 +192,75 @@ export type ExactProps<Obj extends object, removeExcessive = false, useDeleteOpe
 
 export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
 
-export type Check<T extends string, E extends string = never, N extends string = never, V extends string|number = never> = unknown & { __check?: T, __error?: E, __utility?: Check<T, E, N, V> };
+/**
+ * Allows you to create custom conditions by providing a string containing javascript code.
+ * 
+ * - You can use the `$self` variable to get the value that's currently being validated.
+ * - You can use the `$parent` function to get the parent object of the value. You can pass a number to get nested parents.
+ * 
+ * `Error` is a custom error string message that will get displayed if the check fails. `ID` and `Value` are parameters that the transformer uses internally, so you don't need to pass anything to them.
+ * 
+ * You can combine multiple checks using the `&` (intersection) operator.
+ * 
+ * @example
+ * ```ts
+ * type StartsWith<T extends string> = Check<`$self.startsWith("${T}")`, `to start with "${T}"`>;
+ * 
+ * function test(a: Assert<string & StartsWith<"a"> & MaxLen<36> & MinLen<3>>) {
+ *   return true;
+ * }
+ * 
+ * // Transpiles to:
+ * function test(a) {
+ *   if (typeof a !== "string" || !a.startsWith("a") || a.length > 36 || a.length < 3)
+ *       throw new Error("Expected a to be a string, to start with \"a\", to have a length less than 36, to have a length greater than 3");
+ *   return true;
+ * }
+ * ```
+ */
+export type Check<Cond extends string, Err extends string = never, ID extends string = never, Value extends string|number = never> = unknown & { __check?: Cond, __error?: Err, __utility?: Check<Cond, Err, ID, Value> };
 
+/* Built-in Check types */
+
+/**
+ * Combine with the `number` type to guarantee that the value is at least `T`.
+ */
 export type Min<T extends string | number> = Check<`$self > ${T}`, `to be greater than ${T}`, "min", T>;
+/**
+ * Combine with the `number` type to guarantee that the value does not exceed `T`.
+ */
 export type Max<T extends string | number> = Check<`$self < ${T}`, `to be less than ${T}`, "max", T>;
+/**
+ * Combine with the `number` type to guarantee that the value is a floating point.
+ */
 export type Float = Check<"!Number.isInteger($self)", "to be a float", "float">;
+/**
+ * Combine with the `number` type to guarantee that the value an integer.
+ */
 export type Int = Check<"Number.isInteger($self)", "to be an int", "int">;
+/**
+ * Combine with any type which has a `length` property to guarantee that the value's length is at least `T`.
+ */
 export type MinLen<T extends string | number> = Check<`$self.length > ${T}`, `to have a length greater than ${T}`, "minLen", T>;
+/**
+ * Combine with any type which has a `length` property to guarantee that the value's length does not exceed `T`.
+ */
 export type MaxLen<T extends string | number> = Check<`$self.length < ${T}`, `to have a length less than ${T}`, "maxLen", T>;
+/**
+ * Combine with any type which has a `length` property to guarantee that the value's length is equal to `T`.
+ */
 export type Length<T extends string | number> = Check<`$self.length === ${T}`, `to have a length equal to ${T}`, "length", T>;
+/**
+ * Combine with the `string` type to guarantee that it matches the provided pattern `T`.
+ */
 export type Matches<T extends string> = Check<`${T}.test($self)`, `to match ${T}`, "matches", T>;
+/**
+ * Negate the check `T`.
+ */
 export type Not<T extends Check<string, string>> = Check<`!(${T["__check"]})`, `not ${T["__error"]}`>;
+/**
+ * The check passes if either `L` or `R` is true. Same behaviour as the logical OR (`||`) operator.
+ */
 export type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<`${L["__check"]} || ${R["__check"]}`, `${L["__error"]} or ${R["__error"]}`>;
 
 /**
