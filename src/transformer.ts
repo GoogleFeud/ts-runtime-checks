@@ -72,8 +72,9 @@ export class Transformer {
                 body.cache.add(sym);
             }
             expOnly = ts.visitEachChild(expOnly, (node) => this.visitor(node, body), this.ctx);
-            const newIdent = this.callMarker(node.type, body, { exp: expOnly })[1];
-            if (!ts.isExpressionStatement(node.parent)) return newIdent;
+            const newIdent = this.callMarker(node.type, body, { exp: expOnly });
+            if (!newIdent) return node;
+            if (!ts.isExpressionStatement(node.parent)) return newIdent[1];
             else return;
         } else if (ts.isBlock(node)) {
             return ts.factory.createBlock(this.visitEach(node.statements, Block.createBlock(body)));
@@ -164,10 +165,10 @@ export class Transformer {
         return ts.visitEachChild(node, (node) => this.visitor(node, body), this.ctx);
     }
 
-    callMarker(node: ts.Node|undefined, block: Block.Block<unknown>, data: Pick<MarkerCallData, "exp"|"optional">) : [ts.Type?, ts.Expression?] {
-        if (!node || !ts.isTypeReferenceNode(node)) return [];
+    callMarker(node: ts.Node|undefined, block: Block.Block<unknown>, data: Pick<MarkerCallData, "exp"|"optional">) : [ts.Type, ts.Expression?]|undefined {
+        if (!node || !ts.isTypeReferenceNode(node)) return;
         const type = this.resolveActualType(this.checker.getTypeAtLocation(node));
-        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return [type];
+        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return;
         return [type, (Markers[type.aliasSymbol.name] as MarkerFn)(this, {
             block,
             parameters: type.aliasTypeArguments as ts.Type[] || node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
