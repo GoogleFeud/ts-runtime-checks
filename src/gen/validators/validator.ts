@@ -122,12 +122,13 @@ export class Validator {
     parent?: Validator;
     typeData: TypeData;
     children!: Validator[];
-    isRecursiveOrigin?: boolean;
+    recursiveOrigins: ts.Type[];
     constructor(original: ts.Type, targetName: ValidatorTargetName, data: TypeData, exp?: ts.Expression, parent?: Validator, children?: ((parent: Validator) => Array<Validator|undefined>)|Validator[]) {
         this._original = original;
         this.name = targetName;
         this.typeData = data;
         this.customExp = exp;
+        this.recursiveOrigins = [];
         if (parent) this.setParent(parent);
         if (children) {
             if (typeof children === "function") this.setChildren(children(this).filter(c => c) as Validator[]);
@@ -259,7 +260,7 @@ export class Validator {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         let parent: Validator|undefined = this;
         while (parent) {
-            if (parent._original === t) return parent;
+            if (parent._original.symbol && parent._original.symbol === t.symbol) return parent;
             parent = parent.parent;
         }
         return;

@@ -9,7 +9,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     if (parent) {
         const recurive = parent.getParentWithType(type);
         if (recurive) {
-            recurive.isRecursiveOrigin = true;
+            recurive.recursiveOrigins.push(type);
             return new Validator(type, name, { kind: TypeDataKinds.Recursive }, exp, parent);
         }
     }

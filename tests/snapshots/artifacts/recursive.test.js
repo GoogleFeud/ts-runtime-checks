@@ -62,4 +62,14 @@ describe("Recursive data structures", () => {
             return false; return true; }
         (0, chai_1.expect)(value_4(value_3)).to.be.equal(true);
     });
+    it("Return false when the recursive data with type parameter is incorrect", () => {
+        const value_5 = {
+            val1: { value: "abc", val2: { value: "def" } },
+            val2: { value: 123 },
+            value: 123
+        };
+        function value_6(param_4) { return typeof param_4 === "object" && param_4 !== null && typeof param_4.value === "string" && (param_4.val1 === undefined || value_6(param_4.val1)) && (param_4.val2 === undefined || value_6(param_4.val2)); }
+        function value_7(param_5) { return typeof param_5 === "object" && param_5 !== null && typeof param_5.value === "number" && (param_5.val1 === undefined || value_6(param_5.val1)) && (param_5.val2 === undefined || value_7(param_5.val2)); }
+        (0, chai_1.expect)(value_7(value_5)).to.be.equal(true);
+    });
 });

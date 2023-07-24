@@ -4,7 +4,7 @@ import { FnCallFn, Functions, MarkerCallData, MarkerFn, Markers } from "./marker
 import { TransformerError, getResolvedTypesFromCallSig, getStringFromType, hasBit, resolveAsChain } from "./utils";
 import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
-import { ValidationResultType, createContext, validateType } from "./gen/nodes";
+import { ValidationResultType, createContext, fullValidate } from "./gen/nodes";
 import { TsRuntimeChecksConfig } from ".";
 import { typeToJSONSchema } from "./gen/jsonSchema";
 import path from "path";
@@ -72,8 +72,9 @@ export class Transformer {
                 body.cache.add(sym);
             }
             expOnly = ts.visitEachChild(expOnly, (node) => this.visitor(node, body), this.ctx);
-            const newIdent = this.callMarker(node.type, body, { exp: expOnly })[1];
-            if (!ts.isExpressionStatement(node.parent)) return newIdent;
+            const newIdent = this.callMarker(node.type, body, { exp: expOnly });
+            if (!newIdent) return node;
+            if (!ts.isExpressionStatement(node.parent)) return newIdent[1];
             else return;
         } else if (ts.isBlock(node)) {
             return ts.factory.createBlock(this.visitEach(node.statements, Block.createBlock(body)));
@@ -109,7 +110,7 @@ export class Transformer {
                             }
                         }
                         statements.push(
-                            ...validateType(data.top, createContext(this, data.resultType), data.optional)
+                            ...fullValidate(data.top, createContext(this, data.resultType), data.optional)
                         );
                     }
                     return ts.factory.createImmediatelyInvokedArrowFunction([
@@ -164,10 +165,10 @@ export class Transformer {
         return ts.visitEachChild(node, (node) => this.visitor(node, body), this.ctx);
     }
 
-    callMarker(node: ts.Node|undefined, block: Block.Block<unknown>, data: Pick<MarkerCallData, "exp"|"optional">) : [ts.Type?, ts.Expression?] {
-        if (!node || !ts.isTypeReferenceNode(node)) return [];
+    callMarker(node: ts.Node|undefined, block: Block.Block<unknown>, data: Pick<MarkerCallData, "exp"|"optional">) : [ts.Type, ts.Expression?]|undefined {
+        if (!node || !ts.isTypeReferenceNode(node)) return;
         const type = this.resolveActualType(this.checker.getTypeAtLocation(node));
-        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return [type];
+        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return;
         return [type, (Markers[type.aliasSymbol.name] as MarkerFn)(this, {
             block,
             parameters: type.aliasTypeArguments as ts.Type[] || node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],

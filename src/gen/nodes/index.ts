@@ -63,30 +63,48 @@ export function error(ctx: NodeGenContext, error?: GenResultError, isFull = fals
 }
 
 export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
-    if (validator.isRecursiveOrigin) {
-        validator.isRecursiveOrigin = false;
-        const originalCustomExp = validator.customExp;
-        const name = typeof validator.name === "string" ? _ident(validator.name) : _ident("_recursive");
-        const paramName = _ident("param");
-        validator.customExp = paramName;
-        ctx.recursiveFnNames.set(validator._original, name);
-        const statements = validateType(validator, {
-            ...ctx,
-            resultType: { return: _bool(false) }
-        });
-        ctx.recursiveFns.push(ts.factory.createFunctionDeclaration(undefined, undefined, name, undefined,
-            [ts.factory.createParameterDeclaration(undefined, undefined, paramName, undefined, undefined, undefined)],
-            undefined,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            ts.factory.createBlock(statements.length === 1 && isSingleIfStatement(statements[0]!) ? [ts.factory.createReturnStatement(_not(statements[0].expression))] : [...statements, ts.factory.createReturnStatement(_bool(true))])
-        ));
-        validator.customExp = originalCustomExp;
-        validator.isRecursiveOrigin = true;
+
+    if (validator.recursiveOrigins.length) {
+        const types = validator.recursiveOrigins;
+        const name = typeof validator.name === "string" ? validator.name : "_recursive";
+        const innerValidators: [ts.Identifier, Validator][] = [];
+        let calledName;
+
+        for (const type of types) {
+            const uniqueName = _ident(name);
+            const paramName = _ident("param");
+            const typeValidator = genValidator(ctx.transformer, type, validator.name, paramName);
+            if (!typeValidator) continue;
+            typeValidator.recursiveOrigins.length = 0;
+            ctx.recursiveFnNames.set(type, uniqueName);
+            innerValidators.push([uniqueName, typeValidator]);
+            if (validator._original === type) calledName = uniqueName;
+        }
+
+        for (const [uniqueName, typeValidator] of innerValidators) {
+            const statements = validateType(typeValidator, {
+                ...ctx,
+                resultType: { return: _bool(false) }
+            });
+            ctx.recursiveFns.push(ts.factory.createFunctionDeclaration(undefined, undefined, uniqueName, undefined,
+                [ts.factory.createParameterDeclaration(undefined, undefined, typeValidator.customExp as ts.Identifier, undefined, undefined, undefined)],
+                undefined,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                ts.factory.createBlock(statements.length === 1 && isSingleIfStatement(statements[0]!) ? [ts.factory.createReturnStatement(_not(statements[0].expression))] : [...statements, ts.factory.createReturnStatement(_bool(true))])
+            ));
+        }
+
+        if (!calledName) {
+            validator.recursiveOrigins.length = 0;
+            return genNode(validator, ctx);
+        }
+
         return {
-            condition: _not(_call(name, [validator.expression()])),
+            condition: _not(_call(calledName as ts.Identifier, [validator.expression()])),
             error: [validator, [_str(`to be ${ctx.transformer.checker.typeToString(validator._original)}`)]]
         };
     }
+    
     switch (validator.typeData.kind) {
     case TypeDataKinds.Number: {
         if (validator.typeData.literal !== undefined) return {
@@ -345,11 +363,11 @@ export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.St
             if (genResult.after) result.push(...genResult.after);
         }
     }
-    return [...ctx.recursiveFns, ...result];
+    return [...result];
 }
 
-export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean, gen?: GenResult) : ts.Statement[] {
-    const genResult = gen || genNode(validator, ctx);
+export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean) : ts.Statement[] {
+    const genResult = genNode(validator, ctx);
     const node = ctx.resultType.return ? minimizeGenResult(genResult, ctx) : genResult;
     if (isOptional) {
         if (node.after || node.ifFalse || node.ifTrue || node.before) return [_if(isNullableNode(validator), genStatements([node], ctx))];
@@ -359,6 +377,11 @@ export function validateType(validator: Validator, ctx: NodeGenContext, isOption
         }], ctx);
     }
     else return genStatements([node], ctx);
+}
+
+export function fullValidate(validator: Validator, ctx: NodeGenContext, isOptional?: boolean) : ts.Statement[] {
+    const stmts = validateType(validator, ctx, isOptional);
+    return [...ctx.recursiveFns, ...stmts];
 }
 
 export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate?: boolean) : GenResult {
