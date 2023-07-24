@@ -4,7 +4,7 @@ import { FnCallFn, Functions, MarkerCallData, MarkerFn, Markers } from "./marker
 import { TransformerError, getResolvedTypesFromCallSig, getStringFromType, hasBit, resolveAsChain } from "./utils";
 import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
-import { ValidationResultType, createContext, validateType } from "./gen/nodes";
+import { ValidationResultType, createContext, fullValidate } from "./gen/nodes";
 import { TsRuntimeChecksConfig } from ".";
 import { typeToJSONSchema } from "./gen/jsonSchema";
 import path from "path";
@@ -110,7 +110,7 @@ export class Transformer {
                             }
                         }
                         statements.push(
-                            ...validateType(data.top, createContext(this, data.resultType), data.optional)
+                            ...fullValidate(data.top, createContext(this, data.resultType), data.optional)
                         );
                     }
                     return ts.factory.createImmediatelyInvokedArrowFunction([

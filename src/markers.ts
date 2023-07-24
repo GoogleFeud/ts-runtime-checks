@@ -3,7 +3,7 @@ import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
 import { forEachVar, getCallSigFromType, resolveResultType } from "./utils";
-import { ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, validateType } from "./gen/nodes";
+import { ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, fullValidate } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
 
@@ -36,7 +36,7 @@ export const Markers: Record<string, MarkerFn> = {
         block.nodes.push(...forEachVar(callBy, (i, patternType) => {
             const validator = createValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i, resultType, optional);
             if (!validator) return [];
-            return validateType(validator, createContext(trans, resultType), optional);
+            return fullValidate(validator, createContext(trans, resultType), optional);
         }));
         return callBy;
     }
@@ -96,7 +96,7 @@ export const Functions: Record<string, FnCallFn> = {
         block.nodes.push(arrIntitialize);
         const validator = genValidator(transformer, data.type, dataVariable.text, dataVariable);
         if (!validator) return;
-        block.nodes.push(...validateType(validator, createContext(transformer, {
+        block.nodes.push(...fullValidate(validator, createContext(transformer, {
             custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
         }, true)));
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
