@@ -55,7 +55,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                             });
                         }
                     }
-                    if (!firstNonCheckType || (innerType.getProperty("__utility") && !innerType.getProperty("__check"))) firstNonCheckType = innerType;
+                    else if (!firstNonCheckType) firstNonCheckType = innerType;
                 }
                 return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: checks, hints }, exp, parent, firstNonCheckType ? (parent) => [genValidator(transformer, firstNonCheckType, "", undefined, parent)] : undefined);
             } else {
