@@ -119,7 +119,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             }
             case "Resolve": {
                 const typeParam = utility.aliasTypeArguments[0];
-                if (!typeParam || !typeParam.isTypeParameter()) return;
+                if (!typeParam || !typeParam.isTypeParameter() || (typeParam.symbol.parent && hasBit(typeParam.symbol.parent, ts.SymbolFlags.Class))) return;
                 return new Validator(type, name, { 
                     kind: TypeDataKinds.Resolve,
                     type: typeParam

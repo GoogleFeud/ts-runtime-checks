@@ -22,14 +22,14 @@ export class Transformer {
     config: TsRuntimeChecksConfig;
     ctx: ts.TransformationContext;
     toBeResolved: Map<ts.SignatureDeclaration, ToBeResolved[]>;
-    validatedDecls: Set<ts.Declaration>;
+    validatedDecls: Map<ts.Declaration, ts.FunctionLikeDeclaration>;
     constructor(program: ts.Program, ctx: ts.TransformationContext, config: TsRuntimeChecksConfig) {
         this.checker = program.getTypeChecker();
         this.program = program;
         this.ctx = ctx;
         this.config = config;
         this.toBeResolved = new Map();
-        this.validatedDecls = new Set();
+        this.validatedDecls = new Map();
     }
 
     run(node: ts.SourceFile) : ts.SourceFile {
@@ -50,9 +50,10 @@ export class Transformer {
     }
 
     visitor(node: ts.Node, body: Block.Block<ts.Node>) : ts.VisitResult<ts.Node | undefined> {
-        if ((ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isArrowFunction(node)) && !this.validatedDecls.has(node)) {
+        if (ts.isFunctionLikeDeclaration(node)) {
+            if (this.validatedDecls.has(node)) return this.validatedDecls.get(node);
+            this.validatedDecls.set(node, node);
             if (!node.body) return node;
-            this.validatedDecls.add(node);
             const fnBody = Block.createBlock<ts.Statement>(body);
             for (const param of node.parameters) this.callMarker(param.type, fnBody, { exp: param.name, optional: Boolean(param.questionToken) });
             if (ts.isBlock(node.body)) this.visitEach(node.body.statements, fnBody);
@@ -60,9 +61,16 @@ export class Transformer {
                 const exp = ts.visitNode(node.body, (node) => this.visitor(node, fnBody));
                 fnBody.nodes.push(ts.factory.createReturnStatement(exp as ts.Expression));
             }
-            if (ts.isFunctionDeclaration(node)) return ts.factory.createFunctionDeclaration(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
-            else if (ts.isArrowFunction(node)) return ts.factory.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, ts.factory.createBlock(fnBody.nodes, true));
-            else return ts.factory.createFunctionExpression(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
+            let stmt: ts.FunctionLikeDeclaration;
+            if (ts.isFunctionDeclaration(node)) stmt = ts.factory.createFunctionDeclaration(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
+            else if (ts.isArrowFunction(node)) stmt = ts.factory.createArrowFunction(node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, ts.factory.createBlock(fnBody.nodes, true));
+            else if (ts.isMethodDeclaration(node)) stmt = ts.factory.createMethodDeclaration(node.modifiers, node.asteriskToken, node.name, node.questionToken, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
+            else if (ts.isGetAccessorDeclaration(node)) stmt = ts.factory.createGetAccessorDeclaration(node.modifiers, node.name, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
+            else if (ts.isSetAccessorDeclaration(node)) stmt = ts.factory.createSetAccessorDeclaration(node.modifiers, node.name, node.parameters, ts.factory.createBlock(fnBody.nodes, true));
+            else if (ts.isConstructorDeclaration(node)) stmt = ts.factory.createConstructorDeclaration(node.modifiers, node.parameters, ts.factory.createBlock(fnBody.nodes, true));
+            else stmt = ts.factory.createFunctionExpression(node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, ts.factory.createBlock(fnBody.nodes, true));
+            this.validatedDecls.set(node, stmt);
+            return stmt;
         }
         else if (ts.isAsExpression(node)) {
             let expOnly = resolveAsChain(node);
@@ -81,9 +89,9 @@ export class Transformer {
         } else if (ts.isCallExpression(node)) {
             const sigOfCall = this.checker.getResolvedSignature(node);
             // Check for type parameters that need to be resolved
-            if (sigOfCall && sigOfCall.declaration) {
-                const decl = sigOfCall.declaration as ts.SignatureDeclaration;
-                if (!this.validatedDecls.has(decl)) this.visitor(decl, body);
+            if (sigOfCall && sigOfCall.declaration && ts.isFunctionLikeDeclaration(sigOfCall.declaration)) {
+                const decl = sigOfCall.declaration;
+                if (!this.validatedDecls.has(decl)) this.validatedDecls.set(decl, ts.visitNode(decl, (node) => this.visitor(node, body)) as ts.FunctionLikeDeclaration);
                 if (this.toBeResolved.has(decl)) {
                     const statements: ts.Statement[] = [], variables: ts.Identifier[] = [], defineVars = [];
                     for (let i=0; i < decl.parameters.length; i++) {
@@ -150,14 +158,16 @@ export class Transformer {
             } 
         } else if (ts.isTypeDeclaration(node) && this.config.jsonSchema) {
             if (this.config.jsonSchema?.types) {
-                if (!this.config.jsonSchema.types.includes(node.symbol.name)) return node;
-                const jsonSchemaVal = typeToJSONSchema(this, this.checker.getTypeAtLocation(node));
-                if (jsonSchemaVal) this.program.writeFile(path.join(this.config.jsonSchema.dist, `${node.symbol.name}.json`), JSON.stringify(jsonSchemaVal), false);
+                if (this.config.jsonSchema.types.includes(node.symbol.name)) {
+                    const jsonSchemaVal = typeToJSONSchema(this, this.checker.getTypeAtLocation(node));
+                    if (jsonSchemaVal) this.program.writeFile(path.join(this.config.jsonSchema.dist, `${node.symbol.name}.json`), JSON.stringify(jsonSchemaVal), false);
+                }
             }
             else if (this.config.jsonSchema.typePrefix) {
-                if (!node.symbol.name.startsWith(this.config.jsonSchema.typePrefix)) return node;
-                const jsonSchemaVal = typeToJSONSchema(this, this.checker.getTypeAtLocation(node));
-                if (jsonSchemaVal) this.program.writeFile(path.join(this.config.jsonSchema.dist, `${node.symbol.name}.json`), JSON.stringify(jsonSchemaVal), false);
+                if (node.symbol.name.startsWith(this.config.jsonSchema.typePrefix)) {
+                    const jsonSchemaVal = typeToJSONSchema(this, this.checker.getTypeAtLocation(node));
+                    if (jsonSchemaVal) this.program.writeFile(path.join(this.config.jsonSchema.dist, `${node.symbol.name}.json`), JSON.stringify(jsonSchemaVal), false);
+                }
             }
             else {
                 const jsonSchemaVal = typeToJSONSchema(this, this.checker.getTypeAtLocation(node));
