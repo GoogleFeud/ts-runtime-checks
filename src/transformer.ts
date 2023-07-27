@@ -47,7 +47,7 @@ export class Transformer {
             Block.runEvents(block);
         }
         return block.nodes;
-    } 
+    }
 
     visitor(node: ts.Node, body: Block.Block<ts.Node>) : ts.VisitResult<ts.Node | undefined> {
         if ((ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isArrowFunction(node)) && !this.validatedDecls.has(node)) {
@@ -83,7 +83,7 @@ export class Transformer {
             // Check for type parameters that need to be resolved
             if (sigOfCall && sigOfCall.declaration) {
                 const decl = sigOfCall.declaration as ts.SignatureDeclaration;
-                if (!this.validatedDecls.has(decl)) this.visitor(sigOfCall.declaration, body);
+                if (!this.validatedDecls.has(decl)) this.visitor(decl, body);
                 if (this.toBeResolved.has(decl)) {
                     const statements: ts.Statement[] = [], variables: ts.Identifier[] = [], defineVars = [];
                     for (let i=0; i < decl.parameters.length; i++) {
@@ -97,14 +97,15 @@ export class Transformer {
                             defineVars.push(stmt);
                         }
                     }
+                    resolveTypeLoop:
                     for (const data of this.toBeResolved.get(decl) as ToBeResolved[]) {
                         const resolved = getResolvedTypesFromCallSig(this.checker, data.validators.map(v => (v.typeData as ResolveTypeData).type), sigOfCall);
                         if (resolved.length) {
                             for (let i=0; i < resolved.length; i++) {
                                 const validator = data.validators[i];
-                                if (!validator || !resolved[i]) continue;
+                                if (!validator || !resolved[i]) continue resolveTypeLoop;
                                 const actualValidator = genValidator(this, resolved[i], "");
-                                if (!actualValidator) continue;
+                                if (!actualValidator) continue resolveTypeLoop;
                                 validator.setChildren(actualValidator.children);
                                 validator.typeData = actualValidator.typeData;
                             }
@@ -113,6 +114,7 @@ export class Transformer {
                             ...fullValidate(data.top, createContext(this, data.resultType), data.optional)
                         );
                     }
+                    if (!statements.length) return node;
                     return ts.factory.createImmediatelyInvokedArrowFunction([
                         ...defineVars,
                         ...statements,
