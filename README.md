@@ -42,8 +42,6 @@ const isUser = typeof maybeUser === "object" && maybeUser !== null && typeof may
 npm i --save-dev ts-runtime-checks
 ```
 
-Sadly, `tsc` doesn't allow you to add custom transformers, so you must use a tool which adds them:
-
 <details>
     <summary>Usage with ts-patch</summary>
 
@@ -62,7 +60,7 @@ and add the ts-runtime-checks transformer to your tsconfig.json:
 }
 ```
 
-Afterwards you must use the `tspc` CLI command to transpile your typescript code.
+Afterwards you can either use the `tspc` CLI command to transpile your typescript code.
 </details>
 
 <details>
