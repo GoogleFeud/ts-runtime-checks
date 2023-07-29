@@ -72,7 +72,7 @@ export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: 
     if (!sig.mapper) return [];
     const resolvedTypes: ts.Type[] = [];
     let sources, targets;
-    if (sig.mapper.kind === ts.TypeMapKind.Simple && sig.mapper.source === typeParam[0]) {
+    if (sig.mapper.kind === ts.TypeMapKind.Simple) {
         sources = [sig.mapper.source];
         targets = [sig.mapper.target];
     }
@@ -81,8 +81,14 @@ export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: 
         targets = sig.mapper.targets;
     }
     else return resolvedTypes;
+    // For some reason type parameters declared in class method signatures have a mapper themselves...
+    const resolvedSources = sources.map(p => {
+        const param: ts.Type & { mapper?: ts.TypeMapper } = p;
+        if (param.mapper && param.mapper.kind === ts.TypeMapKind.Composite && param.mapper.mapper1.kind === ts.TypeMapKind.Simple) return param.mapper.mapper1.source;
+        else return param;
+    });
     for (let i=0; i < typeParam.length; i++) {
-        const sourceIndex = sources.indexOf(typeParam[i] as ts.Type);
+        const sourceIndex = resolvedSources.indexOf(typeParam[i] as ts.Type);
         if (sourceIndex !== -1) resolvedTypes.push(getApparentType(checker, targets[sourceIndex] as ts.Type));
     }
     return resolvedTypes;

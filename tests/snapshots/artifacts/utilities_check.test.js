@@ -27,10 +27,6 @@ describe("Check", () => {
             return true;
         }
         it("Combine checks inside object", () => {
-            console.log((0, utils_1.call)(test1, {
-                one: ["abc"],
-                two: { a: "abc", b: 123, c: false }
-            })());
             (0, chai_1.expect)((0, utils_1.call)(test1, {
                 one: ["abc"],
                 two: { a: "abc", b: 123, c: false }

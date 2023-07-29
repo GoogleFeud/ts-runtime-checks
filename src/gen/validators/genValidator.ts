@@ -31,8 +31,51 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     else if (transformer.checker.isTupleType(type)) return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, (parent: Validator) => transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i, undefined, parent)));
     else if (transformer.checker.isArrayType(type)) return new Validator(type, name, { kind: TypeDataKinds.Array }, exp, parent, (parent) => [genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], "", undefined, parent)]);
     else {
+        if (type.getProperty("__check")) {
+            if (type.isIntersection()) {
+                const checks = [], hints: CheckTypeHint[] = [];
+                let firstNonCheckType: ts.Type|undefined;
+                for (const innerType of type.types) {
+                    const typeWithMapper = innerType as (ts.Type & { mapper: ts.TypeMapper });
+                    const isUtilityType = transformer.getUtilityType(typeWithMapper);
+                    if (isUtilityType && isUtilityType.aliasTypeArguments && isUtilityType.aliasSymbol) firstNonCheckType = isUtilityType;
+                    else if (typeWithMapper.mapper) {
+                        if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) {
+                            checks.push(typeWithMapper.mapper.target.value);
+                            continue;
+                        }
+                        else {
+                            const exp = getMappedType(typeWithMapper, 0);
+                            if (typeof exp === "string") checks.push(exp);
+                            else continue;
+                            hints.push({
+                                error: getMappedType(typeWithMapper, 1) as string|undefined,
+                                name: getMappedType(typeWithMapper, 2) as string|undefined,
+                                value: getMappedType(typeWithMapper, 3)
+                            });
+                        }
+                    }
+                    else if (!firstNonCheckType) firstNonCheckType = innerType;
+                }
+                return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: checks, hints }, exp, parent, firstNonCheckType ? (parent) => [genValidator(transformer, firstNonCheckType, "", undefined, parent)] : undefined);
+            } else {
+                const typeWithMapper = type as (ts.Type & { mapper: ts.TypeMapper });
+                let check, error;
+                if (typeWithMapper.mapper) {
+                    if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) check = typeWithMapper.mapper.target.value;
+                    else {
+                        const exp = getMappedType(typeWithMapper, 0);
+                        if (typeof exp === "string") check = exp;
+                        const errorText = getMappedType(typeWithMapper, 1);
+                        if (typeof errorText === "string") error = errorText;
+                    }
+                }
+                if (!check) return;
+                return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: [check], hints: [{error}]}, exp, parent);
+            }
+        }
         const utility = transformer.getUtilityType(type);
-        if (!utility) {
+        if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) {
             if (type.isUnion()) return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, (parent) => type.types.map(t => genValidator(transformer, t, "", undefined, parent)));
             const properties = (parent: Validator) => type.getProperties().map(sym => {
                 const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
@@ -43,50 +86,6 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 stringIndexType: type.getStringIndexType(),
                 numberIndexType: type.getNumberIndexType()
             }, exp, parent, properties);
-        }
-        else if (!utility.aliasSymbol || !utility.aliasTypeArguments) {
-            if (utility.getProperty("__check")) {
-                if (type.isIntersection()) {
-                    const checks = [], hints: CheckTypeHint[] = [];
-                    let firstNonCheckType: ts.Type|undefined;
-                    for (const innerType of type.types) {
-                        const typeWithMapper = innerType as (ts.Type & { mapper: ts.TypeMapper });
-                        if (typeWithMapper.mapper) {
-                            if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) {
-                                checks.push(typeWithMapper.mapper.target.value);
-                                continue;
-                            }
-                            else {
-                                const exp = getMappedType(typeWithMapper, 0);
-                                if (typeof exp === "string") checks.push(exp);
-                                else continue;
-                                hints.push({
-                                    error: getMappedType(typeWithMapper, 1) as string|undefined,
-                                    name: getMappedType(typeWithMapper, 2) as string|undefined,
-                                    value: getMappedType(typeWithMapper, 3)
-                                });
-                            }
-                        }
-                        if (!firstNonCheckType) firstNonCheckType = innerType;
-                    }
-                    return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: checks, hints }, exp, parent, firstNonCheckType ? (parent) => [genValidator(transformer, firstNonCheckType, "", undefined, parent)] : undefined);
-                } else {
-                    const typeWithMapper = type as (ts.Type & { mapper: ts.TypeMapper });
-                    let check, error;
-                    if (typeWithMapper.mapper) {
-                        if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) check = typeWithMapper.mapper.target.value;
-                        else {
-                            const exp = getMappedType(typeWithMapper, 0);
-                            if (typeof exp === "string") check = exp;
-                            const errorText = getMappedType(typeWithMapper, 1);
-                            if (typeof errorText === "string") error = errorText;
-                        }
-                    }
-                    if (!check) return;
-                    return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: [check], hints: [{error}]}, exp, parent);
-                }
-            }
-            else return;
         }
         else {
             switch (utility.aliasSymbol.name) { 
@@ -120,7 +119,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             }
             case "Resolve": {
                 const typeParam = utility.aliasTypeArguments[0];
-                if (!typeParam || !typeParam.isTypeParameter()) return;
+                if (!typeParam || !typeParam.isTypeParameter() || (typeParam.symbol.parent && hasBit(typeParam.symbol.parent, ts.SymbolFlags.Class))) return;
                 return new Validator(type, name, { 
                     kind: TypeDataKinds.Resolve,
                     type: typeParam

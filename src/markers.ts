@@ -233,11 +233,11 @@ export type Max<T extends string | number> = Check<`$self < ${T}`, `to be less t
 /**
  * Combine with the `number` type to guarantee that the value is a floating point.
  */
-export type Float = Check<"!Number.isInteger($self)", "to be a float", "float">;
+export type Float = Check<"$self % 1 !== 0", "to be a float", "float">;
 /**
  * Combine with the `number` type to guarantee that the value an integer.
  */
-export type Int = Check<"Number.isInteger($self)", "to be an int", "int">;
+export type Int = Check<"$self % 1 === 0", "to be an int", "int">;
 /**
  * Combine with any type which has a `length` property to guarantee that the value's length is at least `T`.
  */

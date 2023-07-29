@@ -1,40 +1,46 @@
 # ts-runtime-checks
 
-A typescript transformer which automatically generates validation code from your types. Think of it as a validation library like [ajv](https://ajv.js.org/guide/typescript.html) and [ts-runtime](https://github.com/fabiandev/ts-runtime), except it **completely** relies on the typescript compiler, and generates vanilla javascript code on demand. This comes with a lot of advantages:
+A typescript transformer which automatically generates validation code from your types. Think of it as a validation library like [ajv](https://ajv.js.org/guide/typescript.html) and [zod](https://zod.dev/), except it **completely** relies on the typescript compiler, and generates vanilla javascript code on demand. This comes with a lot of advantages:
 
-- It's just types - no extra configuration, boilerplate or schemas needed.
+- It's just types - no boilerplate or schemas needed.
 - Only validate where you see fit.
-- Makes your app faster - code is generated during the transpilation phase, and can be easily optimized by V8.
+- Code is generated during the transpilation phase, and can be easily optimized by V8.
 - Powerful - built on top of typescript's type system, which is turing-complete.
 
-Here is a very simple example:
+Here are some examples you can try out in the [playground](https://googlefeud.github.io/ts-runtime-checks/):
 
+**Asserting function parameters:**
 ```ts
-import type { Assert } from "ts-runtime-checks";
-
-function greet(name: Assert<string, undefined>, age: Assert<number>) : string {
-    return `Hello ${name}! I'm ${age} too!`;
+function greet(name: Assert<string>, age: Assert<number>) : string {
+    return `Hello ${name}, you are ${age} years old!`
 }
 
 // Transpiles to:
 function greet(name, age) {
-    if (typeof name !== "string") return undefined;
-    if (typeof age !== "number") throw new Error("Expected age to be a number");;
-    return `Hello ${name}! I'm ${age} too!`;
+    if (typeof name !== "string") throw new Error("Expected name to be a string");
+    if (typeof age !== "number") throw new Error("Expected age to be a number");
+    return `Hello ${name}, you are ${age} years old!`;
 }
 ```
+**Checking whether a value is of a certain type:**
+```ts
+interface User {
+    name: string,
+    age: number & Min<13>
+}
 
-The special `Assert` type gets detected during transpilation, and replaced with appropriate validation checks.
+const maybeUser = { name: "GoogleFeud", age: "123" }
+const isUser = is<User>(maybeUser);
 
-Check out the [playground](https://googlefeud.github.io/ts-runtime-checks/) if you want to play with the transformer without setting up an enviourment!
+// Transpiles to:
+const isUser = typeof maybeUser === "object" && maybeUser !== null && typeof maybeUser.name === "string" && (typeof maybeUser.age === "number" && maybeUser.age > 13);
+```
 
 ## Usage
 
 ```
 npm i --save-dev ts-runtime-checks
 ```
-
-Sadly, `tsc` doesn't allow you to add custom transformers, so you must use a tool which adds them:
 
 <details>
     <summary>Usage with ts-patch</summary>
@@ -54,7 +60,7 @@ and add the ts-runtime-checks transformer to your tsconfig.json:
 }
 ```
 
-Afterwards you must use the `tspc` CLI command to transpile your typescript code.
+Afterwards you can either use the `tspc` CLI command to transpile your typescript code.
 </details>
 
 <details>
@@ -117,26 +123,8 @@ The library also exports a set of built-in `Check` type aliases, which can be us
 
 #### `Assert<Type, Action>`
 
-The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, the code will either return a value or throw an error, depending on what `Action` is.
+The `Assert` marker asserts that a value is of the provided type by adding **validation code** that gets executed during runtime. If the value doesn't match the type, the code will either return a value or throw an error, depending on what `Action` is:
 
-**Example:**
-
-```ts
-function addPlayer(player: Assert<{name: string, id: number}>) : void {
-    players.push(player);
-}
-
-// Transpiles to:
-function addPlayer(player) {
-    if (typeof player !== "object" || player === null) throw new Error("Expected player to be an object");
-    if (typeof player.name !== "string") throw new Error("Expected player.name to be a string");
-    if (typeof player.id !== "number") throw new Error("Expected player.id to be a number");
-    players.push(player);
-}
-
-```
-
-For `Action`, you can provide the following types:
 - Type literals (`123`, `"hello"`, `undefined`, `true`, `false`) - The literal will be returned.
 - `Expr<Type>` - The expression will be returned.
 - `ErrorMsg<rawErrors>` - The error message will be returned.
@@ -158,14 +146,18 @@ If `rawErrors` is true, instead of an error string, the transformer will pass / 
 By default, `ThrowError<Error>` is passed to `Assert`.
 
 ```ts
-function getType(element: { type: unknown }) : string {
-    return element.type as Assert<string, ErrorMsg>;
+function onMessage(
+    msg: Assert<string>, 
+    content: Assert<string, false>,
+    timestamp: Assert<number, ThrowError<RangeError, true>>
+    ) {
+        // ...
 }
 
-// Transpiles to:
-function getType(element) {
-    if (typeof element.type !== "string") return "Expected element.type to be a string";
-    return element.type;
+function onMessage(msg, content, timestamp) {
+    if (typeof msg !== "string") throw new Error("Expected msg to be a string");
+    if (typeof content !== "string") return false;
+    if (typeof timestamp !== "number") throw new RangeError({ value: timestamp, valueName: "timestamp", expectedType: { kind: 0 }});
 }
 ```
 
@@ -462,29 +454,22 @@ function test({ user: { skills: [skill1, skill2, skill3] } }) {
 
 Markers **can** be used in type aliases, so you can easily create shortcuts to common patterns:
 
+**Combining checks:**
 ```ts
-interface User {
-    name: string,
-    id: number,
-    age: number,
-    friends: Array<NoCheck<User>>
-}
+// Combining all number related checks into one type
+type Num<
+    min extends number|undefined = undefined, 
+    max extends number|undefined = undefined, 
+    typ extends Int|Float|undefined = undefined>
+        = number & (min extends number ? Min<min> : number) & (max extends number ? Max<max> : number) & (typ extends undefined ? number : typ);
 
-// You can prefix all your assertion types with a $.
-type $User = Assert<User, TypeError>;
-
-function test(a: $User) {
-    // your code..
+function verify(n: Assert<Num<2, 10, Int>>) {
+    // ...
 }
 
 // Transpiles to:
-
-function test(a) {
-    if (typeof a !== "object" || a === null)
-        return undefined;
-    const { friends: friends_1 } = a;
-    if (typeof a.name !== "string" || typeof a.id !== "number" || typeof a.age !== "number" || !Array.isArray(friends_1))
-        return undefined;
+function verify(n) {
+    if (typeof n !== "number" || n < 2 || n > 10 || n % 1 !== 0) throw new Error("Expected n to be a number, to be greater than 2, to be less than 10, to be an int");
 }
 ```
 
