@@ -81,7 +81,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
                 return genValidator(transformer, typeOfProp, sym.name, undefined, parent);
             });
-            return new Validator(type, name, { 
+            return new Validator(type, name, {
                 kind: TypeDataKinds.Object,
                 stringIndexType: type.getStringIndexType(),
                 numberIndexType: type.getNumberIndexType()

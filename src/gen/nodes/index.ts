@@ -309,7 +309,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
 
         const exactProps = validator.exactProps();
-        if (exactProps !== undefined) {
+        if (exactProps !== undefined && validator.children.length) {
             const name = _ident("p");
             checks.push(_for_in(validator.expression(), name, [
                 _if(
@@ -330,12 +330,12 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                 const stringKeyValidator = genValidator(ctx.transformer, validator.typeData.stringIndexType, keyName, undefined, validator);
                 if (stringKeyValidator) innerChecks.push(_if(_typeof_cmp(keyName, "string"), validateType(stringKeyValidator, ctx)));
             }
-            checks.push(_for_in(validator.expression(), keyName, [
-                _if(
+            checks.push(_for_in(validator.expression(), keyName, 
+                validator.children.length ? _if(
                     _and(validator.children.filter(c => typeof c.name === "string").map(c => _bin(keyName, _str(c.name as string), ts.SyntaxKind.ExclamationEqualsEqualsToken))),
                     innerChecks
-                )
-            ])[0]);
+                ) : innerChecks
+            )[0]);
         }
 
         return {
