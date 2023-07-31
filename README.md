@@ -407,9 +407,11 @@ if (Array.isArray(val) && typeof val[0] === "string" && typeof val[1] === "numbe
 }
 ```
 
-### `check<Type>(value)` utility function
+### `check<Type, rawErrors>(value)` utility function
 
 Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array of errors.
+
+If `rawErrors` is true, the raw error data will be pushed to the array instead of error strings.
 
 ```ts
 const [value, errors] = check<[string, number]>(JSON.parse("[\"Hello\", \"World\"]"));
