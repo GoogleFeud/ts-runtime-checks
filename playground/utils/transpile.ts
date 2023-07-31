@@ -27,8 +27,8 @@ type Not<T extends Check<string, string>> = Check<\`!(\${T["__$check"]})\`, \`no
 type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<\`\${L["__$check"]} || \${R["__$check"]}\`, \`\${L["__$error"]} or \${R["__$error"]}\`>;
 type Infer<Type> = Type & { __$name?: "Infer" };
 type Resolve<Type> = Type & { __$name?: "Resolve" };
-declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
-declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
+declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
+declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
 `;
 
 export const CompilerOptions: ts.CompilerOptions = {
