@@ -27,6 +27,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     else if (hasBit(type, ts.TypeFlags.AnyOrUnknown)) return;
     else if (type.getCallSignatures().length === 1) return new Validator(type, name, { kind: TypeDataKinds.Function }, exp, parent);
     else if (type.isClass()) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
+    //else if (hasBit(type.symbol, ts.SymbolFlags.FunctionScopedVariable) && hasBit(type.symbol, ts.SymbolFlags.Interface)) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
     else if (type.isTypeParameter()) return;
     else if (transformer.checker.isTupleType(type)) return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, (parent: Validator) => transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i, undefined, parent)));
     else if (transformer.checker.isArrayType(type)) return new Validator(type, name, { kind: TypeDataKinds.Array }, exp, parent, (parent) => [genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], "", undefined, parent)]);
@@ -39,7 +40,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 for (const innerType of type.types) {
                     const typeWithMapper = innerType as (ts.Type & { mapper: ts.TypeMapper });
                     const isUtilityType = transformer.getPropType(typeWithMapper, "name");
-                    if (isUtilityType && isUtilityType.isStringLiteral() && !typeWithMapper.getProperty("__$check")) firstNonCheckType = isUtilityType;
+                    if (isUtilityType && isUtilityType.isStringLiteral() && !typeWithMapper.getProperty("__$check")) firstNonCheckType = typeWithMapper;
                     else if (typeWithMapper.mapper) {
                         if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) {
                             checks.push(typeWithMapper.mapper.target.value);
