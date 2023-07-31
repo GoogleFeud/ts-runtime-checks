@@ -27,10 +27,14 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     else if (hasBit(type, ts.TypeFlags.AnyOrUnknown)) return;
     else if (type.getCallSignatures().length === 1) return new Validator(type, name, { kind: TypeDataKinds.Function }, exp, parent);
     else if (type.isClass()) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
-    //else if (hasBit(type.symbol, ts.SymbolFlags.FunctionScopedVariable) && hasBit(type.symbol, ts.SymbolFlags.Interface)) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
     else if (type.isTypeParameter()) return;
     else if (transformer.checker.isTupleType(type)) return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, (parent: Validator) => transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i, undefined, parent)));
     else if (transformer.checker.isArrayType(type)) return new Validator(type, name, { kind: TypeDataKinds.Array }, exp, parent, (parent) => [genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], "", undefined, parent)]);
+    else if (type.symbol && hasBit(type.symbol, ts.SymbolFlags.FunctionScopedVariable) && hasBit(type.symbol, ts.SymbolFlags.Interface) && type.symbol.valueDeclaration) {
+        const innerSym = transformer.checker.getTypeOfSymbolAtLocation(type.symbol, type.symbol.valueDeclaration).symbol;
+        if (innerSym.members && innerSym.members.has("__new" as ts.__String)) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
+        else return;
+    }
     else {
         // Check has precedence over other utility types
         if (type.getProperty("__$check")) {
