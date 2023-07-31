@@ -218,7 +218,8 @@ export type Expr<Expression extends string> = { __$type?: Expression, __$name?: 
  * }
  * ```
  */
-export type Check<Cond extends string, Err extends string = never, ID extends string = never, Value extends string|number = never> = unknown & { __$check?: Cond, __$error?: Err, __$value?: Value, __$id?: ID, __$name?: "Check" };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Check<Cond extends string, Err extends string = never, ID extends string = any, Value extends string|number = any> = unknown & { __$check?: Cond, __$error?: Err, __$value?: Value, __$id?: ID, __$name?: "Check" };
 
 /* Built-in Check types */
 

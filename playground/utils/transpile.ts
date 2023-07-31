@@ -14,7 +14,7 @@ interface ValidationError {
 type NoCheck<T> = T & {  __$name?: "NoCheck" };
 type ExactProps<Obj extends object, removeExcessive = false, useDeleteOperator = false> = Obj & { __$type?: Obj, __$removeExcessive?: removeExcessive, __$useDeleteOprerator?: useDeleteOperator, __$name?: "ExactProps" };
 type Expr<Expression extends string> = { __$type?: Expression, __$name?: "Expr" };
-type Check<Cond extends string, Err extends string = never, ID extends string = never, Value extends string|number = never> = unknown & { __$check?: Cond, __$error?: Err, __$value?: Value, __$id?: ID, __$name?: "Check" };
+type Check<Cond extends string, Err extends string = never, ID extends string = any, Value extends string|number = any> = unknown & { __$check?: Cond, __$error?: Err, __$value?: Value, __$id?: ID, __$name?: "Check" };
 type Min<T extends string | number> = Check<\`$self > \${T}\`, \`to be greater than \${T}\`, "min", T>;
 type Max<T extends string | number> = Check<\`$self < \${T}\`, \`to be less than \${T}\`, "max", T>;
 type Float = Check<"$self % 1 !== 0", "to be a float", "float">;
