@@ -82,7 +82,21 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
         }
         const utility = transformer.getPropType(type, "name");
         if (!utility || !utility.isStringLiteral()) {
-            if (type.isUnion()) return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, (parent) => type.types.map(t => genValidator(transformer, t, "", undefined, parent)));
+            if (type.isUnion()) {
+                let includesNull = false;
+                const children = (parent: Validator) => {
+                    const validators = [];
+                    for (const t of type.types) {
+                        const validator = genValidator(transformer, t, "", undefined, parent);
+                        if (!validator) continue;
+                        if (validator.typeData.kind === TypeDataKinds.Null) includesNull = true;
+                        else if (validator.typeData.kind === TypeDataKinds.Object) validator.typeData.couldBeNull = includesNull;
+                        validators.push(validator);
+                    }
+                    return validators;
+                };
+                return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, children);
+            }
             const properties = (parent: Validator) => type.getProperties().map(sym => {
                 const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
                 return genValidator(transformer, typeOfProp, sym.name, undefined, parent);

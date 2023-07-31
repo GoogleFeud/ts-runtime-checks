@@ -107,7 +107,8 @@ export interface ObjectTypeData {
     exact?: ObjectTypeDataExactOptions,
     stringIndexType?: ts.Type,
     numberIndexType?: ts.Type,
-    useDeleteOperator?: boolean
+    useDeleteOperator?: boolean,
+    couldBeNull?: boolean
 }
 
 export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | UndefinedTypeData | ResolveTypeData | RecursiveTypeData | CheckTypeData;

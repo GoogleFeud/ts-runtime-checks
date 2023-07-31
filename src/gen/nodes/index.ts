@@ -209,9 +209,6 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.Union: {
-        // Special case - if there's an union just between an object and `null`, we expand the union because the object already checks for null
-        if (validator.children.length === 2 && validator.hasChildrenOfKind(TypeDataKinds.Object, TypeDataKinds.Null)) return genNode(validator.getChildrenOfKind(TypeDataKinds.Object)[0] as Validator, ctx);
-
         const compoundTypes: GenResult[] = [], 
             normalTypeConditions: ts.Expression[] = [], 
             normalTypeErrors: GenResultError[] = [],
@@ -339,7 +336,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
 
         return {
-            condition: _obj_check(validator.expression()),
+            condition: _obj_check(validator.expression(), validator.typeData.couldBeNull),
             error: [validator, [_str("to be an object")]],
             before: names.length ? [ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([_obj_binding_decl(names, validator.expression())], ts.NodeFlags.Const))] : undefined,
             after: checks
