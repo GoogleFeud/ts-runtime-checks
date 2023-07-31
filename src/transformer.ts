@@ -1,7 +1,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { FnCallFn, Functions, MarkerCallData, MarkerFn, Markers } from "./markers";
-import { TransformerError, getResolvedTypesFromCallSig, getStringFromType, hasBit, resolveAsChain } from "./utils";
+import { TransformerError, getResolvedTypesFromCallSig, hasBit, resolveAsChain } from "./utils";
 import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
 import { ValidationResultType, createContext, fullValidate } from "./gen/nodes";
@@ -188,17 +188,16 @@ export class Transformer {
         })];
     }
 
-    getSymbolType(t?: ts.Symbol) : ts.Type | undefined {
-        if (!t || !t.valueDeclaration) return;
-        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(t, t.valueDeclaration));
+    getPropType(type: ts.Type, prop: string) : ts.Type | undefined {
+        const propSym = type.getProperty(`__$${prop}`);
+        if (!propSym || !propSym.valueDeclaration) return;
+        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(propSym, propSym.valueDeclaration));
     }
 
     resolveActualType(t: ts.Type) : ts.Type | undefined {
-        return this.getSymbolType(t.getProperty("__marker"));
-    }
-    
-    getUtilityType(type: ts.Type) : ts.Type|undefined {
-        return this.getSymbolType(type.getProperty("__utility"));
+        const prop = t.getProperty("__$marker");
+        if (!prop || !prop.valueDeclaration) return;
+        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
     }
 
     typeValueToNode(t: ts.Type, firstOnly?: true, exprReplacements?: Record<string, ts.Expression>) : ts.Expression;
@@ -222,10 +221,10 @@ export class Transformer {
         //@ts-expect-error Private API
         else if (t.intrinsicName === "null") return ts.factory.createNull();
         else {
-            const utility = this.getUtilityType(t);
-            if (utility && utility.aliasSymbol?.name === "Expr") {
-                const strVal = getStringFromType(t, 0);
-                return strVal ? this.stringToNode(strVal, exprReplacements) : UNDEFINED;
+            const utility = this.getPropType(t, "name");
+            if (utility && utility.isStringLiteral() && utility.value === "Expr") {
+                const strType = this.getPropType(t, "type");
+                return strType && strType.isStringLiteral() ? this.stringToNode(strType.value, exprReplacements) : UNDEFINED;
             }
             else return UNDEFINED;
         }
@@ -250,9 +249,13 @@ export class Transformer {
         if (type.isStringLiteral()) return type.value;
         else if (type.isNumberLiteral()) return type.value.toString();
         else {
-            const util = this.getUtilityType(type);
-            if (util && util.aliasSymbol?.name === "Expr") return getStringFromType(util, 0) || "";
-            return "";
+            const utility = this.getPropType(type, "name");
+            if (utility && utility.isStringLiteral() && utility.value === "Expr") {
+                const strType = this.getPropType(type, "type");
+                if (strType && utility.isStringLiteral()) return utility.value;
+                else return "";
+            }
+            else return  "";
         }
     }
 

@@ -150,9 +150,9 @@ function createValidator(transformer: Transformer, type: ts.Type, name: Validato
  * }
  * ```
  */
-export type Assert<T, ReturnValue = ThrowError<Error>> = T & { __marker?: Assert<T, ReturnValue> };
-export type ErrorMsg<_rawErrorData = false> = { __error_msg: true, __raw_error: _rawErrorData };
-export type ThrowError<ErrorType = Error, _rawErrorData = false> = { __throw_err: ErrorType, __raw_error: _rawErrorData };
+export type Assert<T, ReturnValue = ThrowError<Error>> = T & { __$marker?: Assert<T, ReturnValue> };
+export type ErrorMsg<_rawErrorData = false> = { __$error_msg: true, __$raw_error: _rawErrorData };
+export type ThrowError<ErrorType = Error, _rawErrorData = false> = { __$throw_err: ErrorType, __$raw_error: _rawErrorData };
 
 export interface ValidationError {
     valueName: string,
@@ -163,7 +163,7 @@ export interface ValidationError {
 /**
  * Does not validate the type inside the marker.
  */
-export type NoCheck<T> = T & { __utility?: NoCheck<T> };
+export type NoCheck<T> = T & {  __$name?: "NoCheck" };
 
 /**
  * Validates whether the value doesn't have any excessive properties.   
@@ -188,9 +188,9 @@ export type NoCheck<T> = T & { __utility?: NoCheck<T> };
  * }
  * ```
  */
-export type ExactProps<Obj extends object, removeExcessive = false, useDeleteOperator = false> = Obj & { __utility?: ExactProps<Obj, removeExcessive, useDeleteOperator> };
+export type ExactProps<Obj extends object, removeExcessive = false, useDeleteOperator = false> = Obj & { __$type?: Obj, __$removeExcessive?: removeExcessive, __$useDeleteOprerator?: useDeleteOperator, __$name?: "ExactProps" };
 
-export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
+export type Expr<Expression extends string> = { __$type?: Expression, __$name?: "Expr" };
 
 /**
  * Allows you to create custom conditions by providing a string containing javascript code.
@@ -218,7 +218,7 @@ export type Expr<Expression extends string> = { __utility?: Expr<Expression> };
  * }
  * ```
  */
-export type Check<Cond extends string, Err extends string = never, ID extends string = never, Value extends string|number = never> = unknown & { __check?: Cond, __error?: Err, __utility?: Check<Cond, Err, ID, Value> };
+export type Check<Cond extends string, Err extends string = never, ID extends string = never, Value extends string|number = never> = unknown & { __$check?: Cond, __$error?: Err, __$value?: Value, __$id?: ID, __$name?: "Check" };
 
 /* Built-in Check types */
 
@@ -257,11 +257,11 @@ export type Matches<T extends string> = Check<`${T}.test($self)`, `to match ${T}
 /**
  * Negate the check `T`.
  */
-export type Not<T extends Check<string, string>> = Check<`!(${T["__check"]})`, `not ${T["__error"]}`>;
+export type Not<T extends Check<string, string>> = Check<`!(${T["__$check"]})`, `not ${T["__$error"]}`>;
 /**
  * The check passes if either `L` or `R` is true. Same behaviour as the logical OR (`||`) operator.
  */
-export type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<`${L["__check"]} || ${R["__check"]}`, `${L["__error"]} or ${R["__error"]}`>;
+export type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<`${L["__$check"]} || ${R["__$check"]}`, `${L["__$error"]} or ${R["__$error"]}`>;
 
 /**
  * You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it.
@@ -294,7 +294,7 @@ export type Or<L extends Check<string, string>, R extends Check<string, string>>
  * };
 ``` 
  */
-export type Infer<Type> = Type & { __utility?: Infer<Type> };
+export type Infer<Type> = Type & { __$name?: "Infer" };
 
 /**
  * Pass a type parameter to `Resolve<Type>` to *move* the validation logic to the call site, where the type parameter is resolved to an actual type.
@@ -331,7 +331,7 @@ export type Infer<Type> = Type & { __utility?: Infer<Type> };
  * })();
 ```
  */
-export type Resolve<Type> = Type & { __utility?: Resolve<Type> };
+export type Resolve<Type> = Type & { __$name?: "Resolve" };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;

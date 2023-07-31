@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { CheckTypeHint, ObjectTypeDataExactOptions, TypeDataKinds, Validator, ValidatorTargetName } from "./validator";
-import { getCallSigFromType, getResolvedTypesFromCallSig, getTypeArg, hasBit, isTrueType } from "../../utils";
+import { getCallSigFromType, getResolvedTypesFromCallSig, hasBit, isTrueType } from "../../utils";
 import { Transformer } from "../../transformer";
 
 export function genValidator(transformer: Transformer, type: ts.Type | undefined, name: ValidatorTargetName, exp?: ts.Expression, parent?: Validator) : Validator | undefined {
@@ -31,14 +31,15 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     else if (transformer.checker.isTupleType(type)) return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, (parent: Validator) => transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i, undefined, parent)));
     else if (transformer.checker.isArrayType(type)) return new Validator(type, name, { kind: TypeDataKinds.Array }, exp, parent, (parent) => [genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], "", undefined, parent)]);
     else {
-        if (type.getProperty("__check")) {
+        // Check has precedence over other utility types
+        if (type.getProperty("__$check")) {
             if (type.isIntersection()) {
                 const checks = [], hints: CheckTypeHint[] = [];
                 let firstNonCheckType: ts.Type|undefined;
                 for (const innerType of type.types) {
                     const typeWithMapper = innerType as (ts.Type & { mapper: ts.TypeMapper });
-                    const isUtilityType = transformer.getUtilityType(typeWithMapper);
-                    if (isUtilityType && isUtilityType.aliasTypeArguments && isUtilityType.aliasSymbol) firstNonCheckType = isUtilityType;
+                    const isUtilityType = transformer.getPropType(typeWithMapper, "name");
+                    if (isUtilityType && isUtilityType.isStringLiteral() && !typeWithMapper.getProperty("__$check")) firstNonCheckType = isUtilityType;
                     else if (typeWithMapper.mapper) {
                         if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) {
                             checks.push(typeWithMapper.mapper.target.value);
@@ -74,8 +75,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: [check], hints: [{error}]}, exp, parent);
             }
         }
-        const utility = transformer.getUtilityType(type);
-        if (!utility || !utility.aliasSymbol || !utility.aliasTypeArguments) {
+        const utility = transformer.getPropType(type, "name");
+        if (!utility || !utility.isStringLiteral()) {
             if (type.isUnion()) return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, (parent) => type.types.map(t => genValidator(transformer, t, "", undefined, parent)));
             const properties = (parent: Validator) => type.getProperties().map(sym => {
                 const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
@@ -88,17 +89,17 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             }, exp, parent, properties);
         }
         else {
-            switch (utility.aliasSymbol.name) { 
+            switch (utility.value) {
             case "NoCheck": return;
             case "ExactProps": {
-                const obj = genValidator(transformer, getTypeArg(utility, 0), name, exp, parent);
+                const obj = genValidator(transformer, transformer.getPropType(type, "type"), name, exp, parent);
                 if (!obj || obj.typeData.kind !== TypeDataKinds.Object) return;
-                obj.typeData.exact = isTrueType(getTypeArg(utility, 1)) ? ObjectTypeDataExactOptions.RemoveExtra : ObjectTypeDataExactOptions.RaiseError;
-                obj.typeData.useDeleteOperator = isTrueType(getTypeArg(utility, 2));
+                obj.typeData.exact = isTrueType(transformer.getPropType(type, "removeExcessive")) ? ObjectTypeDataExactOptions.RemoveExtra : ObjectTypeDataExactOptions.RaiseError;
+                obj.typeData.useDeleteOperator = isTrueType(transformer.getPropType(type, "useDeleteOprerator"));
                 return obj;
             }
             case "Infer": {
-                const typeParam = utility.aliasTypeArguments[0];
+                const typeParam = type.aliasTypeArguments?.[0];
                 if (!typeParam || !typeParam.isTypeParameter()) return;
                 const callSig = getCallSigFromType(transformer.checker, typeParam);
                 if (!callSig || !callSig.instantiations) return;
@@ -118,7 +119,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 else return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, possibleTypes);
             }
             case "Resolve": {
-                const typeParam = utility.aliasTypeArguments[0];
+                const typeParam = type.aliasTypeArguments?.[0];
                 if (!typeParam || !typeParam.isTypeParameter() || (typeParam.symbol.parent && hasBit(typeParam.symbol.parent, ts.SymbolFlags.Class))) return;
                 return new Validator(type, name, { 
                     kind: TypeDataKinds.Resolve,
