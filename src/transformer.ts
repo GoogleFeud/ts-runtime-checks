@@ -136,23 +136,26 @@ export class Transformer {
             if (node.arguments[0]) {
                 const callee = node.expression;
                 const typeOfFn = this.checker.getTypeAtLocation(callee).getCallSignatures()[0]?.getTypeParameters();
-                if (typeOfFn && typeOfFn[0] && typeOfFn[1]) {
-                    const fnName = typeOfFn[1].getDefault()?.getProperty("__marker");
-                    if (fnName && fnName.valueDeclaration) {
-                        const name = this.checker.getTypeOfSymbolAtLocation(fnName, fnName.valueDeclaration);
-                        if (name.isStringLiteral()) {
-                            const block = Block.createBlock(body);
-                            const exp = (Functions[name.value] as FnCallFn)(this, {
-                                call: node,
-                                block,
-                                prevBlock: body,
-                                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                                type: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg))[0] || this.checker.getNullType()
-                            });
-                            if (exp) return exp;
-                            return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
-                        }
+                if (typeOfFn) {
+                    const specialTypeParam = typeOfFn.find(t => t.default && t.default.getProperty("__$marker")) as ts.Type & { default: ts.Type };
+                    if (specialTypeParam) {
+                        const nameType = specialTypeParam.default.getProperty("__$marker") as ts.Symbol;
+                        if (nameType.valueDeclaration) {
+                            const name = this.checker.getTypeOfSymbolAtLocation(nameType, nameType.valueDeclaration);
+                            if (name && name.isStringLiteral()) {
+                                const block = Block.createBlock(body);
+                                const exp = (Functions[name.value] as FnCallFn)(this, {
+                                    call: node,
+                                    block,
+                                    prevBlock: body,
+                                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                                    parameters: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || []
+                                });
+                                if (exp) return exp;
+                                return ts.factory.createImmediatelyInvokedArrowFunction(block.nodes as Array<ts.Statement>);
+                            }
                     
+                        }
                     }
                 }
             } 

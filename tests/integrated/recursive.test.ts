@@ -14,7 +14,7 @@ interface Value<T> {
     value: T
 }
 
-declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
+declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
 
 describe("Recursive data structures", () => {
 

@@ -326,4 +326,18 @@ export class Validator {
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
     }
 
+    getRawTypeData() : Record<string, unknown> {
+        switch(this.typeData.kind) {
+        case TypeDataKinds.Check: {
+            const base = this.children[0] ? this.children[0].getRawTypeData() : {};
+            for (const hint of this.typeData.hints) {
+                if (hint.name) base[hint.name] = hint.value;
+            }
+            return base;
+        }
+        default:
+            return this.typeData as unknown as Record<string, unknown>;
+        }
+    }
+
 }

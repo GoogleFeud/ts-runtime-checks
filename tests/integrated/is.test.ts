@@ -2,7 +2,7 @@ import type { Min, Max } from "../../dist/index";
 import { expect } from "chai";
 
 // Only way to test it :/
-declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
+declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
 
 describe("Is function", () => {
     

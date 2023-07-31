@@ -2,7 +2,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
-import { forEachVar, getCallSigFromType, resolveResultType } from "./utils";
+import { forEachVar, getCallSigFromType, isTrueType, resolveResultType } from "./utils";
 import { ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, fullValidate } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
@@ -18,7 +18,7 @@ export interface FnCallData {
     block: Block.Block<unknown>,
     prevBlock: Block.Block<unknown>,
     call: ts.CallExpression,
-    type: ts.Type
+    parameters: ts.Type[]
 }
 
 export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Expression|undefined;
@@ -46,7 +46,7 @@ export const Functions: Record<string, FnCallFn> = {
     is: (transformer, data) => {
         let arg = data.call.arguments[0]!, stmt;
         if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
-        const validator = genValidator(transformer, data.type, ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
+        const validator = genValidator(transformer, data.parameters[0], ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
         if (!validator) return;
         const ctx = createContext(transformer, { return: ts.factory.createFalse() });
         const nodes = minimizeGenResult(genNode(validator, ctx), ctx);
@@ -94,9 +94,10 @@ export const Functions: Record<string, FnCallFn> = {
         }
         if (dataInitialize) block.nodes.push(dataInitialize);
         block.nodes.push(arrIntitialize);
-        const validator = genValidator(transformer, data.type, dataVariable.text, dataVariable);
+        const validator = genValidator(transformer, data.parameters[0], dataVariable.text, dataVariable);
         if (!validator) return;
         block.nodes.push(...fullValidate(validator, createContext(transformer, {
+            rawErrors: isTrueType(data.parameters[1]),
             custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
         }, true)));
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
@@ -335,7 +336,7 @@ export type Infer<Type> = Type & { __$name?: "Infer" };
 export type Resolve<Type> = Type & { __$name?: "Resolve" };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export declare function is<T, _M = { __marker: "is" }>(prop: unknown) : prop is T;
+export declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
+export declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
