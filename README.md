@@ -200,8 +200,6 @@ function test(a) {
 }
 ```
 
-You can also use `Check` types on their own, you don't need to combine them with a normal type like `string` or `number`.
-
 #### `NoCheck<Type>`
 
 Skips validating the value.
@@ -350,7 +348,7 @@ const validatedBody = (() => {
     - `value instanceof Class`
 - Enums
 - Unions (`a | b | c`)
-    - Object unions - If you want to have a union of multiple possible objects, each object must have at least one value that's either a string or a number literal.
+    - Discriminated unions - Each type in the union must have a value that's either a string or a number literal.
 - Function type parameters
     - Inside the function as one big union with the `Infer` utility type.
     - At the call site of the function with the `Resolve` utility type.
