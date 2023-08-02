@@ -158,7 +158,7 @@ export type ThrowError<ErrorType = Error, _rawErrorData = false> = { __$throw_er
 export interface ValidationError {
     valueName: string,
     value: unknown,
-    expectedType: TypeData
+    expectedType: TypeData & Record<string, string|number>
 }
 
 /**

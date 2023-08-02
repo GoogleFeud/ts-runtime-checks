@@ -168,10 +168,10 @@ Allows you to create custom conditions by providing a string containing javascri
 - You can use the `$self` variable to get the value that's currently being validated.
 - You can use the `$parent` function to get the parent object of the value. You can pass a number to get nested parents.
 
-`Error` is a custom error string message that will get displayed if the check fails. `ID` and `Value` are parameters that the transformer uses internally, so you don't need to pass anything to them.
+`Error` is a custom error string message that will get displayed if the check fails.
 
 ```ts
-type StartsWith<T extends string> = Check<`$self.startsWith("${T}")`, `to start with "${T}"`>;
+type StartsWith<T extends string> = Check<`$self.startsWith("${T}")`, `to start with "${T}"`, "startsWith", T>;
 
 function test(a: Assert<string & StartsWith<"a">>) {
     return true;
@@ -197,6 +197,20 @@ function test(a) {
     if (typeof a !== "string" || !a.startsWith("a") || a.length > 36 || a.length < 3)
         throw new Error("Expected a to be a string, to start with \"a\", to have a length less than 36, to have a length greater than 3");
     return true;
+}
+```
+
+The `ID` and `Value` type parameters get used when you want to receive a raw error. You don't need to use them if you don't make use of raw errors. They get passed to the `expectedType` object, where `ID` is the key and `Value` is the value:
+
+```ts
+function test(a: Assert<string & StartsWith<"a">, ThrowError<Error, true>>) {
+    return 1;
+}
+
+// Transpiles to:
+function test(a) {
+    if (typeof a !== "string" || !a.startsWith(a)) throw new "Error"({ value: a, valueName: "a", expectedType: { kind: 1, startsWith: "a" } });
+    return 1;
 }
 ```
 
