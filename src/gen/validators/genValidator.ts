@@ -66,18 +66,22 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: checks, hints }, exp, parent, firstNonCheckType ? (parent) => [genValidator(transformer, firstNonCheckType, "", undefined, parent)] : undefined);
             } else {
                 const typeWithMapper = type as (ts.Type & { mapper: ts.TypeMapper });
-                let check, error;
+                let check, hint: CheckTypeHint|undefined = undefined;
                 if (typeWithMapper.mapper) {
                     if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) check = typeWithMapper.mapper.target.value;
                     else {
                         const exp = getMappedType(typeWithMapper, 0);
                         if (typeof exp === "string") check = exp;
-                        const errorText = getMappedType(typeWithMapper, 1);
-                        if (typeof errorText === "string") error = errorText;
+                        else return;
+                        hint = {
+                            error: getMappedType(typeWithMapper, 1) as string|undefined,
+                            name: getMappedType(typeWithMapper, 2) as string|undefined,
+                            value: getMappedType(typeWithMapper, 3) 
+                        };
                     }
                 }
                 if (!check) return;
-                return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: [check], hints: [{error}]}, exp, parent);
+                return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: [check], hints: hint ? [hint] : []}, exp, parent);
             }
         }
         const utility = transformer.getPropType(type, "name");
