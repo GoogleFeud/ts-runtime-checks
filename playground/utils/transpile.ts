@@ -9,7 +9,10 @@ type ThrowError<ErrorType = Error, _rawErrorData = false> = { __$throw_err: Erro
 interface ValidationError {
     valueName: string,
     value: unknown,
-    parts: string[]
+    expectedType: {
+        [key: string]: string | number,
+        kind: number
+    }
 };
 type NoCheck<T> = T & {  __$name?: "NoCheck" };
 type ExactProps<Obj extends object, removeExcessive = false, useDeleteOperator = false> = Obj & { __$type?: Obj, __$removeExcessive?: removeExcessive, __$useDeleteOprerator?: useDeleteOperator, __$name?: "ExactProps" };

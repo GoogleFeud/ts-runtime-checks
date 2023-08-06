@@ -209,7 +209,7 @@ function test(a: Assert<string & StartsWith<"a">, ThrowError<Error, true>>) {
 
 // Transpiles to:
 function test(a) {
-    if (typeof a !== "string" || !a.startsWith(a)) throw new "Error"({ value: a, valueName: "a", expectedType: { kind: 1, startsWith: "a" } });
+    if (typeof a !== "string" || !a.startsWith(a)) throw new Error({ value: a, valueName: "a", expectedType: { kind: 1, startsWith: "a" } });
     return 1;
 }
 ```
