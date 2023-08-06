@@ -54,7 +54,7 @@ export function error(ctx: NodeGenContext, error?: GenResultError, isFull = fals
     const finalMsg = ctx.resultType.rawErrors ? _obj({
         value: error[0].expression(),
         valueName: _bin_chain(joinElements(error[0].path()), ts.SyntaxKind.PlusToken),
-        expectedType: _obj(error[0].typeData as unknown as Record<string, ts.Expression>)
+        expectedType: _obj(error[0].getRawTypeData() as unknown as Record<string, ts.Expression>)
     }) : _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0].path(), " ", ...error[1]]), ts.SyntaxKind.PlusToken);
     if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
     else if (ctx.resultType.throw) return _throw(_new(ctx.resultType.throw, [finalMsg]));
@@ -209,9 +209,6 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.Union: {
-        // Special case - if there's an union just between an object and `null`, we expand the union because the object already checks for null
-        if (validator.children.length === 2 && validator.hasChildrenOfKind(TypeDataKinds.Object, TypeDataKinds.Null)) return genNode(validator.getChildrenOfKind(TypeDataKinds.Object)[0] as Validator, ctx);
-
         const compoundTypes: GenResult[] = [], 
             normalTypeConditions: ts.Expression[] = [], 
             normalTypeErrors: GenResultError[] = [],
@@ -309,7 +306,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
 
         const exactProps = validator.exactProps();
-        if (exactProps !== undefined) {
+        if (exactProps !== undefined && validator.children.length) {
             const name = _ident("p");
             checks.push(_for_in(validator.expression(), name, [
                 _if(
@@ -330,16 +327,16 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                 const stringKeyValidator = genValidator(ctx.transformer, validator.typeData.stringIndexType, keyName, undefined, validator);
                 if (stringKeyValidator) innerChecks.push(_if(_typeof_cmp(keyName, "string"), validateType(stringKeyValidator, ctx)));
             }
-            checks.push(_for_in(validator.expression(), keyName, [
-                _if(
+            checks.push(_for_in(validator.expression(), keyName, 
+                validator.children.length ? _if(
                     _and(validator.children.filter(c => typeof c.name === "string").map(c => _bin(keyName, _str(c.name as string), ts.SyntaxKind.ExclamationEqualsEqualsToken))),
                     innerChecks
-                )
-            ])[0]);
+                ) : innerChecks
+            )[0]);
         }
 
         return {
-            condition: _obj_check(validator.expression()),
+            condition: _obj_check(validator.expression(), validator.typeData.couldBeNull),
             error: [validator, [_str("to be an object")]],
             before: names.length ? [ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([_obj_binding_decl(names, validator.expression())], ts.NodeFlags.Const))] : undefined,
             after: checks

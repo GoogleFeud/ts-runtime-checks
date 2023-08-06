@@ -13,25 +13,11 @@ export function isTrueType(t: ts.Type|undefined) : boolean {
     return t.intrinsicName === "true";
 }
 
-export function isErrorMessage(t: ts.Type) : boolean {
-    return Boolean(t.getProperty("__error_msg"));
-}
-
-export function isErrorType(t: ts.Type) : ts.Symbol|undefined {
-    return t.getProperty("__throw_err");
-}
-
 export function resolveAsChain(exp: ts.Expression) : ts.Expression {
     while (ts.isAsExpression(exp)) {
         exp = exp.expression;
     }
     return exp;
-}
-
-export function getStringFromType(t: ts.Type, argNum: number) : string|undefined {
-    const arg = t.aliasTypeArguments?.[argNum];
-    if (arg && arg.isStringLiteral()) return arg.value;
-    return undefined;
 }
 
 export function getObjectFromType(checker: ts.TypeChecker, t: ts.Type, argNum: number) : Record<string, ts.Type> {
@@ -50,10 +36,6 @@ export function createListOfStr(strings: Array<string>) : string {
     const clone = [...strings];
     const last = clone.pop();
     return `${clone.join(", ")} and ${last}.`;
-}
-
-export function getTypeArg(t: ts.Type, argNum: number) : ts.Type | undefined {
-    return t.aliasTypeArguments?.[argNum];
 }
 
 export function getApparentType(checker: ts.TypeChecker, t: ts.Type) : ts.Type {
@@ -96,9 +78,9 @@ export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: 
 
 export function resolveResultType(transformer: Transformer, type?: ts.Type) : ValidationResultType {
     if (!type) return { throw: "Error" };
-    const rawErrors = type.getProperty("__raw_error") && isTrueType(transformer.checker.getTypeOfSymbol(type.getProperty("__raw_error") as ts.Symbol));
-    if (type.getProperty("__error_msg")) return { returnErr: true, rawErrors };
-    else if (type.getProperty("__throw_err")) return { throw: transformer.checker.typeToString(transformer.checker.getTypeOfSymbol(type.getProperty("__throw_err") as ts.Symbol)), rawErrors };
+    const rawErrors = type.getProperty("__$raw_error") && isTrueType(transformer.checker.getTypeOfSymbol(type.getProperty("__$raw_error") as ts.Symbol));
+    if (type.getProperty("__$error_msg")) return { returnErr: true, rawErrors };
+    else if (type.getProperty("__$throw_err")) return { throw: transformer.checker.typeToString(transformer.checker.getTypeOfSymbol(type.getProperty("__$throw_err") as ts.Symbol)), rawErrors };
     else return { return: transformer.typeValueToNode(type), rawErrors };
 }
 

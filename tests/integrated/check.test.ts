@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { Min, Max } from "../../dist";
 
 // Only way to test it :/
-export declare function check<T, _M = { __marker: "check" }>(prop: unknown) : [T, Array<string>];
+export declare function check<T, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<string>];
 
 describe("Check function", () => {
     

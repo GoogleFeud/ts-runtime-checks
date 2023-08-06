@@ -107,7 +107,8 @@ export interface ObjectTypeData {
     exact?: ObjectTypeDataExactOptions,
     stringIndexType?: ts.Type,
     numberIndexType?: ts.Type,
-    useDeleteOperator?: boolean
+    useDeleteOperator?: boolean,
+    couldBeNull?: boolean
 }
 
 export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | UndefinedTypeData | ResolveTypeData | RecursiveTypeData | CheckTypeData;
@@ -323,6 +324,20 @@ export class Validator {
             sum += this.typeData.expressions.length;
         }
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
+    }
+
+    getRawTypeData() : Record<string, unknown> {
+        switch(this.typeData.kind) {
+        case TypeDataKinds.Check: {
+            const base = this.children[0] ? this.children[0].getRawTypeData() : { kind: TypeDataKinds.Check };
+            for (const hint of this.typeData.hints) {
+                if (hint.name) base[hint.name] = hint.value;
+            }
+            return base;
+        }
+        default:
+            return this.typeData as unknown as Record<string, unknown>;
+        }
     }
 
 }
