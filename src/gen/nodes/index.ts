@@ -209,44 +209,21 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.Union: {
-        const compoundTypes: GenResult[] = [], 
-            normalTypeConditions: ts.Expression[] = [], 
-            normalTypeErrors: GenResultError[] = [],
-            objectTypes: GenResult[] = [],
-            typeNames: string[] = [];
-        let isNullable = false;
-        const objectKind = validator.getChildCountOfKind(TypeDataKinds.Object);
-        for (const child of validator.children) {
-            if (child.typeData.kind === TypeDataKinds.Undefined) {
-                isNullable = true;
-                continue;
-            }
-            else if (child.children.length && child.typeData.kind === TypeDataKinds.Object && objectKind > 1) {
-                const idRepresent = child.getFirstLiteralChild();
-                if (idRepresent) {
-                    child.children.splice(child.children.indexOf(idRepresent), 1);
-                    const node = genNode(child, ctx);
-                    const childNode = genNode(idRepresent, ctx);
-                    objectTypes.push({
-                        condition: childNode.condition,
-                        error: childNode.error,
-                        after: node.after
-                    });
-                }
-                else compoundTypes.push(genNode(child, ctx));
-            }
-            else if (child.isComplexType()) compoundTypes.push(genNode(child, ctx));
-            else {
-                const node = genNode(child, ctx);
-                normalTypeConditions.push(node.condition);
-                if (node.error) normalTypeErrors.push(node.error);
-            }
-            typeNames.push(ctx.transformer.checker.typeToString(child._original));
+        const { compound, normal, object, isNullable } = getUnionMembers(validator);
+
+        const normalTypeConditions = [], normalTypeErrors = [];
+        const compoundTypes = compound.map(c => genNode(c, ctx));
+        const typeNames = validator.children.map(c => ctx.transformer.checker.typeToString(c._original));
+
+        for (const normalCheck of normal) {
+            const node = genNode(normalCheck, ctx);
+            normalTypeConditions.push(node.condition);
+            if (node.error) normalTypeErrors.push(node.error);
         }
 
-        if (objectTypes.length) compoundTypes.push({
+        if (object.length) compoundTypes.push({
             condition: _obj_check(validator.expression()),
-            after: [_if_nest(0, objectTypes.map(t => [t.condition, joinResultStmts(t)]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))]
+            after: [_if_nest(0, object.map(([childNode, propNode]) => [genNode(propNode, ctx).condition, joinResultStmts(genNode(childNode, ctx))]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))]
         });
 
         if (!compoundTypes.length) return {
@@ -348,6 +325,41 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 
 export function isNullableNode(validator: Validator) : ts.Expression {
     return _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken);
+}
+
+export function getUnionMembers(validator: Validator) : {
+    compound: Validator[],
+    normal: Validator[],
+    object: [Validator, Validator][],
+    isNullable: boolean
+} {
+    const compoundTypes: Validator[] = [], 
+        normalTypes: Validator[] = [],
+        objectTypes: [Validator, Validator][] = [];
+    let isNullable = false;
+    const objectKind = validator.getChildCountOfKind(TypeDataKinds.Object);
+    for (const child of validator.children) {
+        if (child.typeData.kind === TypeDataKinds.Undefined) {
+            isNullable = true;
+            continue;
+        }
+        else if (child.children.length && child.typeData.kind === TypeDataKinds.Object && objectKind > 1) {
+            const idRepresent = child.getFirstLiteralChild();
+            if (idRepresent) {
+                child.children.splice(child.children.indexOf(idRepresent), 1);
+                objectTypes.push([child, idRepresent]);
+            }
+            else compoundTypes.push(child);
+        }
+        else if (child.isComplexType()) compoundTypes.push(child);
+        else normalTypes.push(child);
+    }
+    return {
+        compound: compoundTypes,
+        normal: normalTypes,
+        object: objectTypes,
+        isNullable
+    };
 }
 
 export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.Statement[] {
