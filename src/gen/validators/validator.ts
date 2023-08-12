@@ -329,7 +329,7 @@ export class Validator {
     getRawTypeData() : Record<string, unknown> {
         switch(this.typeData.kind) {
         case TypeDataKinds.Check: {
-            const base = this.children[0] ? this.children[0].getRawTypeData() : {};
+            const base = this.children[0] ? this.children[0].getRawTypeData() : { kind: TypeDataKinds.Check };
             for (const hint of this.typeData.hints) {
                 if (hint.name) base[hint.name] = hint.value;
             }

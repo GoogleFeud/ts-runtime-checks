@@ -168,10 +168,10 @@ Allows you to create custom conditions by providing a string containing javascri
 - You can use the `$self` variable to get the value that's currently being validated.
 - You can use the `$parent` function to get the parent object of the value. You can pass a number to get nested parents.
 
-`Error` is a custom error string message that will get displayed if the check fails. `ID` and `Value` are parameters that the transformer uses internally, so you don't need to pass anything to them.
+`Error` is a custom error string message that will get displayed if the check fails.
 
 ```ts
-type StartsWith<T extends string> = Check<`$self.startsWith("${T}")`, `to start with "${T}"`>;
+type StartsWith<T extends string> = Check<`$self.startsWith("${T}")`, `to start with "${T}"`, "startsWith", T>;
 
 function test(a: Assert<string & StartsWith<"a">>) {
     return true;
@@ -200,7 +200,19 @@ function test(a) {
 }
 ```
 
-You can also use `Check` types on their own, you don't need to combine them with a normal type like `string` or `number`.
+The `ID` and `Value` type parameters get used when you want to receive a raw error. You don't need to use them if you don't make use of raw errors. They get passed to the `expectedType` object, where `ID` is the key and `Value` is the value:
+
+```ts
+function test(a: Assert<string & StartsWith<"a">, ThrowError<Error, true>>) {
+    return 1;
+}
+
+// Transpiles to:
+function test(a) {
+    if (typeof a !== "string" || !a.startsWith(a)) throw new Error({ value: a, valueName: "a", expectedType: { kind: 1, startsWith: "a" } });
+    return 1;
+}
+```
 
 #### `NoCheck<Type>`
 
@@ -350,7 +362,7 @@ const validatedBody = (() => {
     - `value instanceof Class`
 - Enums
 - Unions (`a | b | c`)
-    - Object unions - If you want to have a union of multiple possible objects, each object must have at least one value that's either a string or a number literal.
+    - Discriminated unions - Each type in the union must have a value that's either a string or a number literal.
 - Function type parameters
     - Inside the function as one big union with the `Infer` utility type.
     - At the call site of the function with the `Resolve` utility type.
