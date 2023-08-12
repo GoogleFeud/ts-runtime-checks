@@ -6,6 +6,7 @@ import { forEachVar, getCallSigFromType, isTrueType, resolveResultType } from ".
 import { ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, fullValidate } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
+import { genMatch } from "./gen/nodes/match";
 
 export interface MarkerCallData {
     parameters: Array<ts.Type>,
@@ -46,7 +47,7 @@ export const Functions: Record<string, FnCallFn> = {
     is: (transformer, data) => {
         let arg = data.call.arguments[0]!, stmt;
         if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
-        const validator = genValidator(transformer, data.parameters[0], ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
+        const validator = genValidator(transformer, data.parameters[0], (arg as ts.Identifier).text, arg);
         if (!validator) return;
         const ctx = createContext(transformer, { return: ts.factory.createFalse() });
         const nodes = minimizeGenResult(genNode(validator, ctx), ctx);
@@ -101,6 +102,10 @@ export const Functions: Record<string, FnCallFn> = {
             custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
         }, true)));
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
+    },
+    createMatch: (transformer, data) => {
+        if (!data.call.arguments[0] || !ts.isArrayLiteralExpression(data.call.arguments[0])) return;
+        return genMatch(transformer, data.call.arguments[0]);
     }
 };
 
@@ -341,5 +346,5 @@ export declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: unknown) => R)[]) : (val: U) => R;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[]) : (val: U) => R;
