@@ -40,7 +40,7 @@ export function genConciseNode(validator: Validator, ctx: NodeGenContext, genBas
     }
     case TypeDataKinds.Union: {
         const { compound, normal, object, isNullable } = getUnionMembers(validator.children);
-        const checks = [...compound, ...normal].map(c => genConciseNode(c, ctx).condition);
+        const checks = [...normal, ...compound].map(c => genConciseNode(c, ctx).condition);
         if (object.length) checks.push(...object.map(([childNode, propNode]) => _and([genConciseNode(propNode, ctx).condition, genConciseNode(childNode, ctx).condition])));
         return {
             condition: isNullable ? _and([_bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken), _or(checks)]) : _or(checks)
@@ -83,6 +83,11 @@ export function genReplacementStmt(transformer: Transformer, fnParam: ts.Identif
     }
 }
 
+export function makeBlock(stmt: ts.Statement) : ts.Statement {
+    if (ts.isBlock(stmt)) return stmt;
+    else return ts.factory.createBlock([stmt]);
+}
+
 export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLiteralExpression) : ts.ArrowFunction|undefined {
     const functions = functionTuple.elements.map(el => transformer.checker.getSignatureFromDeclaration(el as ts.SignatureDeclaration)).filter(el => el) as ts.Signature[];
     if (!functions.length) return;
@@ -117,6 +122,12 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
             if (typeGroups[paramType.typeData.kind]) typeGroups[paramType.typeData.kind]!.push({ parameter: paramValueDecl, type: paramType, body, simplestForm: true });
             else typeGroups[paramType.typeData.kind] = [{ parameter: paramValueDecl, type: paramType, body, simplestForm: true }];
         }
+        else if (paramType.typeData.kind === TypeDataKinds.Union) {
+            for (const childType of paramType.children) {
+                if (typeGroups[childType.typeData.kind]) typeGroups[childType.typeData.kind]!.push({ parameter: paramValueDecl, type: childType, body });
+                else typeGroups[childType.typeData.kind] = [{ parameter: paramValueDecl, type: childType, body }];
+            }
+        }
         else {
             if (typeGroups[paramType.typeData.kind]) typeGroups[paramType.typeData.kind]!.push({ parameter: paramValueDecl, type: paramType, body });
             else typeGroups[paramType.typeData.kind] = [{ parameter: paramValueDecl, type: paramType, body }];
@@ -142,8 +153,14 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
         }
 
         const simplestNode = genConciseNode(simplestArm?.type || new Validator(transformer.checker.getAnyType(), fnParam.text, { kind: +dataKind }, fnParam), ctx, true);
-        statements.push([simplestNode.condition, _if_chain(0, inner, simplestArm ? genReplacementStmt(transformer, fnParam, simplestArm.body, simplestArm.parameter) : undefined) as ts.Statement]);
+        statements.push([simplestNode.condition, makeBlock(_if_chain(0, inner, simplestArm ? genReplacementStmt(transformer, fnParam, simplestArm.body, simplestArm.parameter) : undefined)!)]);
     }
 
-    return ts.factory.createArrowFunction(undefined, undefined, [ts.factory.createParameterDeclaration(undefined, undefined, fnParam)], undefined, undefined, ts.factory.createBlock([_if_chain(0, statements, defaultArm ? genReplacementStmt(transformer, fnParam, defaultArm.body, defaultArm.parameter) : undefined) as ts.Statement], true));
+    const finalStatements = [_if_chain(0, statements)!];
+    if (defaultArm) {
+        const replaced = genReplacementStmt(transformer, fnParam, defaultArm.body, defaultArm.parameter);
+        if (ts.isBlock(replaced)) finalStatements.push(...replaced.statements);
+        else finalStatements.push(replaced);
+    }
+    return ts.factory.createArrowFunction(undefined, undefined, [ts.factory.createParameterDeclaration(undefined, undefined, fnParam)], undefined, undefined, ts.factory.createBlock(finalStatements, true));
 }
