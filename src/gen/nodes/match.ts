@@ -33,9 +33,9 @@ export function genConciseNode(validator: Validator, ctx: NodeGenContext, genBas
         };
     }
     case TypeDataKinds.Tuple: {
-        const childrenChecks = _and(validator.children.map(c => genConciseNode(c, ctx).condition));
+        const childrenChecks = validator.children.map(c => genConciseNode(c, ctx).condition);
         return {
-            condition: genBaseCheck ? _and([_arr_check(validator.expression()), childrenChecks]) : childrenChecks
+            condition: genBaseCheck ? _and([_arr_check(validator.expression()), ...childrenChecks]) : _and(childrenChecks)
         };
     }
     case TypeDataKinds.Union: {
