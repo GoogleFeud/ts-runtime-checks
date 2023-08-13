@@ -8,8 +8,7 @@ import { GenResult, NodeGenContext, createContext, genCheckCtx, genNode, getUnio
 export interface MatchArm {
     parameter: ts.ParameterDeclaration,
     body: ts.ConciseBody,
-    type: Validator,
-    simplestForm?: boolean
+    type: Validator
 }
 
 /**
@@ -54,8 +53,14 @@ export function genConciseNode(validator: Validator, ctx: NodeGenContext, genBas
     }
     case TypeDataKinds.Check: {
         const parseCtx = genCheckCtx(validator);
+        const checks = validator.typeData.expressions.map(check => ctx.transformer.stringToNode(check, parseCtx));
+        const child = validator.children[0];
+        if (child) {
+            if (child.isComplexType()) checks.unshift(genConciseNode(child, ctx, genBaseCheck).condition);
+            else if (genBaseCheck) checks.unshift(genConciseNode(child, ctx).condition); 
+        }
         return {
-            condition: _and(validator.typeData.expressions.map(check => ctx.transformer.stringToNode(check, parseCtx)))
+            condition: _and(checks)
         };
     }
     default: return { condition: _not(genNode(validator, ctx).condition) };
@@ -114,13 +119,8 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
 
         if (paramType.typeData.kind === TypeDataKinds.Check && paramType.children.length) {
             const child = paramType.children[0] as Validator;
-            paramType.children.length = 0;
             if (typeGroups[child.typeData.kind]) typeGroups[child.typeData.kind]!.push({ parameter: paramValueDecl, type: paramType, body  });
             else typeGroups[child.typeData.kind] = [{ parameter: paramValueDecl, type: paramType, body  }];
-        }
-        else if (!paramType.isComplexType()) {
-            if (typeGroups[paramType.typeData.kind]) typeGroups[paramType.typeData.kind]!.push({ parameter: paramValueDecl, type: paramType, body, simplestForm: true });
-            else typeGroups[paramType.typeData.kind] = [{ parameter: paramValueDecl, type: paramType, body, simplestForm: true }];
         }
         else if (paramType.typeData.kind === TypeDataKinds.Union) {
             for (const childType of paramType.children) {
@@ -143,8 +143,8 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
         if (arms.length === 1) simplestArm = arms[0];
         else {
             for (const arm of arms) {
-                if (arm.simplestForm) {
-                    simplestArm = arm;
+                if (arm.type.isSimple()) {
+                    if (!simplestArm) simplestArm = arm;
                     continue;
                 }
                 const genned = genConciseNode(arm.type, ctx, false);

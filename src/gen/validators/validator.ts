@@ -318,6 +318,26 @@ export class Validator {
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
     }
 
+    /**
+     * Whether the validator is in it's simplest form - no children, extra checks, etc.
+     */
+    isSimple() : boolean {
+        switch (this.typeData.kind) {
+        case TypeDataKinds.Number:
+        case TypeDataKinds.String:
+        case TypeDataKinds.Boolean:
+            return this.typeData.literal === undefined;
+        case TypeDataKinds.Object:
+        case TypeDataKinds.Array:
+        case TypeDataKinds.Tuple:
+            return this.children.length === 0;
+        case TypeDataKinds.Check:
+            return false;
+        default:
+            return true;
+        }
+    }
+
     getRawTypeData() : Record<string, unknown> {
         switch(this.typeData.kind) {
         case TypeDataKinds.Check: {
