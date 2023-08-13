@@ -154,7 +154,7 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
     const statements: [ts.Expression, BlockLike][] = [];
     const ctx = createContext(transformer, {});
 
-    // Objects will always get checked last, otherwise sort by weigh
+    // Objects will always get checked last, otherwise sort by weight
     const sortedTypeGroups = [...typeGroups.entries()].sort((a, b) => {
         if (a[0] === TypeDataKinds.Object) return 1;
         else if (b[0] === TypeDataKinds.Object) return -1;

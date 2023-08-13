@@ -87,16 +87,26 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
         const utility = transformer.getPropType(type, "name");
         if (!utility || !utility.isStringLiteral()) {
             if (type.isUnion()) {
-                let includesNull = false;
+                let includesNull = false, hasFalse = -1, hasTrue = -1;
                 const children = (parent: Validator) => {
-                    const validators = [];
-                    for (const t of type.types) {
+                    let validators = [];
+                    for (let i=0; i < type.types.length; i++) {
+                        const t = type.types[i];
                         const validator = genValidator(transformer, t, "", undefined, parent);
                         if (!validator) continue;
                         if (validator.typeData.kind === TypeDataKinds.Null) includesNull = true;
                         else if (validator.typeData.kind === TypeDataKinds.Object) validator.typeData.couldBeNull = includesNull;
+                        else if (validator.typeData.kind === TypeDataKinds.Boolean) {
+                            if (validator.typeData.literal === true) hasTrue = i;
+                            else if (validator.typeData.literal === false) hasFalse = i;
+                        }
                         validators.push(validator);
                     }
+
+                    if (hasTrue !== -1 && hasFalse !== -1) {
+                        validators = [...validators.filter((_, ind) => ind !== hasTrue && ind !== hasFalse), new Validator(transformer.checker.getBooleanType(), "", { kind: TypeDataKinds.Boolean }, undefined, parent)];
+                    }
+
                     return validators;
                 };
                 return new Validator(type, name, { kind: TypeDataKinds.Union }, exp, parent, children);
