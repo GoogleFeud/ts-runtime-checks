@@ -10,32 +10,30 @@ var Values;
 describe("Create Match function", () => {
     it("Match the values correctly", () => {
         const resolver = value_1 => {
-            if (typeof value_1 === "number") {
-                return value_1.toString();
+            if (typeof value_1 === "boolean") {
+                if (value_1 === true || value_1 === false)
+                    return value_1.toString();
             }
             else if (typeof value_1 === "string") {
                 return value_1.toString();
             }
+            else if (typeof value_1 === "number") {
+                return value_1.toString();
+            }
+            else if ((value_1 instanceof Date)) {
+                return value_1.toString();
+            }
             else if (Array.isArray(value_1)) {
-                if (value_1.every(value_2 => typeof value_2 === "string"))
-                    return value_1.join(", ");
-                else if (value_1.every(value_3 => typeof value_3 === "number"))
+                if (value_1.every(value_2 => typeof value_2 === "string") || value_1.every(value_3 => typeof value_3 === "number"))
                     return value_1.join(", ");
                 else if (value_1.every(value_4 => (value_4 instanceof Date)))
                     return value_1.map(i => i.toString()).join(", ");
             }
-            else if (typeof value_1 === "boolean") {
-                if (value_1 === true)
-                    return value_1.toString();
-                else if (value_1 === false)
-                    return value_1.toString();
-            }
-            else if (typeof value_1 === "object" && value_1 !== null && typeof value_1.value === "string") {
-                let { value } = value_1;
-                return value;
-            }
-            else if ((value_1 instanceof Date)) {
-                return value_1.toString();
+            else if (typeof value_1 === "object" && value_1 !== null) {
+                if (typeof value_1.value === "string") {
+                    let { value } = value_1;
+                    return value;
+                }
             }
             return "UNKNOWN";
         };
@@ -60,8 +58,9 @@ describe("Create Match function", () => {
                 else
                     return "str";
             }
-            else if (Array.isArray(value_5) && value_5.every(value_6 => typeof value_6 === "string") && value_5.length > 1) {
-                return value_5.map(val => resolver(val)).join(", ");
+            else if (Array.isArray(value_5)) {
+                if (value_5.every(value_6 => typeof value_6 === "string") && value_5.length > 1)
+                    return value_5.map(val => resolver(val)).join(", ");
             }
             return `UNKNOWN: ${value_5}`;
         };

@@ -105,7 +105,8 @@ export const Functions: Record<string, FnCallFn> = {
     },
     createMatch: (transformer, data) => {
         if (!data.call.arguments[0] || !ts.isArrayLiteralExpression(data.call.arguments[0])) return;
-        return genMatch(transformer, data.call.arguments[0]);
+        const discriminatedObjectAssert = data.call.arguments[1] ? isTrueType(transformer.checker.getTypeAtLocation(data.call.arguments[1])) : false;
+        return genMatch(transformer, data.call.arguments[0], discriminatedObjectAssert);
     }
 };
 
@@ -347,4 +348,4 @@ export declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is
 export declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[]) : (val: U) => R;
+export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], discriminatedObjAssert?: boolean) : (val: U) => R;

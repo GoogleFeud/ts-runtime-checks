@@ -35,6 +35,29 @@ const isUser = is<User>(maybeUser);
 // Transpiles to:
 const isUser = typeof maybeUser === "object" && maybeUser !== null && typeof maybeUser.name === "string" && (typeof maybeUser.age === "number" && maybeUser.age > 13);
 ```
+**Pattern Matching:**
+```ts
+const extractString = createMatch<string>([
+    (value: string | number) => value.toString(),
+    ({value}: { value: string }) => value,
+    () => {
+        throw new Error("Could not extract string.");
+    }
+]);
+
+//Transpiles to:
+const extractString = value_1 => {
+    if (typeof value_1 === "string") return value_1.toString();
+    else if (typeof value_1 === "number") return value_1.toString();
+    else if (typeof value_1 === "object" && value_1 !== null) {
+        if (typeof value_1.value === "string") {
+            let { value } = value_1;
+            return value;
+        }
+    }
+    throw new Error("Could not extract string.");
+};
+```
 
 ## Usage
 
@@ -401,7 +424,7 @@ if (value_1.clusters !== undefined && typeof value_1.clusters !== "number")
 const args = value_1;
 ```
 
-### `is<Type>(value)` utility function
+### `is<Type>(value)`
 
 Every call to this function gets replaced with an immediately-invoked arrow function, which returns `true` if the value matches the type, `false` otherwise.
 
@@ -419,7 +442,7 @@ if (Array.isArray(val) && typeof val[0] === "string" && typeof val[1] === "numbe
 }
 ```
 
-### `check<Type, rawErrors>(value)` utility function
+### `check<Type, rawErrors>(value)`
 
 Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array of errors.
 
@@ -440,6 +463,58 @@ else {
 }
 if (errors.length) console.log(errors);
 ```
+
+### `createMatch<ReturnType, InputType>(function[], discriminatedObjAssert)`
+
+Creates a match function which performs pattern-matching on the input type, based on the provided functions. Each function in the array is a match arm, where the type of the first parameter is the type the arm is matching against:
+
+```ts
+// We want the match function to return a string and to accept a number
+const resolver = createMatch<string, number>([
+    // Match arm which catches the values 0 or 1
+    (_: 0 | 1) => "not many",
+    // Match arm which catches any number less than 9
+    (_: number & Max<9>) => "a few",
+    // Match arm which catches any number that hasn't already been caught
+    (_: number) => "lots"
+]);
+
+// Transpiles to:
+const resolver = value_1 => {
+    if (typeof value_1 === "number") {
+        if (value_1 === 1 || value_1 === 0) return "not many";
+        else if (value_1 < 9) return "a few";
+        else return "lots";
+    }
+};
+```
+
+You could also have a default match arm by omitting the parameter, or giving it the `unknown` or `any` type:
+
+```ts
+const toNumber: (value: unknown) => number = createMatch<number>([
+    (value: string | boolean) => +value,
+    (value: number) => value,
+    (value: Array<string> | Array<number> | Array<boolean>) => value.map(v => toNumber(v)).reduce((val, acc) => val + acc, 0),
+    (value: unknown) => {
+        throw new Error("Unexpected value: " + value);
+    }
+]);
+
+// Transpiles to:
+const toNumber = value_1 => {
+    if (typeof value_1 === "boolean")  return +value_1;
+    else if (typeof value_1 === "string") return +value_1;
+    else if (typeof value_1 === "number") return value_1;
+    else if (Array.isArray(value_1)) {
+        if (value_1.every(value_2 => typeof value_2 === "string") || value_1.every(value_3 => typeof value_3 === "number") || value_1.every(value_4 => typeof value_4 === "boolean"))
+            return value_1.map(v => toNumber(v)).reduce((val, acc) => val + acc, 0);
+    }
+    throw new Error("Unexpected value: " + value_1);
+};
+```
+
+If the `discriminatedObjAssert` parameter is set to true, then the properties of objects that contain a literal string or number will not be validated. Use this if you have already validated the source or if you know that it's correct.
 
 ### Destructuring
 

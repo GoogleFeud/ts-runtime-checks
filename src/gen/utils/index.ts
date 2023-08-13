@@ -119,6 +119,18 @@ export function isSingleIfStatement(stmt: ts.Statement) : stmt is ts.IfStatement
     return ts.isIfStatement(stmt) && ts.isReturnStatement(stmt.thenStatement) && !stmt.elseStatement;
 }
 
+export function doesAlwaysReturn(stmt: ts.Statement) : boolean {
+    if (ts.isReturnStatement(stmt)) return true;
+    else if (ts.isThrowStatement(stmt)) return true;
+    else if (ts.isIfStatement(stmt) && stmt.elseStatement) return doesAlwaysReturn(stmt.elseStatement);
+    else if (ts.isBlock(stmt)) {
+        const last = stmt.statements[stmt.statements.length - 1];
+        if (!last) return false;
+        return doesAlwaysReturn(last);
+    }
+    else return false;
+}
+
 export function TransformerError(callSite: ts.Node, msg: string) : void {
     TransformerErrorWrapper(callSite.pos, callSite.end - callSite.pos, msg, callSite.getSourceFile());
     process.exit();
