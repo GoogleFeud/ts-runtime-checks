@@ -1,5 +1,5 @@
 import ts, { factory } from "typescript";
-import { isInt } from "../utils";
+import { isInt } from "./utils";
 
 export type Stringifyable = string | ts.Expression;
 export type BlockLike = ts.Expression | ts.Statement | ts.Block | Array<ts.Statement>;

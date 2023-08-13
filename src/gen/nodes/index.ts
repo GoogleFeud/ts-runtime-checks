@@ -2,7 +2,7 @@ import ts, { isNumericLiteral } from "typescript";
 import { ObjectTypeDataExactOptions, TypeDataKinds, Validator, genValidator } from "../validators";
 import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _obj_binding_decl, _arr_binding_decl, _concise, _ternary, _arr_check } from "../expressionUtils";
 import { Transformer } from "../../transformer";
-import { isSingleIfStatement } from "../../utils";
+import { isSingleIfStatement } from "../utils";
 
 export interface ValidationResultType {
     throw?: string,

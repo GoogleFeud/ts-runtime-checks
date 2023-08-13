@@ -93,6 +93,11 @@ export function makeBlock(stmt: ts.Statement) : ts.Statement {
     else return ts.factory.createBlock([stmt]);
 }
 
+function addMatchArm(col: Record<number, MatchArm[]>, key: number, arm: MatchArm) {
+    if (col[key]) col[key]!.push(arm);
+    else col[key] = [arm];
+}
+
 export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLiteralExpression) : ts.ArrowFunction|undefined {
     const functions = functionTuple.elements.map(el => transformer.checker.getSignatureFromDeclaration(el as ts.SignatureDeclaration)).filter(el => el) as ts.Signature[];
     if (!functions.length) return;
@@ -119,19 +124,12 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
 
         if (paramType.typeData.kind === TypeDataKinds.Check && paramType.children.length) {
             const child = paramType.children[0] as Validator;
-            if (typeGroups[child.typeData.kind]) typeGroups[child.typeData.kind]!.push({ parameter: paramValueDecl, type: paramType, body  });
-            else typeGroups[child.typeData.kind] = [{ parameter: paramValueDecl, type: paramType, body  }];
+            addMatchArm(typeGroups, child.typeData.kind, { parameter: paramValueDecl, type: paramType, body  });
         }
         else if (paramType.typeData.kind === TypeDataKinds.Union) {
-            for (const childType of paramType.children) {
-                if (typeGroups[childType.typeData.kind]) typeGroups[childType.typeData.kind]!.push({ parameter: paramValueDecl, type: childType, body });
-                else typeGroups[childType.typeData.kind] = [{ parameter: paramValueDecl, type: childType, body }];
-            }
+            for (const childType of paramType.children) addMatchArm(typeGroups, childType.typeData.kind, { parameter: paramValueDecl, type: childType, body });
         }
-        else {
-            if (typeGroups[paramType.typeData.kind]) typeGroups[paramType.typeData.kind]!.push({ parameter: paramValueDecl, type: paramType, body });
-            else typeGroups[paramType.typeData.kind] = [{ parameter: paramValueDecl, type: paramType, body }];
-        }
+        else addMatchArm(typeGroups, paramType.typeData.kind, { parameter: paramValueDecl, type: paramType, body });
     }
 
     const statements: [ts.Expression, BlockLike][] = [];

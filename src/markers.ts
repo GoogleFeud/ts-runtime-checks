@@ -2,7 +2,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
-import { forEachVar, getCallSigFromType, isTrueType, resolveResultType } from "./utils";
+import { forEachVar, getCallSigFromType, isTrueType, resolveResultType } from "./gen/utils";
 import { ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, fullValidate } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
