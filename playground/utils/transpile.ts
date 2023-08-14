@@ -40,7 +40,7 @@ export const CompilerOptions: ts.CompilerOptions = {
     ...ts.getDefaultCompilerOptions(),                    
     noImplicitAny: true,                          
     strictNullChecks: true,
-    target: ts.ScriptTarget.ESNext     
+    target: ts.ScriptTarget.ESNext
 };
 
 export function genTranspile(lib: string) : (str: string) => { code?: string, error?: unknown} {
