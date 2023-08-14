@@ -32,6 +32,7 @@ export function joinElements(elements: Stringifyable[], separator = "") : ts.Exp
 
 export function _stmt(stmt: BlockLike) : ts.Statement {
     if (Array.isArray(stmt)) return factory.createBlock(stmt);
+    else if (ts.isBlock(stmt)) return stmt;
     else if (stmt.kind > ts.SyntaxKind.EmptyStatement && stmt.kind < ts.SyntaxKind.DebuggerStatement) return stmt as ts.Statement;
     else return factory.createExpressionStatement(stmt as ts.Expression);
 }
@@ -59,11 +60,11 @@ export function _if_nest(ind: number, check: [ts.Expression, BlockLike][], last:
     return factory.createIfStatement(check[ind]![0], _if_nest(ind + 1, check, last), _stmt(check[ind]![1]));
 }
 
-export function _var(name: ts.Identifier | string, initializer?: ts.Expression, flag = ts.NodeFlags.Let) : [ts.VariableStatement, ts.Identifier] {
+export function _var(name: ts.BindingName | string, initializer?: ts.Expression, flag = ts.NodeFlags.Let) : [ts.VariableStatement, ts.Identifier | ts.Identifier] {
     const ident = typeof name === "string" ? factory.createUniqueName(name) : name;
     return [factory.createVariableStatement(undefined, factory.createVariableDeclarationList([
         factory.createVariableDeclaration(ident, undefined, undefined, initializer),
-    ], flag)), ident];
+    ], flag)), ident as ts.Identifier];
 }
 
 export function _ident(name: string|ts.Identifier, nonUnique?: boolean) : ts.Identifier {
@@ -115,6 +116,10 @@ export function _bool(bool: boolean) : ts.Expression {
 export function _obj_check(obj: ts.Expression, skipNullCheck?: boolean) : ts.Expression {
     if (skipNullCheck)  return _typeof_cmp(obj, "object", ts.SyntaxKind.ExclamationEqualsEqualsToken);
     else return _or([_typeof_cmp(obj, "object", ts.SyntaxKind.ExclamationEqualsEqualsToken), _bin(obj, ts.factory.createNull(), ts.SyntaxKind.EqualsEqualsEqualsToken)]);
+}
+
+export function _arr_check(arr: ts.Expression) : ts.Expression {
+    return _call(_access(_ident("Array", true), "isArray"), [arr]);
 }
 
 export function _new(className: string, parameters: string | ts.Expression[]) : ts.Expression {
@@ -224,6 +229,15 @@ export function _arr_binding_decl(elements: [number, ts.Identifier][], value: ts
 
 export function _ternary(cond: ts.Expression, ifTrue: ts.Expression, ifFalse: ts.Expression) : ts.Expression {
     return factory.createConditionalExpression(cond, undefined, ifTrue, undefined, ifFalse);
+}
+
+export function _arrow_fn(args: Array<ts.Identifier|string>, body: BlockLike) : ts.Expression {
+    return factory.createArrowFunction(undefined, undefined, 
+        args.map(arg => ts.factory.createParameterDeclaration(undefined, undefined, _ident(arg))),
+        undefined,
+        undefined,
+        _concise(body)
+    );
 }
 
 export const UNDEFINED = factory.createIdentifier("undefined");

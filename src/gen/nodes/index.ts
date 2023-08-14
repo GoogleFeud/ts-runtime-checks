@@ -1,6 +1,6 @@
 import ts, { isNumericLiteral } from "typescript";
 import { ObjectTypeDataExactOptions, TypeDataKinds, Validator, genValidator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _obj_binding_decl, _arr_binding_decl, _concise, _ternary } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _obj_binding_decl, _arr_binding_decl, _concise, _ternary, _arr_check } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 import { isSingleIfStatement } from "../../utils";
 
@@ -176,7 +176,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
 
         return {
-            condition: _not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()])),
+            condition: _not(_arr_check(validator.expression())),
             error: [validator, [_str("to be an array")]],
             before: large.length ? [ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([_arr_binding_decl(large, validator.expression())], ts.NodeFlags.Const))] : undefined,
             after
@@ -192,14 +192,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             before = first.before;
             errorMsg = first.error;
         }
-        const parseCtx = {
-            $self: validator.expression(),
-            $parent: (index?: ts.Expression) => {
-                let parentToGet = index && isNumericLiteral(index) ? +index.text : 0; 
-                let parent = validator.parent;
-                while (parent && parentToGet--) parent = parent.parent;
-                return parent ? parent.expression() : UNDEFINED;
-            }};
+        const parseCtx = genCheckCtx(validator);
         for (const check of validator.typeData.expressions) normalChecks.push(_not(ctx.transformer.stringToNode(check, parseCtx)));
         return {
             condition: _or(normalChecks),
@@ -209,44 +202,21 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         };
     }
     case TypeDataKinds.Union: {
-        const compoundTypes: GenResult[] = [], 
-            normalTypeConditions: ts.Expression[] = [], 
-            normalTypeErrors: GenResultError[] = [],
-            objectTypes: GenResult[] = [],
-            typeNames: string[] = [];
-        let isNullable = false;
-        const objectKind = validator.getChildCountOfKind(TypeDataKinds.Object);
-        for (const child of validator.children) {
-            if (child.typeData.kind === TypeDataKinds.Undefined) {
-                isNullable = true;
-                continue;
-            }
-            else if (child.children.length && child.typeData.kind === TypeDataKinds.Object && objectKind > 1) {
-                const idRepresent = child.getFirstLiteralChild();
-                if (idRepresent) {
-                    child.children.splice(child.children.indexOf(idRepresent), 1);
-                    const node = genNode(child, ctx);
-                    const childNode = genNode(idRepresent, ctx);
-                    objectTypes.push({
-                        condition: childNode.condition,
-                        error: childNode.error,
-                        after: node.after
-                    });
-                }
-                else compoundTypes.push(genNode(child, ctx));
-            }
-            else if (child.isComplexType()) compoundTypes.push(genNode(child, ctx));
-            else {
-                const node = genNode(child, ctx);
-                normalTypeConditions.push(node.condition);
-                if (node.error) normalTypeErrors.push(node.error);
-            }
-            typeNames.push(ctx.transformer.checker.typeToString(child._original));
+        const { compound, normal, object, isNullable } = getUnionMembers(validator.children);
+
+        const normalTypeConditions = [], normalTypeErrors = [];
+        const compoundTypes = compound.map(c => genNode(c, ctx));
+        const typeNames = validator.children.map(c => ctx.transformer.checker.typeToString(c._original));
+
+        for (const normalCheck of normal) {
+            const node = genNode(normalCheck, ctx);
+            normalTypeConditions.push(node.condition);
+            if (node.error) normalTypeErrors.push(node.error);
         }
 
-        if (objectTypes.length) compoundTypes.push({
+        if (object.length) compoundTypes.push({
             condition: _obj_check(validator.expression()),
-            after: [_if_nest(0, objectTypes.map(t => [t.condition, joinResultStmts(t)]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))]
+            after: [_if_nest(0, object.map(([childNode, propNode]) => [genNode(propNode, ctx).condition, joinResultStmts(genNode(childNode, ctx))]), error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]]))]
         });
 
         if (!compoundTypes.length) return {
@@ -292,7 +262,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         }
 
         return {
-            condition: _not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()])),
+            condition: _not(_arr_check(validator.expression())),
             error: [validator, [_str("to be an array")]],
             after: [_for(validator.expression(), index, validateType(childType, ctx))[0]],
         };
@@ -348,6 +318,53 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
 
 export function isNullableNode(validator: Validator) : ts.Expression {
     return _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken);
+}
+
+export function getUnionMembers(validators: Validator[]) : {
+    compound: Validator[],
+    normal: Validator[],
+    object: [Validator, Validator][],
+    isNullable: boolean
+} {
+    const compoundTypes: Validator[] = [], 
+        normalTypes: Validator[] = [],
+        objectTypes: [Validator, Validator][] = [];
+    let isNullable = false;
+    const objectKind = validators.filter(v => v.typeData.kind === TypeDataKinds.Object).length;
+    for (const child of validators) {
+        if (child.typeData.kind === TypeDataKinds.Undefined) {
+            isNullable = true;
+            continue;
+        }
+        else if (child.children.length && child.typeData.kind === TypeDataKinds.Object && objectKind > 1) {
+            const idRepresent = child.getFirstLiteralChild();
+            if (idRepresent) {
+                child.children.splice(child.children.indexOf(idRepresent), 1);
+                objectTypes.push([child, idRepresent]);
+            }
+            else compoundTypes.push(child);
+        }
+        else if (child.isComplexType()) compoundTypes.push(child);
+        else normalTypes.push(child);
+    }
+    return {
+        compound: compoundTypes,
+        normal: normalTypes,
+        object: objectTypes,
+        isNullable
+    };
+}
+
+export function genCheckCtx(validator: Validator) {
+    return {
+        $self: validator.expression(),
+        $parent: (index?: ts.Expression) => {
+            let parentToGet = index && isNumericLiteral(index) ? +index.text : 0; 
+            let parent = validator.parent;
+            while (parent && parentToGet--) parent = parent.parent;
+            return parent ? parent.expression() : UNDEFINED;
+        }
+    };
 }
 
 export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.Statement[] {

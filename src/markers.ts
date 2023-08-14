@@ -2,10 +2,11 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
-import { forEachVar, getCallSigFromType, isTrueType, resolveResultType } from "./utils";
+import { TransformerError, forEachVar, getCallSigFromType, isTrueType, resolveResultType } from "./utils";
 import { ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, fullValidate } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
+import { genMatch } from "./gen/nodes/match";
 
 export interface MarkerCallData {
     parameters: Array<ts.Type>,
@@ -46,7 +47,7 @@ export const Functions: Record<string, FnCallFn> = {
     is: (transformer, data) => {
         let arg = data.call.arguments[0]!, stmt;
         if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
-        const validator = genValidator(transformer, data.parameters[0], ts.isIdentifier(arg) ? arg.text : arg.getText(), arg);
+        const validator = genValidator(transformer, data.parameters[0], (arg as ts.Identifier).text, arg);
         if (!validator) return;
         const ctx = createContext(transformer, { return: ts.factory.createFalse() });
         const nodes = minimizeGenResult(genNode(validator, ctx), ctx);
@@ -101,6 +102,12 @@ export const Functions: Record<string, FnCallFn> = {
             custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
         }, true)));
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
+    },
+    createMatch: (transformer, data) => {
+        if (!data.call.arguments[0]) throw TransformerError(data.call, "Missing first parameter.");
+        if (!ts.isArrayLiteralExpression(data.call.arguments[0])) throw TransformerError(data.call.arguments[0], "First parameter must be an array literal.");
+        const discriminatedObjectAssert = data.call.arguments[1] ? isTrueType(transformer.checker.getTypeAtLocation(data.call.arguments[1])) : false;
+        return genMatch(transformer, data.call.arguments[0], discriminatedObjectAssert);
     }
 };
 
@@ -227,19 +234,19 @@ export type Check<Cond extends string, Err extends string = never, ID extends st
 /**
  * Combine with the `number` type to guarantee that the value is at least `T`.
  */
-export type Min<T extends string | number> = Check<`$self > ${T}`, `to be greater than ${T}`, "min", T>;
+export type Min<T extends string | number> = number & Check<`$self > ${T}`, `to be greater than ${T}`, "min", T>;
 /**
  * Combine with the `number` type to guarantee that the value does not exceed `T`.
  */
-export type Max<T extends string | number> = Check<`$self < ${T}`, `to be less than ${T}`, "max", T>;
+export type Max<T extends string | number> = number & Check<`$self < ${T}`, `to be less than ${T}`, "max", T>;
 /**
  * Combine with the `number` type to guarantee that the value is a floating point.
  */
-export type Float = Check<"$self % 1 !== 0", "to be a float", "float">;
+export type Float = number & Check<"$self % 1 !== 0", "to be a float", "float">;
 /**
  * Combine with the `number` type to guarantee that the value an integer.
  */
-export type Int = Check<"$self % 1 === 0", "to be an int", "int">;
+export type Int = number & Check<"$self % 1 === 0", "to be an int", "int">;
 /**
  * Combine with any type which has a `length` property to guarantee that the value's length is at least `T`.
  */
@@ -255,7 +262,11 @@ export type Length<T extends string | number> = Check<`$self.length === ${T}`, `
 /**
  * Combine with the `string` type to guarantee that it matches the provided pattern `T`.
  */
-export type Matches<T extends string> = Check<`${T}.test($self)`, `to match ${T}`, "matches", T>;
+export type Matches<T extends string> = string & Check<`${T}.test($self)`, `to match ${T}`, "matches", T>;
+/**
+ * Compares the value with the expression `Expr`. Does **not** validate `T`.
+ */
+export type Eq<T, Expr extends string> = NoCheck<T> & Check<`$self === ${Expr}`, `to be equal to "${Expr}"`, "eq", Expr>;
 /**
  * Negate the check `T`.
  */
@@ -340,3 +351,6 @@ export declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean) : (val: U) => R;

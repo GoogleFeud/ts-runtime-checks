@@ -1,6 +1,6 @@
 # ts-runtime-checks
 
-A typescript transformer which automatically generates validation code from your types. Think of it as a validation library like [ajv](https://ajv.js.org/guide/typescript.html) and [zod](https://zod.dev/), except it **completely** relies on the typescript compiler, and generates vanilla javascript code on demand. This comes with a lot of advantages:
+A typescript transformer which automatically generates validation code from your types. Think of it as a validation library like [ajv](https://ajv.js.org/guide/typescript.html) and [zod](https://zod.dev/), except it completely relies on the typescript compiler, and generates vanilla javascript code on demand. This comes with a lot of advantages:
 
 - It's just types - no boilerplate or schemas needed.
 - Only validate where you see fit.
@@ -11,6 +11,7 @@ Here are some examples you can try out in the [playground](https://googlefeud.gi
 
 **Asserting function parameters:**
 ```ts
+// Special `Assert` types get detected and generate validation code
 function greet(name: Assert<string>, age: Assert<number>) : string {
     return `Hello ${name}, you are ${age} years old!`
 }
@@ -26,14 +27,39 @@ function greet(name, age) {
 ```ts
 interface User {
     name: string,
-    age: number & Min<13>
+    age: Min<13>
 }
 
 const maybeUser = { name: "GoogleFeud", age: "123" }
+// `is` function transpiles to the validation code
 const isUser = is<User>(maybeUser);
 
 // Transpiles to:
-const isUser = typeof maybeUser === "object" && maybeUser !== null && typeof maybeUser.name === "string" && (typeof maybeUser.age === "number" && maybeUser.age > 13);
+const isUser = typeof maybeUser === "object" && maybeUser !== null && typeof maybeUser.name === "string" && typeof maybeUser.age === "number" && maybeUser.age > 13;
+```
+**Pattern Matching:**
+```ts
+// `createMatch` function creates a pattern-matching function
+const extractString = createMatch<string>([
+    (value: string | number) => value.toString(),
+    ({value}: { value: string }) => value,
+    () => {
+        throw new Error("Could not extract string.");
+    }
+]);
+
+//Transpiles to:
+const extractString = value_1 => {
+    if (typeof value_1 === "string") return value_1.toString();
+    else if (typeof value_1 === "number") return value_1.toString();
+    else if (typeof value_1 === "object" && value_1 !== null) {
+        if (typeof value_1.value === "string") {
+            let { value } = value_1;
+            return value;
+        }
+    }
+    throw new Error("Could not extract string.");
+};
 ```
 
 ## Usage
@@ -114,10 +140,11 @@ By far the most important marker is `Assert<T>`, which tells the transpiler to v
 
 The library also exports a set of built-in `Check` type aliases, which can be used on existing types to add extra checks:
 
-- `Min<Size>` / `Max<Size>` - Used with the `number` type to check if a number is within bounds.
-- `Integer` / `Float` - Used with the `number` type to limit the value to integers / floating points.
+- `Min<Size>` / `Max<Size>` - Check if a number is within bounds.
+- `Int` / `Float` - Limit a number to integer / floating point.
+- `Matches<Regex>` - Check if the value matches a pattern.
 - `MaxLen<Size>` / `MinLen<Size>` / `Length<Size>` - Used with anything that has a `length` property to check if it's within bounds.
-- `Matches<Regex>` - Used with the `string` type to check if the value matches a pattern.
+- `Eq` - Compares the value with the expression provided.
 - `Not` - Negates a `Check`.
 - `Or` - Logical OR operator for `Check`.
 
@@ -332,6 +359,152 @@ const validatedBody = (() => {
 })();
 ```
 
+### `as` assertions
+
+You can use `as` type assertions to validate values in expressions. The transformer remembers what's safe to use, so you can't generate the same validation code twice.
+
+```ts
+interface Args {
+    name: string,
+    path: string,
+    output: string,
+    clusters?: number
+}
+
+const args = JSON.parse(process.argv[2] as Assert<string>) as Assert<Args>;
+
+// Transpiles to:
+if (typeof process.argv[2] !== "string")
+    throw new Error("Expected process.argv[2] to be a string");
+const value_1 = JSON.parse(process.argv[2]);
+if (typeof value_1 !== "object" || value_1 === null)
+    throw new Error("Expected value to be an object");
+if (typeof value_1.name !== "string")
+    throw new Error("Expected value.name to be a string");
+if (typeof value_1.path !== "string")
+    throw new Error("Expected value.path to be a string");
+if (typeof value_1.output !== "string")
+    throw new Error("Expected value.output to be a string");
+if (value_1.clusters !== undefined && typeof value_1.clusters !== "number")
+    throw new Error("Expected value.clusters to be a number");
+const args = value_1;
+```
+
+### `is<Type>(value)`
+
+Every call to this function gets replaced with an immediately-invoked arrow function, which returns `true` if the value matches the type, `false` otherwise.
+
+```ts
+const val = JSON.parse("[\"Hello\", \"World\"]");;
+if (is<[string, number]>(val)) {
+    // val is guaranteed to be [string, number]
+}
+
+// Transpiles to:
+
+const val = JSON.parse("[\"Hello\", \"World\"]");
+if (Array.isArray(val) && typeof val[0] === "string" && typeof val[1] === "number") {
+    // Your code
+}
+```
+
+### `check<Type, rawErrors>(value)`
+
+Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array of errors.
+
+If `rawErrors` is true, the raw error data will be pushed to the array instead of error strings.
+
+```ts
+const [value, errors] = check<[string, number]>(JSON.parse("[\"Hello\", \"World\"]"));
+if (errors.length) console.log(errors);
+
+// Transpiles to:
+
+const value = JSON.parse("[\"Hello\", \"World\"]");
+const errors = [];
+if (!Array.isArray(value)) errors.push("Expected value to be an array");
+else {
+    if (typeof value[0] !== "string") errors.push("Expected value[0] to be a string");
+    if (typeof value[1] !== "number") errors.push("Expected value[1] to be a number");
+}
+if (errors.length) console.log(errors);
+```
+
+### `createMatch<ReturnType, InputType>(function[], noDiscriminatedObjAssert)`
+
+Creates a match function which performs pattern-matching on the input type, based on the provided functions. Each function in the array is a match arm, where the type of the first parameter is the type the arm is matching against:
+
+```ts
+// We want the match function to return a string and to accept a number
+const resolver = createMatch<string, number>([
+    // Match arm which catches the values 0 or 1
+    (_: 0 | 1) => "not many",
+    // Match arm which catches any number less than 9
+    (_: Max<9>) => "a few",
+    // Match arm which catches any number that hasn't already been caught
+    (_: number) => "lots"
+]);
+
+// Transpiles to:
+const resolver = value_1 => {
+    if (typeof value_1 === "number") {
+        if (value_1 === 1 || value_1 === 0) return "not many";
+        else if (value_1 < 9) return "a few";
+        else return "lots";
+    }
+};
+```
+
+You could also have a default match arm by omitting the parameter, or giving it the `unknown` or `any` type:
+
+```ts
+const toNumber: (value: unknown) => number = createMatch<number>([
+    (value: string | boolean) => +value,
+    (value: number) => value,
+    (value: Array<string> | Array<number> | Array<boolean>) => value.map(v => toNumber(v)).reduce((val, acc) => val + acc, 0),
+    (value: unknown) => {
+        throw new Error("Unexpected value: " + value);
+    }
+]);
+
+// Transpiles to:
+const toNumber = value_1 => {
+    if (typeof value_1 === "boolean")  return +value_1;
+    else if (typeof value_1 === "string") return +value_1;
+    else if (typeof value_1 === "number") return value_1;
+    else if (Array.isArray(value_1)) {
+        if (value_1.every(value_2 => typeof value_2 === "string") || value_1.every(value_3 => typeof value_3 === "number") || value_1.every(value_4 => typeof value_4 === "boolean"))
+            return value_1.map(v => toNumber(v)).reduce((val, acc) => val + acc, 0);
+    }
+    throw new Error("Unexpected value: " + value_1);
+};
+```
+
+If the `discriminatedObjAssert` parameter is set to true, then if you have a discriminated object (object which has a literal property), only the literal property will be validated. Use this if you have already validated the source or if you know that it's correct.
+
+### Destructuring
+
+If a value is a destructured object / array, then only the deconstructed properties / elements will get validated.
+
+```ts
+function test({user: { skills: [skill1, skill2, skill3] }}: Assert<{
+    user: {
+        username: string,
+        password: string,
+        skills: [string, string?, string?]
+    }
+}, undefined>) {
+    // Your code
+}
+
+// Transpiles to:
+function test({ user: { skills: [skill1, skill2, skill3] } }) {
+    if (typeof skill1 !== "string") return undefined;
+    if (skill2 !== undefined && typeof skill2 !== "string") return undefined;
+    if (skill3 !== undefined && typeof skill3 !== "string") return undefined;
+}
+```
+
 ### Supported types and code generation
 
 - `string`s and string literals
@@ -369,100 +542,6 @@ const validatedBody = (() => {
 - Recursive types
     - A function gets generated for recursive types, with the validation code inside.
     - **Note:** Currently, because of limitations, errors in recursive types are a lot more limited.
-
-### `as` assertions
-
-You can use `as` type assertions to validate values in expressions. The transformer remembers what's safe to use, so you can't generate the same validation code twice.
-
-```ts
-interface Args {
-    name: string,
-    path: string,
-    output: string,
-    clusters?: number
-}
-
-const args = JSON.parse(process.argv[2] as Assert<string>) as Assert<Args>;
-
-// Transpiles to:
-if (typeof process.argv[2] !== "string")
-    throw new Error("Expected process.argv[2] to be a string");
-const value_1 = JSON.parse(process.argv[2]);
-if (typeof value_1 !== "object" || value_1 === null)
-    throw new Error("Expected value to be an object");
-if (typeof value_1.name !== "string")
-    throw new Error("Expected value.name to be a string");
-if (typeof value_1.path !== "string")
-    throw new Error("Expected value.path to be a string");
-if (typeof value_1.output !== "string")
-    throw new Error("Expected value.output to be a string");
-if (value_1.clusters !== undefined && typeof value_1.clusters !== "number")
-    throw new Error("Expected value.clusters to be a number");
-const args = value_1;
-```
-
-### `is<Type>(value)` utility function
-
-Every call to this function gets replaced with an immediately-invoked arrow function, which returns `true` if the value matches the type, `false` otherwise.
-
-```ts
-const val = JSON.parse("[\"Hello\", \"World\"]");;
-if (is<[string, number]>(val)) {
-    // val is guaranteed to be [string, number]
-}
-
-// Transpiles to:
-
-const val = JSON.parse("[\"Hello\", \"World\"]");
-if (Array.isArray(val) && typeof val[0] === "string" && typeof val[1] === "number") {
-    // Your code
-}
-```
-
-### `check<Type, rawErrors>(value)` utility function
-
-Every call to this function gets replaced with an immediately-invoked arrow function, which returns the provided value, along with an array of errors.
-
-If `rawErrors` is true, the raw error data will be pushed to the array instead of error strings.
-
-```ts
-const [value, errors] = check<[string, number]>(JSON.parse("[\"Hello\", \"World\"]"));
-if (errors.length) console.log(errors);
-
-// Transpiles to:
-
-const value = JSON.parse("[\"Hello\", \"World\"]");
-const errors = [];
-if (!Array.isArray(value)) errors.push("Expected value to be an array");
-else {
-    if (typeof value[0] !== "string") errors.push("Expected value[0] to be a string");
-    if (typeof value[1] !== "number") errors.push("Expected value[1] to be a number");
-}
-if (errors.length) console.log(errors);
-```
-
-### Destructuring
-
-If a value is a destructured object / array, then only the deconstructed properties / elements will get validated.
-
-```ts
-function test({user: { skills: [skill1, skill2, skill3] }}: Assert<{
-    user: {
-        username: string,
-        password: string,
-        skills: [string, string?, string?]
-    }
-}, undefined>) {
-    // Your code
-}
-
-// Transpiles to:
-function test({ user: { skills: [skill1, skill2, skill3] } }) {
-    if (typeof skill1 !== "string") return undefined;
-    if (skill2 !== undefined && typeof skill2 !== "string") return undefined;
-    if (skill3 !== undefined && typeof skill3 !== "string") return undefined;
-}
-```
 
 ### Complex types
 

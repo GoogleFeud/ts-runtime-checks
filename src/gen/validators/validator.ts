@@ -2,7 +2,7 @@ import ts from "typescript";
 import { _access, Stringifyable } from "../expressionUtils";
 import { isInt } from "../../utils";
 
-export const enum TypeDataKinds {
+export enum TypeDataKinds {
     Number,
     String,
     Array,
@@ -242,12 +242,13 @@ export class Validator {
         return result;
     }
 
-    getChildCountOfKind(kind: TypeDataKinds) : number {
-        let counter = 0;
-        for (const child of this.children) {
-            if (child.typeData.kind === kind) counter++;
+    areChildrenSameKind() : boolean {
+        if (!this.children.length) return true;
+        const firstChildKind =( this.children[0] as Validator).typeData.kind;
+        for (let i=1; i < this.children.length; i++) {
+            if ((this.children[i] as Validator).typeData.kind !== firstChildKind) return false;
         }
-        return counter;
+        return true;
     }
 
     getFirstLiteralChild() : Validator|undefined {
@@ -324,6 +325,27 @@ export class Validator {
             sum += this.typeData.expressions.length;
         }
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
+    }
+
+    /**
+     * Whether the validator is in it's simplest form - no children, extra checks, etc.
+     */
+    isSimple() : boolean {
+        switch (this.typeData.kind) {
+        case TypeDataKinds.Number:
+        case TypeDataKinds.String:
+        case TypeDataKinds.Boolean:
+            return this.typeData.literal === undefined;
+        case TypeDataKinds.Object:
+        case TypeDataKinds.Array:
+        case TypeDataKinds.Tuple:
+        case TypeDataKinds.Check:
+            return this.children.length === 0;
+        case TypeDataKinds.Union:
+            return false;
+        default:
+            return true;
+        }
     }
 
     getRawTypeData() : Record<string, unknown> {
