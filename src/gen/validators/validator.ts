@@ -339,8 +339,8 @@ export class Validator {
         case TypeDataKinds.Object:
         case TypeDataKinds.Array:
         case TypeDataKinds.Tuple:
-            return this.children.length === 0;
         case TypeDataKinds.Check:
+            return this.children.length === 0;
         case TypeDataKinds.Union:
             return false;
         default:

@@ -2,7 +2,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { Transformer } from "./transformer";
-import { forEachVar, getCallSigFromType, isTrueType, resolveResultType } from "./gen/utils";
+import { TransformerError, forEachVar, getCallSigFromType, isTrueType, resolveResultType } from "./gen/utils";
 import { ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, fullValidate } from "./gen/nodes";
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
@@ -104,7 +104,8 @@ export const Functions: Record<string, FnCallFn> = {
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
     },
     createMatch: (transformer, data) => {
-        if (!data.call.arguments[0] || !ts.isArrayLiteralExpression(data.call.arguments[0])) return;
+        if (!data.call.arguments[0]) throw TransformerError(data.call, "Missing first parameter.");
+        if (!ts.isArrayLiteralExpression(data.call.arguments[0])) throw TransformerError(data.call.arguments[0], "First parameter must be an array literal.");
         const discriminatedObjectAssert = data.call.arguments[1] ? isTrueType(transformer.checker.getTypeAtLocation(data.call.arguments[1])) : false;
         return genMatch(transformer, data.call.arguments[0], discriminatedObjectAssert);
     }
@@ -262,6 +263,10 @@ export type Length<T extends string | number> = Check<`$self.length === ${T}`, `
  * Combine with the `string` type to guarantee that it matches the provided pattern `T`.
  */
 export type Matches<T extends string> = Check<`${T}.test($self)`, `to match ${T}`, "matches", T>;
+/**
+ * Compares the value with the expression `Expr`. Does **not** validate `T`.
+ */
+export type Eq<T, Expr extends string> = NoCheck<T> & Check<`$self === ${Expr}`, `to be equal to "${Expr}"`, "eq", Expr>;
 /**
  * Negate the check `T`.
  */

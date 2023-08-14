@@ -151,7 +151,6 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
         }
     }
 
-    const statements: [ts.Expression, BlockLike][] = [];
     const ctx = createContext(transformer, {});
 
     // Objects will always get checked last, otherwise sort by weight
@@ -161,28 +160,34 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
         return a[1].reduce((acc, w) => w.type.weigh() + acc, 0) - b[1].reduce((acc, w) => w.type.weigh() + acc, 0);
     });
 
-    for (const [dataKind, arms] of sortedTypeGroups) {
-        const inner: [ts.Expression, BlockLike][] = [];
-        let simplestArm;
+    const finalStatements = [];
 
-        for (const arm of arms) {
-            if (arm.type.isSimple()) {
-                if (!simplestArm) simplestArm = arm;
-                continue;
+    if (sortedTypeGroups.length) {
+        const statements: [ts.Expression, BlockLike][] = [];
+        for (const [dataKind, arms] of sortedTypeGroups) {
+            const inner: [ts.Expression, BlockLike][] = [];
+            let simplestArm;
+    
+            for (const arm of arms) {
+                if (arm.type.isSimple()) {
+                    if (!simplestArm) simplestArm = arm;
+                    continue;
+                }
+                const genned = genConciseNode(arm.type, ctx, false);
+                inner.push([genned.condition, genReplacementStmt(transformer, fnParam, arm.body, arm.parameter)]);
             }
-            const genned = genConciseNode(arm.type, ctx, false);
-            inner.push([genned.condition, genReplacementStmt(transformer, fnParam, arm.body, arm.parameter)]);
+    
+            const simplestNode = genConciseNode(simplestArm?.type || new Validator(transformer.checker.getAnyType(), fnParam.text, { kind: dataKind }, fnParam), ctx, true);
+            statements.push([simplestNode.condition, makeBlock(_if_chain(0, inner, simplestArm ? genReplacementStmt(transformer, fnParam, simplestArm.body, simplestArm.parameter) : undefined)!)]);
         }
-
-        const simplestNode = genConciseNode(simplestArm?.type || new Validator(transformer.checker.getAnyType(), fnParam.text, { kind: dataKind }, fnParam), ctx, true);
-        statements.push([simplestNode.condition, makeBlock(_if_chain(0, inner, simplestArm ? genReplacementStmt(transformer, fnParam, simplestArm.body, simplestArm.parameter) : undefined)!)]);
+        finalStatements.push(_if_chain(0, statements)!);
     }
 
-    const finalStatements = [_if_chain(0, statements)!];
     if (defaultArm) {
         const replaced = genReplacementStmt(transformer, fnParam, defaultArm.body, defaultArm.parameter);
         if (ts.isBlock(replaced)) finalStatements.push(...replaced.statements);
         else finalStatements.push(replaced);
     }
+    
     return ts.factory.createArrowFunction(undefined, undefined, [ts.factory.createParameterDeclaration(undefined, undefined, fnParam)], undefined, undefined, ts.factory.createBlock(finalStatements, true));
 }

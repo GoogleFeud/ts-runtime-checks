@@ -1,6 +1,6 @@
 # ts-runtime-checks
 
-A typescript transformer which automatically generates validation code from your types. Think of it as a validation library like [ajv](https://ajv.js.org/guide/typescript.html) and [zod](https://zod.dev/), except it **completely** relies on the typescript compiler, and generates vanilla javascript code on demand. This comes with a lot of advantages:
+A typescript transformer which automatically generates validation code from your types. Think of it as a validation library like [ajv](https://ajv.js.org/guide/typescript.html) and [zod](https://zod.dev/), except it completely relies on the typescript compiler, and generates vanilla javascript code on demand. This comes with a lot of advantages:
 
 - It's just types - no boilerplate or schemas needed.
 - Only validate where you see fit.
@@ -33,7 +33,7 @@ const maybeUser = { name: "GoogleFeud", age: "123" }
 const isUser = is<User>(maybeUser);
 
 // Transpiles to:
-const isUser = typeof maybeUser === "object" && maybeUser !== null && typeof maybeUser.name === "string" && (typeof maybeUser.age === "number" && maybeUser.age > 13);
+const isUser = typeof maybeUser === "object" && maybeUser !== null && typeof maybeUser.name === "string" && typeof maybeUser.age === "number" && maybeUser.age > 13;
 ```
 **Pattern Matching:**
 ```ts
@@ -138,9 +138,10 @@ By far the most important marker is `Assert<T>`, which tells the transpiler to v
 The library also exports a set of built-in `Check` type aliases, which can be used on existing types to add extra checks:
 
 - `Min<Size>` / `Max<Size>` - Used with the `number` type to check if a number is within bounds.
-- `Integer` / `Float` - Used with the `number` type to limit the value to integers / floating points.
+- `Int` / `Float` - Used with the `number` type to limit the value to integers / floating points.
 - `MaxLen<Size>` / `MinLen<Size>` / `Length<Size>` - Used with anything that has a `length` property to check if it's within bounds.
 - `Matches<Regex>` - Used with the `string` type to check if the value matches a pattern.
+- `Eq` - Compares the value with the expression provided.
 - `Not` - Negates a `Check`.
 - `Or` - Logical OR operator for `Check`.
 
@@ -355,44 +356,6 @@ const validatedBody = (() => {
 })();
 ```
 
-### Supported types and code generation
-
-- `string`s and string literals
-    - `typeof value === "string"` or `value === "literal"`
-- `number`s and number literals
-    - `typeof value === "number"` or `value === 420`
-- `boolean`
-    - `typeof value === "boolean"`
-- `symbol`
-    - `typeof value === "symbol"`
-- `bigint`
-    - `typeof value === "bigint"`
-- `null`
-    - `value === null`
-- `undefined`
-    - `value === undefined`
-- Tuples (`[a, b, c]`)
-    - `Array.isArray(value)`
-    - Each type in the tuple gets checked individually.
-- Arrays (`Array<a>`, `a[]`)
-    - `Array.isArray(value)`
-    - Each value in the array gets checked via a `for` loop.
-- Interfaces and object literals (`{a: b, c: d}`)
-    - `typeof value === "object"`
-    - `value !== null`
-    - Each property in the object gets checked individually.
-- Classes
-    - `value instanceof Class`
-- Enums
-- Unions (`a | b | c`)
-    - Discriminated unions - Each type in the union must have a value that's either a string or a number literal.
-- Function type parameters
-    - Inside the function as one big union with the `Infer` utility type.
-    - At the call site of the function with the `Resolve` utility type.
-- Recursive types
-    - A function gets generated for recursive types, with the validation code inside.
-    - **Note:** Currently, because of limitations, errors in recursive types are a lot more limited.
-
 ### `as` assertions
 
 You can use `as` type assertions to validate values in expressions. The transformer remembers what's safe to use, so you can't generate the same validation code twice.
@@ -538,6 +501,44 @@ function test({ user: { skills: [skill1, skill2, skill3] } }) {
     if (skill3 !== undefined && typeof skill3 !== "string") return undefined;
 }
 ```
+
+### Supported types and code generation
+
+- `string`s and string literals
+    - `typeof value === "string"` or `value === "literal"`
+- `number`s and number literals
+    - `typeof value === "number"` or `value === 420`
+- `boolean`
+    - `typeof value === "boolean"`
+- `symbol`
+    - `typeof value === "symbol"`
+- `bigint`
+    - `typeof value === "bigint"`
+- `null`
+    - `value === null`
+- `undefined`
+    - `value === undefined`
+- Tuples (`[a, b, c]`)
+    - `Array.isArray(value)`
+    - Each type in the tuple gets checked individually.
+- Arrays (`Array<a>`, `a[]`)
+    - `Array.isArray(value)`
+    - Each value in the array gets checked via a `for` loop.
+- Interfaces and object literals (`{a: b, c: d}`)
+    - `typeof value === "object"`
+    - `value !== null`
+    - Each property in the object gets checked individually.
+- Classes
+    - `value instanceof Class`
+- Enums
+- Unions (`a | b | c`)
+    - Discriminated unions - Each type in the union must have a value that's either a string or a number literal.
+- Function type parameters
+    - Inside the function as one big union with the `Infer` utility type.
+    - At the call site of the function with the `Resolve` utility type.
+- Recursive types
+    - A function gets generated for recursive types, with the validation code inside.
+    - **Note:** Currently, because of limitations, errors in recursive types are a lot more limited.
 
 ### Complex types
 
