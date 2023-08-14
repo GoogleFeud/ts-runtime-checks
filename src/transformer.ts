@@ -1,7 +1,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { FnCallFn, Functions, MarkerCallData, MarkerFn, Markers } from "./markers";
-import { TransformerError, getResolvedTypesFromCallSig, hasBit, resolveAsChain } from "./gen/utils";
+import { TransformerError, getResolvedTypesFromCallSig, hasBit, resolveAsChain } from "./utils";
 import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
 import { ValidationResultType, createContext, fullValidate } from "./gen/nodes";

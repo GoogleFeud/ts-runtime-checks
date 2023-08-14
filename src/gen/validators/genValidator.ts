@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { CheckTypeHint, ObjectTypeDataExactOptions, TypeDataKinds, Validator, ValidatorTargetName } from "./validator";
-import { getCallSigFromType, getResolvedTypesFromCallSig, hasBit, isTrueType } from "../utils";
+import { getCallSigFromType, getResolvedTypesFromCallSig, hasBit, isTrueType } from "../../utils";
 import { Transformer } from "../../transformer";
 
 export function genValidator(transformer: Transformer, type: ts.Type | undefined, name: ValidatorTargetName, exp?: ts.Expression, parent?: Validator) : Validator | undefined {
