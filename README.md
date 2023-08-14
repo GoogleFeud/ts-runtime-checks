@@ -11,6 +11,7 @@ Here are some examples you can try out in the [playground](https://googlefeud.gi
 
 **Asserting function parameters:**
 ```ts
+// Special `Assert` types get detected and generate validation code
 function greet(name: Assert<string>, age: Assert<number>) : string {
     return `Hello ${name}, you are ${age} years old!`
 }
@@ -26,10 +27,11 @@ function greet(name, age) {
 ```ts
 interface User {
     name: string,
-    age: number & Min<13>
+    age: Min<13>
 }
 
 const maybeUser = { name: "GoogleFeud", age: "123" }
+// `is` function transpiles to the validation code
 const isUser = is<User>(maybeUser);
 
 // Transpiles to:
@@ -37,6 +39,7 @@ const isUser = typeof maybeUser === "object" && maybeUser !== null && typeof may
 ```
 **Pattern Matching:**
 ```ts
+// `createMatch` function creates a pattern-matching function
 const extractString = createMatch<string>([
     (value: string | number) => value.toString(),
     ({value}: { value: string }) => value,
@@ -137,10 +140,10 @@ By far the most important marker is `Assert<T>`, which tells the transpiler to v
 
 The library also exports a set of built-in `Check` type aliases, which can be used on existing types to add extra checks:
 
-- `Min<Size>` / `Max<Size>` - Used with the `number` type to check if a number is within bounds.
-- `Int` / `Float` - Used with the `number` type to limit the value to integers / floating points.
+- `Min<Size>` / `Max<Size>` - Check if a number is within bounds.
+- `Int` / `Float` - Limit a number to integer / floating point.
+- `Matches<Regex>` - Check if the value matches a pattern.
 - `MaxLen<Size>` / `MinLen<Size>` / `Length<Size>` - Used with anything that has a `length` property to check if it's within bounds.
-- `Matches<Regex>` - Used with the `string` type to check if the value matches a pattern.
 - `Eq` - Compares the value with the expression provided.
 - `Not` - Negates a `Check`.
 - `Or` - Logical OR operator for `Check`.
@@ -437,7 +440,7 @@ const resolver = createMatch<string, number>([
     // Match arm which catches the values 0 or 1
     (_: 0 | 1) => "not many",
     // Match arm which catches any number less than 9
-    (_: number & Max<9>) => "a few",
+    (_: Max<9>) => "a few",
     // Match arm which catches any number that hasn't already been caught
     (_: number) => "lots"
 ]);

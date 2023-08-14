@@ -234,19 +234,19 @@ export type Check<Cond extends string, Err extends string = never, ID extends st
 /**
  * Combine with the `number` type to guarantee that the value is at least `T`.
  */
-export type Min<T extends string | number> = Check<`$self > ${T}`, `to be greater than ${T}`, "min", T>;
+export type Min<T extends string | number> = number & Check<`$self > ${T}`, `to be greater than ${T}`, "min", T>;
 /**
  * Combine with the `number` type to guarantee that the value does not exceed `T`.
  */
-export type Max<T extends string | number> = Check<`$self < ${T}`, `to be less than ${T}`, "max", T>;
+export type Max<T extends string | number> = number & Check<`$self < ${T}`, `to be less than ${T}`, "max", T>;
 /**
  * Combine with the `number` type to guarantee that the value is a floating point.
  */
-export type Float = Check<"$self % 1 !== 0", "to be a float", "float">;
+export type Float = number & Check<"$self % 1 !== 0", "to be a float", "float">;
 /**
  * Combine with the `number` type to guarantee that the value an integer.
  */
-export type Int = Check<"$self % 1 === 0", "to be an int", "int">;
+export type Int = number & Check<"$self % 1 === 0", "to be an int", "int">;
 /**
  * Combine with any type which has a `length` property to guarantee that the value's length is at least `T`.
  */
@@ -262,7 +262,7 @@ export type Length<T extends string | number> = Check<`$self.length === ${T}`, `
 /**
  * Combine with the `string` type to guarantee that it matches the provided pattern `T`.
  */
-export type Matches<T extends string> = Check<`${T}.test($self)`, `to match ${T}`, "matches", T>;
+export type Matches<T extends string> = string & Check<`${T}.test($self)`, `to match ${T}`, "matches", T>;
 /**
  * Compares the value with the expression `Expr`. Does **not** validate `T`.
  */
