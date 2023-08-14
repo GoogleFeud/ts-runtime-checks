@@ -353,4 +353,4 @@ export declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is
 export declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], discriminatedObjAssert?: boolean) : (val: U) => R;
+export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean) : (val: U) => R;

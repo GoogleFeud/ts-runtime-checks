@@ -33,7 +33,7 @@ type Infer<Type> = Type & { __$name?: "Infer" };
 type Resolve<Type> = Type & { __$name?: "Resolve" };
 declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
-declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], discriminatedObjAssert?: boolean) : (val: U) => R;
+declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean) : (val: U) => R;
 `;
 
 export const CompilerOptions: ts.CompilerOptions = {

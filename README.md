@@ -430,7 +430,7 @@ else {
 if (errors.length) console.log(errors);
 ```
 
-### `createMatch<ReturnType, InputType>(function[], discriminatedObjAssert)`
+### `createMatch<ReturnType, InputType>(function[], noDiscriminatedObjAssert)`
 
 Creates a match function which performs pattern-matching on the input type, based on the provided functions. Each function in the array is a match arm, where the type of the first parameter is the type the arm is matching against:
 
@@ -480,7 +480,7 @@ const toNumber = value_1 => {
 };
 ```
 
-If the `discriminatedObjAssert` parameter is set to true, then the properties of objects that contain a literal string or number will not be validated. Use this if you have already validated the source or if you know that it's correct.
+If the `discriminatedObjAssert` parameter is set to true, then if you have a discriminated object (object which has a literal property), only the literal property will be validated. Use this if you have already validated the source or if you know that it's correct.
 
 ### Destructuring
 
