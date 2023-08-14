@@ -2,7 +2,7 @@ import ts from "typescript";
 import { _access, Stringifyable } from "../expressionUtils";
 import { isInt } from "../../utils";
 
-export const enum TypeDataKinds {
+export enum TypeDataKinds {
     Number,
     String,
     Array,

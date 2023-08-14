@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
-import { Transformer } from "../transformer";
-import { ValidationResultType } from "../gen/nodes";
+import type { Transformer } from "./transformer";
+import type { ValidationResultType } from "./gen/nodes";
 
 export function hasBit(thing: { flags: number }, bit: number) : boolean {
     return (thing.flags & bit) !== 0;
