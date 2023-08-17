@@ -7,7 +7,6 @@ import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
 import { ValidationResultType, createContext, fullValidate } from "./gen/nodes";
 import { TsRuntimeChecksConfig } from ".";
 import { typeToJSONSchema } from "./gen/jsonSchema";
-import path from "path";
 
 interface ToBeResolved {
     validators: Validator[],
@@ -160,6 +159,8 @@ export class Transformer {
                 }
             } 
         } else if (ts.isTypeDeclaration(node) && this.config.jsonSchema) {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const path = require("path");
             if (this.config.jsonSchema?.types) {
                 if (this.config.jsonSchema.types.includes(node.symbol.name)) {
                     const jsonSchemaVal = typeToJSONSchema(this, this.checker.getTypeAtLocation(node));
