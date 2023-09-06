@@ -65,7 +65,9 @@ export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: 
     else return resolvedTypes;
     // For some reason type parameters declared in class method signatures have a mapper themselves...
     const resolvedSources = sources.map(p => {
-        const param: ts.Type & { mapper?: ts.TypeMapper } = p;
+        // Type of mapper is ts.TypeMapper
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const param: ts.Type & { mapper?: any } = p;
         if (param.mapper && param.mapper.kind === ts.TypeMapKind.Composite && param.mapper.mapper1.kind === ts.TypeMapKind.Simple) return param.mapper.mapper1.source;
         else return param;
     });
