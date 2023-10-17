@@ -107,6 +107,7 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
 
     const fnParam = _ident("value");
     const typeGroups: Map<number, MatchArm[]> = new Map();
+    const uniqueChecks: MatchArm[] = [];
     let defaultArm: (Omit<MatchArm, "type"|"parameter"> & { parameter?: ts.ParameterDeclaration }) | undefined; 
 
     for (const sig of functions) {
@@ -125,9 +126,12 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
             continue;
         }
 
-        if (paramType.typeData.kind === TypeDataKinds.Check && paramType.children.length) {
-            const child = paramType.children[0] as Validator;
-            addToObjArray(typeGroups, child.typeData.kind, { parameter: paramValueDecl, type: paramType, body  });
+        if (paramType.typeData.kind === TypeDataKinds.Check) {
+            if (paramType.children.length) {
+                const child = paramType.children[0] as Validator;
+                addToObjArray(typeGroups, child.typeData.kind, { parameter: paramValueDecl, type: paramType, body  });
+            }
+            else uniqueChecks.push({ parameter: paramValueDecl, type: paramType, body });
         }
         else if (paramType.typeData.kind === TypeDataKinds.Union) {
             const kinds = new Map<number, Validator[]>();
@@ -161,9 +165,9 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
     });
 
     const finalStatements = [];
+    const statements: [ts.Expression, BlockLike][] = uniqueChecks.map<[ts.Expression, BlockLike]>(c => [genConciseNode(c.type, ctx).condition, genReplacementStmt(transformer, fnParam, c.body, c.parameter)]);
 
     if (sortedTypeGroups.length) {
-        const statements: [ts.Expression, BlockLike][] = [];
         for (const [dataKind, arms] of sortedTypeGroups) {
             const inner: [ts.Expression, BlockLike][] = [];
             let simplestArm;
@@ -180,8 +184,9 @@ export function genMatch(transformer: Transformer, functionTuple: ts.ArrayLitera
             const simplestNode = genConciseNode(simplestArm?.type || new Validator(transformer.checker.getAnyType(), fnParam.text, { kind: dataKind }, fnParam), ctx, true);
             statements.push([simplestNode.condition, makeBlock(_if_chain(0, inner, simplestArm ? genReplacementStmt(transformer, fnParam, simplestArm.body, simplestArm.parameter) : undefined)!)]);
         }
-        finalStatements.push(_if_chain(0, statements)!);
     }
+
+    finalStatements.push(_if_chain(0, statements)!);
 
     if (defaultArm) {
         const replaced = genReplacementStmt(transformer, fnParam, defaultArm.body, defaultArm.parameter);

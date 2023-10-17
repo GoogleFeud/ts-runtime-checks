@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
-import type { Transformer } from "./transformer";
-import type { ValidationResultType } from "./gen/nodes";
+import type { Transformer } from "../transformer";
+import type { ValidationResultType } from "../gen/nodes";
 
 export function hasBit(thing: { flags: number }, bit: number) : boolean {
     return (thing.flags & bit) !== 0;
@@ -152,4 +152,29 @@ export function TransformerErrorWrapper(start: number, length: number, msg: stri
         getCurrentDirectory: ts.sys.getCurrentDirectory,
         getCanonicalFileName: (fileName) => fileName
     }));
+}
+
+export class ArrayMap<K extends string|number|symbol, V> extends Map<K, V[]> {
+    constructor() {
+        super();
+    }
+
+    push(key: K, value: V): this {
+        const arrVal = this.get(key);
+        if (arrVal) arrVal.push(value);
+        else this.set(key, [value]);
+        return this;
+    }
+
+    getAndRemove(key: K) : V[] {
+        const values = this.get(key);
+        if (!values) return [];
+        this.delete(key);
+        return values;
+    }
+
+    valueArray() : V[] {
+        return [...this.values()].flat();
+    }
+
 }
