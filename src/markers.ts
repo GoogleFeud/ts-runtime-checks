@@ -158,7 +158,7 @@ function createValidator(transformer: Transformer, type: ts.Type, name: Validato
  * }
  * ```
  */
-export type Assert<T, ReturnValue = ThrowError<Error>> = T & { __$marker?: Assert<T, ReturnValue> };
+export type Assert<T, ReturnValue = ThrowError<Error>> = T & { __$marker?: "Assert", __$marker_params?: [T, ReturnValue] };
 export type ErrorMsg<_rawErrorData = false> = { __$error_msg: true, __$raw_error: _rawErrorData };
 export type ThrowError<ErrorType = Error, _rawErrorData = false> = { __$throw_err: ErrorType, __$raw_error: _rawErrorData };
 
