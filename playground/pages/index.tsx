@@ -13,12 +13,14 @@ const SetupCode = `
 // Interactive playground! Write in your code and see it getting transpiled on the left!
 interface User {
     name: string,
-    id: number
+    id: number & Min<10>
 }
 
 function validate(user: Assert<User>) {
     // Your code...
 }
+
+validate({ name: "abc", id: 4 });
 `;
 
 function Main({transpile}: { transpile: ReturnType<typeof genTranspile>}) {
