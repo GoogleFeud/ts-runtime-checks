@@ -5,7 +5,7 @@ const chai_1 = require("chai");
 describe("Check", () => {
     describe("Assert", () => {
         function test(a) {
-            if (typeof a !== "number" || a < 5 || a > 15)
+            if (typeof a !== "number" || a <= 5 || a >= 15)
                 throw new Error("Expected a to be a number, to be greater than 5, to be less than 15");
             return a;
         }
@@ -21,7 +21,7 @@ describe("Check", () => {
             if (typeof two_1 !== "object" || two_1 === null || Object.keys(two_1).length !== 3 || typeof two_1.a !== "string" || typeof two_1.b !== "number" || typeof two_1.c !== "boolean" || !Array.isArray(one_1))
                 return false;
             for (let i_1 = 0; i_1 < one_1.length; i_1++) {
-                if (typeof one_1[i_1] !== "string" || one_1[i_1].length > 6)
+                if (typeof one_1[i_1] !== "string" || one_1[i_1].length >= 6)
                     return false;
             }
             return true;

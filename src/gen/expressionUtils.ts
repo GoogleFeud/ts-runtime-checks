@@ -153,13 +153,13 @@ export function _not(exp: ts.Expression) : ts.Expression {
         case ts.SyntaxKind.ExclamationEqualsEqualsToken:
             return factory.createBinaryExpression(exp.left, ts.SyntaxKind.EqualsEqualsEqualsToken, exp.right);
         case ts.SyntaxKind.GreaterThanToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanToken, exp.right);
-        case ts.SyntaxKind.GreaterThanEqualsToken:
             return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanEqualsToken, exp.right);
+        case ts.SyntaxKind.GreaterThanEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanToken, exp.right);
         case ts.SyntaxKind.LessThanToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanToken, exp.right);
-        case ts.SyntaxKind.LessThanEqualsToken:
             return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanEqualsToken, exp.right);
+        case ts.SyntaxKind.LessThanEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanToken, exp.right);
         case ts.SyntaxKind.AmpersandAmpersandToken:
             return factory.createBinaryExpression(_not(exp.left), ts.SyntaxKind.BarBarToken, _not(exp.right));
         case ts.SyntaxKind.BarBarToken:
