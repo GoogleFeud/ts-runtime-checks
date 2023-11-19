@@ -104,9 +104,9 @@ export const enum ObjectTypeDataExactOptions {
 
 export interface ObjectTypeData {
     kind: TypeDataKinds.Object,
+    numberIndexInfo?: [Validator, Validator],
+    stringIndexInfo?: [Validator, Validator],
     exact?: ObjectTypeDataExactOptions,
-    stringIndexType?: ts.Type,
-    numberIndexType?: ts.Type,
     useDeleteOperator?: boolean,
     couldBeNull?: boolean
 }
@@ -316,7 +316,7 @@ export class Validator {
             sum += 2;
             break;
         case TypeDataKinds.Object:
-            if (this.typeData.exact || this.typeData.stringIndexType || this.typeData.numberIndexType) sum += 8;
+            if (this.typeData.exact || this.typeData.stringIndexInfo || this.typeData.numberIndexInfo) sum += 8;
             sum += 2;
             break;
         case TypeDataKinds.Recursive:
@@ -325,6 +325,12 @@ export class Validator {
             sum += this.typeData.expressions.length;
         }
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
+    }
+
+    getBaseType() : TypeDataKinds {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (this.typeData.kind === TypeDataKinds.Check && this.children.length) return this.children[0]!.typeData.kind;
+        return this.typeData.kind;
     }
 
     /**

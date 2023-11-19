@@ -1,6 +1,6 @@
 import ts, { isNumericLiteral } from "typescript";
 import { ObjectTypeDataExactOptions, TypeDataKinds, Validator, genValidator } from "../validators";
-import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _obj_binding_decl, _arr_binding_decl, _concise, _ternary, _arr_check } from "../expressionUtils";
+import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _obj_binding_decl, _arr_binding_decl, _concise, _ternary, _arr_check, _var } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 import { isSingleIfStatement } from "../../utils";
 
@@ -286,23 +286,50 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             ])[0]);
         }
 
-        if (validator.typeData.numberIndexType || validator.typeData.stringIndexType) {
-            const innerChecks = [];
+        if (validator.typeData.stringIndexInfo || validator.typeData.numberIndexInfo) {
             const keyName = _ident("p");
-            if (validator.typeData.numberIndexType) {
-                const numberKeyValidator = genValidator(ctx.transformer, validator.typeData.numberIndexType, keyName, undefined, validator);
-                if (numberKeyValidator) innerChecks.push(_if(_not(_call(_ident("isNaN", true), [keyName])), validateType(numberKeyValidator, ctx)));
+            let finalCheck: BlockLike = [];
+
+            if (validator.typeData.stringIndexInfo) {
+                const [indexType, valueType] = validator.typeData.stringIndexInfo;
+                let stringCond, stringErr;
+                if (indexType.typeData.kind === TypeDataKinds.Check) {
+                    indexType.setCustomExpression(keyName);
+                    indexType.setChildren([]);
+                    const node = genNode(indexType, ctx);
+                    stringCond = node.condition;
+                    stringErr = [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", ...(node.error?.[1] || [])])] as [Validator, ts.Expression[]];
+                }
+                valueType.setName(keyName);
+                finalCheck = stringCond ? [
+                    _if(stringCond, error(ctx, stringErr, true)),
+                    ...validateType(valueType, ctx)
+                ] : validateType(valueType, ctx);
             }
-            if (validator.typeData.stringIndexType) {
-                const stringKeyValidator = genValidator(ctx.transformer, validator.typeData.stringIndexType, keyName, undefined, validator);
-                if (stringKeyValidator) innerChecks.push(_if(_typeof_cmp(keyName, "string"), validateType(stringKeyValidator, ctx)));
+            
+            if (validator.typeData.numberIndexInfo) {
+                const [indexType, valueType] = validator.typeData.numberIndexInfo;
+                valueType.setName(keyName);
+                const typeCheck = _not(_call(_ident("isNaN", true), [keyName]));
+                let checkBody;
+                if (indexType.typeData.kind === TypeDataKinds.Check) {
+                    const [stmt, ident] = _var("numKey", _call(_ident("parseFloat", true), [keyName]), ts.NodeFlags.Const);
+                    indexType.setCustomExpression(ident);
+                    indexType.setName(keyName);
+                    indexType.setChildren([]);
+                    const indexTypeCheck = genNode(indexType, ctx);
+                    checkBody = [
+                        stmt,
+                        _if(indexTypeCheck.condition, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", ...(indexTypeCheck.error?.[1] || [])])], true)),
+                        ...validateType(valueType, ctx)
+                    ];
+                } else checkBody = validateType(valueType, ctx);
+
+                if (finalCheck) finalCheck = _if(typeCheck, checkBody, finalCheck);
+                else finalCheck = _if(typeCheck, checkBody, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " to be a number"])], true));
             }
-            checks.push(_for_in(validator.expression(), keyName, 
-                validator.children.length ? _if(
-                    _and(validator.children.filter(c => typeof c.name === "string").map(c => _bin(keyName, _str(c.name as string), ts.SyntaxKind.ExclamationEqualsEqualsToken))),
-                    innerChecks
-                ) : innerChecks
-            )[0]);
+
+            checks.push(_for_in(validator.expression(), keyName, finalCheck)[0]);
         }
 
         return {

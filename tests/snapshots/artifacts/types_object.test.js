@@ -43,5 +43,44 @@ describe("Object", () => {
                 c: ["Hello"]
             })).to.not.throw();
         });
+        function test2(a) {
+            if (typeof a !== "object" || a === null)
+                throw new Error("Expected a to be an object");
+            for (let p_1 in a)
+                if (typeof p_1 === "string" && p_1.length > 3) {
+                    if (typeof a[p_1] !== "number")
+                        throw new Error("Expected a[" + p_1 + "] to be a number");
+                }
+                else
+                    throw new Error("Expected key " + p_1 + " of a " + ("to be a string" + ", " + "to have a length greater than 3"));
+            return true;
+        }
+        it("Throw when key is wrong (Record)", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test2, { a: 123, [2]: 34 })).to.throw("Expected key 2 of a to be a string, to have a length greater than 3");
+        });
+        function test3(a) {
+            if (typeof a !== "object" || a === null)
+                throw new Error("Expected a to be an object");
+            for (let p_2 in a)
+                if (typeof p_2 === "number" && p_2 > 3) {
+                    if (typeof a[p_2] !== "string")
+                        throw new Error("Expected a[" + p_2 + "] to be a string");
+                }
+                else if (typeof p_2 === "string" && /abc/g.test(p_2)) {
+                    if (typeof a[p_2] !== "number")
+                        throw new Error("Expected a[" + p_2 + "] to be a number");
+                }
+                else
+                    throw new Error("Expected key " + p_2 + " of a " + ("to be a number" + ", " + "to be greater than 3") + ", or " + ("to be a string" + ", " + "to match /abc/g"));
+            return true;
+        }
+        it("Throw when there are multiple index types", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test3, {
+                [1]: "abc",
+                [2]: "hello",
+                abc123: "a",
+                other: "3"
+            })).to.throw("Expected key 1 of a to be a number, to be greater than 3, or to be a string, to match /abc/g");
+        });
     });
 });
