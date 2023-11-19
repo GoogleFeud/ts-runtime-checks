@@ -71,6 +71,7 @@ export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: 
         if (param.mapper && param.mapper.kind === ts.TypeMapKind.Composite && param.mapper.mapper1.kind === ts.TypeMapKind.Simple) return param.mapper.mapper1.source;
         else return param;
     });
+
     for (let i=0; i < typeParam.length; i++) {
         const sourceIndex = resolvedSources.indexOf(typeParam[i] as ts.Type);
         if (sourceIndex !== -1) resolvedTypes.push(getApparentType(checker, targets[sourceIndex] as ts.Type));

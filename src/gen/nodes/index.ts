@@ -16,9 +16,10 @@ export interface ValidationResultType {
 export interface NodeGenContext {
     transformer: Transformer,
     resultType: ValidationResultType,
-    useElse?: boolean,
     recursiveFns: ts.FunctionDeclaration[],
-    recursiveFnNames: Map<ts.Type, ts.Identifier>
+    recursiveFnNames: Map<ts.Type, ts.Identifier>,
+    resolvedTypeArguments: Map<ts.Type, Validator>,
+    useElse?: boolean,
 }
 
 export function createContext(transformer: Transformer, resultType: ValidationResultType, useElse?: boolean) : NodeGenContext {
@@ -27,7 +28,8 @@ export function createContext(transformer: Transformer, resultType: ValidationRe
         resultType,
         useElse,
         recursiveFns: [],
-        recursiveFnNames: new Map()
+        recursiveFnNames: new Map(),
+        resolvedTypeArguments: new Map()
     };
 }
 
@@ -154,11 +156,14 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
         condition: _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken),
         error: [validator, [_str("to be undefined")]]
     };
-    // Only way this will run is if the type parameter is optional and cannot be resolved from the call site
-    case TypeDataKinds.Resolve: return {
-        condition: _bool(false),
-        error: [validator, [_str("to be a type parameter")]]
-    };
+    case TypeDataKinds.Resolve: {
+        const resolved = ctx.resolvedTypeArguments.get(validator._original);
+        if (!resolved) return {
+            condition: _bool(false),
+            error: [validator, [_str("to be a type parameter")]]
+        };
+        return genNode(resolved, ctx);
+    }
     case TypeDataKinds.Recursive: {
         if (!ctx.recursiveFnNames.has(validator._original)) return { condition: _bool(false) };
         const fnName = ctx.recursiveFnNames.get(validator._original) as ts.Identifier;

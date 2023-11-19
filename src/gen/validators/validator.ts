@@ -368,4 +368,8 @@ export class Validator {
         }
     }
 
+    clone() : Validator {
+        return new Validator(this._original, this.name, {...this.typeData}, this._exp, this.parent, this.children.map(c => c.clone()));
+    }
+
 }
