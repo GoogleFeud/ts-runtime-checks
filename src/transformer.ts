@@ -71,7 +71,6 @@ export class Transformer {
             this.validatedDecls.set(node, stmt);
             return stmt;
         }
-        else if (ts.isImportDeclaration(node)) return ts.factory.cloneNode(node);
         else if (ts.isAsExpression(node)) {
             let expOnly = resolveAsChain(node);
             const sym = this.checker.getSymbolAtLocation(expOnly);
