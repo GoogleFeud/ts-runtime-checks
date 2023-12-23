@@ -13,12 +13,14 @@ const SetupCode = `
 // Interactive playground! Write in your code and see it getting transpiled on the left!
 interface User {
     name: string,
-    id: number
+    id: number & Min<10>
 }
 
 function validate(user: Assert<User>) {
     // Your code...
 }
+
+validate({ name: "abc", id: 4 });
 `;
 
 function Main({transpile}: { transpile: ReturnType<typeof genTranspile>}) {
@@ -40,7 +42,7 @@ function Main({transpile}: { transpile: ReturnType<typeof genTranspile>}) {
     }, []);
 
     return (
-        <div>
+        <div className={styles.app}>
             <header className={styles.header}>
                 <div style={{display: "flex"}}>
                     <h2>Typescript runtime checks</h2>
@@ -59,14 +61,16 @@ function Main({transpile}: { transpile: ReturnType<typeof genTranspile>}) {
                     </svg>
                 </a>
             </header>
-            <SplitPane split="vertical" defaultSize={"50%"} primary="first">
-                <TextEditor code={code} onChange={(code) => {
-                    setCode(code);
-                    const {code: transpiled, error} = transpile(code || "");
-                    setCompiled(transpiled ? transpiled : "" + error);
-                }} />
-                <Runnable code={compiledCode} />
-            </SplitPane>
+            <div className={styles.mainContent}>
+                <SplitPane split="vertical" defaultSize={"50%"} primary="first">
+                    <TextEditor code={code} onChange={(code) => {
+                        setCode(code);
+                        const {code: transpiled, error} = transpile(code || "");
+                        setCompiled(transpiled ? transpiled : "" + error);
+                    }} />
+                    <Runnable code={compiledCode} />
+                </SplitPane>
+            </div>
             <footer className={styles.footer}>
                 <p>Made with ❤️ by <a href="https://github.com/GoogleFeud">GoogleFeud</a>.</p>
             </footer>

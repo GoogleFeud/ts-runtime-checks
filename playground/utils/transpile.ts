@@ -3,7 +3,7 @@ import ts from "typescript";
 import TsChecks from "../../dist/index";
 
 export const Markers = `
-type Assert<T, ReturnValue = ThrowError<Error>> = T & { __$marker?: Assert<T, ReturnValue> };
+type Assert<T, ReturnValue = ThrowError<Error>> = T & { __$marker?: "Assert", __$marker_params?: [T, ReturnValue] };
 type ErrorMsg<_rawErrorData = false> = { __$error_msg: true, __$raw_error: _rawErrorData };
 type ThrowError<ErrorType = Error, _rawErrorData = false> = { __$throw_err: ErrorType, __$raw_error: _rawErrorData };
 interface ValidationError {

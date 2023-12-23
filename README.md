@@ -11,7 +11,7 @@ Here are some examples you can try out in the [playground](https://googlefeud.gi
 
 **Asserting function parameters:**
 ```ts
-// Special `Assert` types get detected and generate validation code
+// Special `Assert` types get detected and generates validation code
 function greet(name: Assert<string>, age: Assert<number>) : string {
     return `Hello ${name}, you are ${age} years old!`
 }

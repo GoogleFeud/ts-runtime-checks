@@ -21,7 +21,7 @@ describe("Check function", () => {
             if (typeof value_1.c !== "object" || value_1.c === null)
                 errs.push("Expected value.c to be an object");
             else {
-                if (typeof value_1.c.d !== "number" || value_1.c.d < 1 || value_1.c.d > 10)
+                if (typeof value_1.c.d !== "number" || value_1.c.d <= 1 || value_1.c.d >= 10)
                     errs.push("Expected value.c.d to be a number, to be greater than 1, to be less than 10");
             }
         }

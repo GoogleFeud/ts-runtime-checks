@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { CheckTypeHint, ObjectTypeDataExactOptions, TypeDataKinds, Validator, ValidatorTargetName } from "./validator";
+import { CheckTypeHint, ObjectTypeData, ObjectTypeDataExactOptions, TypeDataKinds, Validator, ValidatorTargetName } from "./validator";
 import { getCallSigFromType, getResolvedTypesFromCallSig, hasBit, isTrueType } from "../../utils";
 import { Transformer } from "../../transformer";
 
@@ -115,11 +115,19 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
                 return genValidator(transformer, typeOfProp, sym.name, undefined, parent);
             });
-            return new Validator(type, name, {
-                kind: TypeDataKinds.Object,
-                stringIndexType: type.getStringIndexType(),
-                numberIndexType: type.getNumberIndexType()
+            const objValidator = new Validator(type, name, {
+                kind: TypeDataKinds.Object
             }, exp, parent, properties);
+            for (const info of ((type as ts.ObjectType).indexInfos as ts.IndexInfo[] || [])) {
+                const keyType = genValidator(transformer, info.keyType, "", undefined, objValidator);
+                if (!keyType) continue;
+                const valueType = genValidator(transformer, info.type, "", undefined, objValidator);
+                if (valueType) {
+                    if (keyType.getBaseType() === TypeDataKinds.String) (objValidator.typeData as ObjectTypeData).stringIndexInfo = [keyType, valueType];
+                    else if (keyType.getBaseType() === TypeDataKinds.Number) (objValidator.typeData as ObjectTypeData).numberIndexInfo = [keyType, valueType];
+                }
+            }
+            return objValidator;
         }
         else {
             switch (utility.value) {

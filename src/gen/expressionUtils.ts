@@ -2,7 +2,7 @@ import ts, { factory } from "typescript";
 import { isInt } from "../utils";
 
 export type Stringifyable = string | ts.Expression;
-export type BlockLike = ts.Expression | ts.Statement | ts.Block | Array<ts.Statement>;
+export type BlockLike = ts.Expression | ts.Statement | ts.Block | ts.Statement[];
 
 export function concat(strings: TemplateStringsArray, ...elements: Stringifyable[]) : ts.Expression[] {
     const finalElements: Stringifyable[] = [];
@@ -21,10 +21,16 @@ export function joinElements(elements: Stringifyable[], separator = "") : ts.Exp
         if (currentElementText === "") continue;
         if (lastElement && (ts.isStringLiteral(lastElement) || ts.isNumericLiteral(lastElement))) {
             if (currentElementText !== undefined) output[output.length - 1] = _str(lastElement.text + separator + currentElementText);
-            else output.push(element as ts.Expression);
+            else {
+                if (separator) output[output.length - 1] = _str(lastElement.text + separator);
+                output.push(element as ts.Expression);
+            }
         } else {
             if (currentElementText !== undefined) output.push(_str(lastElement ? separator + currentElementText : "" + currentElementText));
-            else output.push(element as ts.Expression);
+            else {
+                if (separator && lastElement) output.push(_str(separator));
+                output.push(element as ts.Expression);
+            }
         }
     }
     return output;
@@ -147,13 +153,13 @@ export function _not(exp: ts.Expression) : ts.Expression {
         case ts.SyntaxKind.ExclamationEqualsEqualsToken:
             return factory.createBinaryExpression(exp.left, ts.SyntaxKind.EqualsEqualsEqualsToken, exp.right);
         case ts.SyntaxKind.GreaterThanToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanToken, exp.right);
-        case ts.SyntaxKind.GreaterThanEqualsToken:
             return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanEqualsToken, exp.right);
+        case ts.SyntaxKind.GreaterThanEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.LessThanToken, exp.right);
         case ts.SyntaxKind.LessThanToken:
-            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanToken, exp.right);
-        case ts.SyntaxKind.LessThanEqualsToken:
             return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanEqualsToken, exp.right);
+        case ts.SyntaxKind.LessThanEqualsToken:
+            return factory.createBinaryExpression(exp.left, ts.SyntaxKind.GreaterThanToken, exp.right);
         case ts.SyntaxKind.AmpersandAmpersandToken:
             return factory.createBinaryExpression(_not(exp.left), ts.SyntaxKind.BarBarToken, _not(exp.right));
         case ts.SyntaxKind.BarBarToken:

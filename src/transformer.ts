@@ -106,19 +106,19 @@ export class Transformer {
                     }
                     resolveTypeLoop:
                     for (const data of this.toBeResolved.get(decl) as ToBeResolved[]) {
+                        const ctx = createContext(this, data.resultType);
                         const resolved = getResolvedTypesFromCallSig(this.checker, data.validators.map(v => (v.typeData as ResolveTypeData).type), sigOfCall);
                         if (resolved.length) {
                             for (let i=0; i < resolved.length; i++) {
                                 const validator = data.validators[i];
                                 if (!validator || !resolved[i]) continue resolveTypeLoop;
-                                const actualValidator = genValidator(this, resolved[i], "");
+                                const actualValidator = genValidator(this, resolved[i], validator.name, validator.customExp, validator.parent);
                                 if (!actualValidator) continue resolveTypeLoop;
-                                validator.setChildren(actualValidator.children);
-                                validator.typeData = actualValidator.typeData;
+                                ctx.resolvedTypeArguments.set(validator._original, actualValidator);
                             }
                         }
                         statements.push(
-                            ...fullValidate(data.top, createContext(this, data.resultType), data.optional)
+                            ...fullValidate(data.top, ctx, data.optional)
                         );
                     }
                     if (!statements.length) return node;
@@ -183,11 +183,15 @@ export class Transformer {
 
     callMarker(node: ts.Node|undefined, block: Block.Block<unknown>, data: Pick<MarkerCallData, "exp"|"optional">) : [ts.Type, ts.Expression?]|undefined {
         if (!node || !ts.isTypeReferenceNode(node)) return;
-        const type = this.resolveActualType(this.checker.getTypeAtLocation(node));
-        if (!type || !type.aliasSymbol || !Markers[type.aliasSymbol.name]) return;
-        return [type, (Markers[type.aliasSymbol.name] as MarkerFn)(this, {
+        const type = this.checker.getTypeAtLocation(node);
+        if (!type) return;
+        const markerName = this.getPropType(type, "marker");
+        if (!markerName || !markerName.isStringLiteral()) return;
+        const markerParams = this.getPropType(type, "marker_params");
+        if (!markerParams || !this.checker.isTupleType(markerParams)) return;
+        return [type, (Markers[markerName.value] as MarkerFn)(this, {
             block,
-            parameters: type.aliasTypeArguments as ts.Type[] || node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
+            parameters: (this.checker.getTypeArguments(markerParams as ts.TypeReference) as ts.Type[]) || node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
             ...data
         })];
     }
