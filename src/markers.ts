@@ -234,11 +234,11 @@ export type Check<Cond extends string, Err extends string = never, ID extends st
 /**
  * Combine with the `number` type to guarantee that the value is at least `T`.
  */
-export type Min<T extends string | number> = number & Check<`$self > ${T}`, `to be greater than ${T}`, "min", T>;
+export type Min<T extends string | number> = number & Check<`$self >= ${T}`, `to be greater than ${T}`, "min", T>;
 /**
  * Combine with the `number` type to guarantee that the value does not exceed `T`.
  */
-export type Max<T extends string | number> = number & Check<`$self < ${T}`, `to be less than ${T}`, "max", T>;
+export type Max<T extends string | number> = number & Check<`$self <= ${T}`, `to be less than ${T}`, "max", T>;
 /**
  * Combine with the `number` type to guarantee that the value is a floating point.
  */
@@ -250,11 +250,11 @@ export type Int = number & Check<"$self % 1 === 0", "to be an int", "int">;
 /**
  * Combine with any type which has a `length` property to guarantee that the value's length is at least `T`.
  */
-export type MinLen<T extends string | number> = Check<`$self.length > ${T}`, `to have a length greater than ${T}`, "minLen", T>;
+export type MinLen<T extends string | number> = Check<`$self.length >= ${T}`, `to have a length greater than ${T}`, "minLen", T>;
 /**
  * Combine with any type which has a `length` property to guarantee that the value's length does not exceed `T`.
  */
-export type MaxLen<T extends string | number> = Check<`$self.length < ${T}`, `to have a length less than ${T}`, "maxLen", T>;
+export type MaxLen<T extends string | number> = Check<`$self.length <= ${T}`, `to have a length less than ${T}`, "maxLen", T>;
 /**
  * Combine with any type which has a `length` property to guarantee that the value's length is equal to `T`.
  */

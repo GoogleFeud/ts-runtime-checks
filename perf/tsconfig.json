@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
       "target": "ES2021",
-      "module": "ESNext",
+      "module": "NodeNext",
       "moduleResolution": "nodenext",
       "rootDir": "./src",
       "removeComments": true,
