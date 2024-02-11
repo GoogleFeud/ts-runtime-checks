@@ -5,7 +5,7 @@ import { Transformer } from "../../transformer";
 import { isSingleIfStatement } from "../../utils";
 
 export interface ValidationResultType {
-    throw?: string,
+    throw?: string | ts.Symbol,
     return?: ts.Expression,
     returnErr?: boolean,
     custom?: (msg: ts.Expression) => ts.Statement,
@@ -19,10 +19,11 @@ export interface NodeGenContext {
     recursiveFns: ts.FunctionDeclaration[],
     recursiveFnNames: Map<ts.Type, ts.Identifier>,
     resolvedTypeArguments: Map<ts.Type, Validator>,
+    usedErrorClases?: ts.Symbol[],
     useElse?: boolean,
 }
 
-export function createContext(transformer: Transformer, resultType: ValidationResultType, useElse?: boolean) : NodeGenContext {
+export function createContext(transformer: Transformer, resultType: ValidationResultType, useElse?: boolean): NodeGenContext {
     return {
         transformer,
         resultType,
@@ -45,11 +46,11 @@ export interface GenResult {
     minimzed?: boolean
 }
 
-export function joinResultStmts(result: GenResult) : ts.Statement[] {
+export function joinResultStmts(result: GenResult): ts.Statement[] {
     return [...(result.before || []), ...(result.after || [])];
 }
 
-export function error(ctx: NodeGenContext, error?: GenResultError, isFull = false) : ts.Statement {
+export function error(ctx: NodeGenContext, error?: GenResultError, isFull = false): ts.Statement {
     if (ctx.resultType.none) return ts.factory.createReturnStatement();
     if (ctx.resultType.return) return ts.factory.createReturnStatement(ctx.resultType.return);
     if (!error) return ts.factory.createReturnStatement();
@@ -59,13 +60,20 @@ export function error(ctx: NodeGenContext, error?: GenResultError, isFull = fals
         expectedType: _obj(error[0].getRawTypeData() as unknown as Record<string, ts.Expression>)
     }) : _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0].path(), " ", ...error[1]]), ts.SyntaxKind.PlusToken);
     if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
-    else if (ctx.resultType.throw) return _throw(_new(ctx.resultType.throw, [finalMsg]));
+    else if (ctx.resultType.throw) {
+        let throwClass;
+        if (typeof ctx.resultType.throw === "string") throwClass = ctx.resultType.throw;
+        else {
+            const imported = ctx.transformer.symbolsToImport.identifierMap.get(ctx.resultType.throw);
+            throwClass = imported || ctx.resultType.throw.name;
+        }
+        return _throw(_new(throwClass, [finalMsg]));
+    }
     else if (ctx.resultType.custom) return ctx.resultType.custom(finalMsg);
     else return _throw(_new("Error", [finalMsg]));
 }
 
-export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
-
+export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
     if (validator.recursiveOrigins.length) {
         const types = validator.recursiveOrigins;
         const name = typeof validator.name === "string" ? validator.name : "_recursive";
@@ -106,7 +114,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             error: [validator, [_str(`to be ${ctx.transformer.checker.typeToString(validator._original)}`)]]
         };
     }
-    
+
     switch (validator.typeData.kind) {
     case TypeDataKinds.Number: {
         if (validator.typeData.literal !== undefined) return {
@@ -128,7 +136,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
             error: [validator, [_str("to be a string")]]
         };
     }
-    case TypeDataKinds.Boolean: return { 
+    case TypeDataKinds.Boolean: return {
         condition: validator.typeData.literal !== undefined ? _bin(validator.expression(), _bool(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken) : _typeof_cmp(validator.expression(), "boolean", ts.SyntaxKind.ExclamationEqualsEqualsToken),
         error: [validator, [validator.typeData.literal !== undefined ? _str(`to be ${validator.typeData.literal}`) : _str("to be a boolean")]]
     };
@@ -311,7 +319,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
                     ...validateType(valueType, ctx)
                 ] : validateType(valueType, ctx);
             }
-            
+
             if (validator.typeData.numberIndexInfo) {
                 const [indexType, valueType] = validator.typeData.numberIndexInfo;
                 valueType.setName(keyName);
@@ -348,17 +356,17 @@ export function genNode(validator: Validator, ctx: NodeGenContext) : GenResult {
     }
 }
 
-export function isNullableNode(validator: Validator) : ts.Expression {
+export function isNullableNode(validator: Validator): ts.Expression {
     return _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken);
 }
 
-export function getUnionMembers(validators: Validator[]) : {
+export function getUnionMembers(validators: Validator[]): {
     compound: Validator[],
     normal: Validator[],
     object: [Validator, Validator][],
     isNullable: boolean
 } {
-    const compoundTypes: Validator[] = [], 
+    const compoundTypes: Validator[] = [],
         normalTypes: Validator[] = [],
         objectTypes: [Validator, Validator][] = [];
     let isNullable = false;
@@ -391,7 +399,7 @@ export function genCheckCtx(validator: Validator) {
     return {
         $self: validator.expression(),
         $parent: (index?: ts.Expression) => {
-            let parentToGet = index && isNumericLiteral(index) ? +index.text : 0; 
+            let parentToGet = index && isNumericLiteral(index) ? +index.text : 0;
             let parent = validator.parent;
             while (parent && parentToGet--) parent = parent.parent;
             return parent ? parent.expression() : UNDEFINED;
@@ -399,7 +407,7 @@ export function genCheckCtx(validator: Validator) {
     };
 }
 
-export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.Statement[] {
+export function genStatements(results: GenResult[], ctx: NodeGenContext): ts.Statement[] {
     const result = [];
     for (const genResult of results) {
         if (ctx.useElse && genResult.after) result.push(_if(genResult.condition, error(ctx, genResult.error), joinResultStmts(genResult)));
@@ -412,7 +420,7 @@ export function genStatements(results: GenResult[], ctx: NodeGenContext) : ts.St
     return [...result];
 }
 
-export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean) : ts.Statement[] {
+export function validateType(validator: Validator, ctx: NodeGenContext, isOptional?: boolean): ts.Statement[] {
     const genResult = genNode(validator, ctx);
     const node = ctx.resultType.return ? minimizeGenResult(genResult, ctx) : genResult;
     if (isOptional) {
@@ -425,12 +433,12 @@ export function validateType(validator: Validator, ctx: NodeGenContext, isOption
     else return genStatements([node], ctx);
 }
 
-export function fullValidate(validator: Validator, ctx: NodeGenContext, isOptional?: boolean) : ts.Statement[] {
+export function fullValidate(validator: Validator, ctx: NodeGenContext, isOptional?: boolean): ts.Statement[] {
     const stmts = validateType(validator, ctx, isOptional);
     return [...ctx.recursiveFns, ...stmts];
 }
 
-export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate?: boolean) : GenResult {
+export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate?: boolean): GenResult {
     if (result.ifFalse) return result;
     const _join = negate ? _and : _or;
     const _negate = negate ? _not : <T>(exp: T) => exp;
@@ -451,7 +459,7 @@ export function minimizeGenResult(result: GenResult, ctx: NodeGenContext, negate
         }
         else return result;
     }
-    
+
     if (result.after) {
         for (const stmt of result.after) {
             if (isSingleIfStatement(stmt)) ifStatements.push(_negate(stmt.expression));

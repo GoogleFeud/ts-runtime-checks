@@ -28,6 +28,7 @@ export type FnCallFn = (transformer: Transformer, data: FnCallData) => ts.Expres
 export const Markers: Record<string, MarkerFn> = {
     Assert: (trans, {exp, block, parameters, optional}) => {
         const resultType = resolveResultType(trans, parameters[1]);
+        if (resultType.throw && typeof resultType.throw !== "string") trans.importSymbol(resultType.throw, exp);
         let callBy = exp as ts.Expression;
         if (!ts.isIdentifier(callBy) && !ts.isBindingName(callBy)) {
             const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);

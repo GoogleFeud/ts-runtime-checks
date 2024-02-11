@@ -1,7 +1,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import { FnCallFn, Functions, MarkerCallData, MarkerFn, Markers } from "./markers";
-import { TransformerError, getResolvedTypesFromCallSig, hasBit, resolveAsChain } from "./utils";
+import { TransformerError, getResolvedTypesFromCallSig, hasBit, importSymbol, resolveAsChain } from "./utils";
 import { UNDEFINED, _var } from "./gen/expressionUtils";
 import { ResolveTypeData, Validator, genValidator } from "./gen/validators";
 import { ValidationResultType, createContext, fullValidate } from "./gen/nodes";
@@ -22,6 +22,10 @@ export class Transformer {
     ctx: ts.TransformationContext;
     toBeResolved: Map<ts.SignatureDeclaration, ToBeResolved[]>;
     validatedDecls: Map<ts.Declaration, ts.FunctionLikeDeclaration>;
+    symbolsToImport: {
+        identifierMap: Map<ts.Symbol, ts.Identifier>,
+        importStatements: ts.ImportDeclaration[]
+    };
     constructor(program: ts.Program, ctx: ts.TransformationContext, config: TsRuntimeChecksConfig) {
         this.checker = program.getTypeChecker();
         this.program = program;
@@ -29,12 +33,25 @@ export class Transformer {
         this.config = config;
         this.toBeResolved = new Map();
         this.validatedDecls = new Map();
+        this.symbolsToImport = {
+            identifierMap: new Map(),
+            importStatements: []
+        };
     }
 
     run(node: ts.SourceFile) : ts.SourceFile {
         if (node.isDeclarationFile) return node;
         const children = this.visitEach(node.statements);
-        return ts.factory.updateSourceFile(node, children);
+        const allChildren = [...this.symbolsToImport.importStatements, ...children];
+        this.symbolsToImport = { identifierMap: new Map(), importStatements: [] };
+        return ts.factory.updateSourceFile(node, allChildren);
+    }
+
+    importSymbol(sym: ts.Symbol, node: ts.Node) : void {
+        const res = importSymbol(node.getSourceFile(), sym);
+        if (!res) return;
+        this.symbolsToImport.importStatements.push(res[0]);
+        this.symbolsToImport.identifierMap.set(sym, res[1]);
     }
 
     private visitEach<T extends ts.Node>(nodes: ts.NodeArray<T> | Array<T>, block: Block.Block<T> = Block.createBlock()) : Array<T> {

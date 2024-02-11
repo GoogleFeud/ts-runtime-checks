@@ -128,9 +128,9 @@ export function _arr_check(arr: ts.Expression) : ts.Expression {
     return _call(_access(_ident("Array", true), "isArray"), [arr]);
 }
 
-export function _new(className: string, parameters: string | ts.Expression[]) : ts.Expression {
+export function _new(className: string | ts.Identifier, parameters: string | ts.Expression[]) : ts.Expression {
     return factory.createNewExpression(
-        factory.createIdentifier(className),
+        _ident(className, true),
         undefined,
         typeof parameters === "string" ? [factory.createStringLiteral(parameters)] : parameters
     );
