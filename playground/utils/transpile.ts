@@ -31,9 +31,13 @@ type Not<T extends Check<string, string>> = Check<\`!(\${T["__$check"]})\`, \`no
 type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<\`\${L["__$check"]} || \${R["__$check"]}\`, \`\${L["__$error"]} or \${R["__$error"]}\`>;
 type Infer<Type> = Type & { __$name?: "Infer" };
 type Resolve<Type> = Type & { __$name?: "Resolve" };
+type Transform<Fns extends ((value: any) => unknown)[]> = Fns extends [...((value: any) => unknown)[], infer Last] ? Last extends (value: any) => unknown ? { __$transform?: Fns, __$return?: ReturnType<Last> } : unknown : unknown;
+type Transformed<T> = { [Key in keyof T]: T[Key] extends { __$return?: unknown } ? Exclude<T[Key]["__$return"], undefined> : T[Key] };
+
 declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
 declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean) : (val: U) => R;
+declare function transform<T, _M = { __$marker: "transform" }>(value: T): Transformed<T>;
 `;
 
 export const CompilerOptions: ts.CompilerOptions = {

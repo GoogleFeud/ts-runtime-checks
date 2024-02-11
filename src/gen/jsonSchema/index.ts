@@ -74,6 +74,7 @@ export function validatorToJSONSchema(validator: Validator) : JSONSchema|undefin
     case TypeDataKinds.Resolve:
     case TypeDataKinds.Symbol:
     case TypeDataKinds.Undefined:
+    case TypeDataKinds.Transformation:
         return undefined;
     }
 }

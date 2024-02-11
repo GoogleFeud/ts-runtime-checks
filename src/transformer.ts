@@ -47,11 +47,13 @@ export class Transformer {
         return ts.factory.updateSourceFile(node, allChildren);
     }
 
-    importSymbol(sym: ts.Symbol, node: ts.Node) : void {
+    importSymbol(sym: ts.Symbol, node: ts.Node) : ts.Identifier | undefined {
+        if (this.symbolsToImport.identifierMap.has(sym)) return this.symbolsToImport.identifierMap.get(sym); 
         const res = importSymbol(node.getSourceFile(), sym);
-        if (!res) return;
+        if (!res) return ts.factory.createIdentifier(sym.escapedName as string);
         this.symbolsToImport.importStatements.push(res[0]);
         this.symbolsToImport.identifierMap.set(sym, res[1]);
+        return res[1];
     }
 
     private visitEach<T extends ts.Node>(nodes: ts.NodeArray<T> | Array<T>, block: Block.Block<T> = Block.createBlock()) : Array<T> {

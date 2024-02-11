@@ -246,4 +246,8 @@ export function _arrow_fn(args: Array<ts.Identifier|string>, body: BlockLike) : 
     );
 }
 
+export function _assign(left: ts.Expression, right: ts.Expression) : ts.Expression {
+    return factory.createAssignment(left, right);
+}
+
 export const UNDEFINED = factory.createIdentifier("undefined");
