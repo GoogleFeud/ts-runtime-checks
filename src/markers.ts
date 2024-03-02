@@ -22,12 +22,13 @@ export interface FnCallData {
     parameters: ts.Type[]
 }
 
-export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Expression|undefined;
-export type FnCallFn = (transformer: Transformer, data: FnCallData) => ts.Expression|void;
+export type MarkerFn = (transformer: Transformer, data: MarkerCallData) => ts.Expression | undefined;
+export type FnCallFn = (transformer: Transformer, data: FnCallData) => ts.Expression | void;
 
 export const Markers: Record<string, MarkerFn> = {
-    Assert: (trans, {exp, block, parameters, optional}) => {
+    Assert: (trans, { exp, block, parameters, optional }) => {
         const resultType = resolveResultType(trans, parameters[1]);
+        if (resultType.throw && typeof resultType.throw !== "string") trans.importSymbol(resultType.throw, exp);
         let callBy = exp as ts.Expression;
         if (!ts.isIdentifier(callBy) && !ts.isBindingName(callBy)) {
             const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
@@ -37,7 +38,7 @@ export const Markers: Record<string, MarkerFn> = {
         block.nodes.push(...forEachVar(callBy, (i, patternType) => {
             const validator = createValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i, resultType, optional);
             if (!validator) return [];
-            return fullValidate(validator, createContext(trans, resultType), optional);
+            return fullValidate(validator, createContext(trans, resultType, exp), optional);
         }));
         return callBy;
     }
@@ -49,7 +50,7 @@ export const Functions: Record<string, FnCallFn> = {
         if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
         const validator = genValidator(transformer, data.parameters[0], (arg as ts.Identifier).text, arg);
         if (!validator) return;
-        const ctx = createContext(transformer, { return: ts.factory.createFalse() });
+        const ctx = createContext(transformer, { return: ts.factory.createFalse() }, data.call);
         const nodes = minimizeGenResult(genNode(validator, ctx), ctx);
         if (nodes.minimzed && !nodes.after && !nodes.before) {
             const block = data.block.parent || data.block;
@@ -100,7 +101,7 @@ export const Functions: Record<string, FnCallFn> = {
         block.nodes.push(...fullValidate(validator, createContext(transformer, {
             rawErrors: isTrueType(data.parameters[1]),
             custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
-        }, true)));
+        }, data.call, true)));
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
     },
     createMatch: (transformer, data) => {
@@ -111,7 +112,7 @@ export const Functions: Record<string, FnCallFn> = {
     }
 };
 
-function createValidator(transformer: Transformer, type: ts.Type, name: ValidatorTargetName, exp: ts.Expression, resultType: ValidationResultType, optional?: boolean) : Validator|undefined {
+function createValidator(transformer: Transformer, type: ts.Type, name: ValidatorTargetName, exp: ts.Expression, resultType: ValidationResultType, optional?: boolean): Validator | undefined {
     const validator = genValidator(transformer, type, name, exp);
     if (!validator) return;
     const resolveTypes = validator.getChildrenOfKind(TypeDataKinds.Resolve);
@@ -165,13 +166,13 @@ export type ThrowError<ErrorType = Error, _rawErrorData = false> = { __$throw_er
 export interface ValidationError {
     valueName: string,
     value: unknown,
-    expectedType: TypeData & Record<string, string|number>
+    expectedType: TypeData & Record<string, string | number>
 }
 
 /**
  * Does not validate the type inside the marker.
  */
-export type NoCheck<T> = T & {  __$name?: "NoCheck" };
+export type NoCheck<T> = T & { __$name?: "NoCheck" };
 
 /**
  * Validates whether the value doesn't have any excessive properties.   
@@ -227,18 +228,18 @@ export type Expr<Expression extends string> = { __$type?: Expression, __$name?: 
  * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Check<Cond extends string, Err extends string = never, ID extends string = any, Value extends string|number = any> = unknown & { __$check?: Cond, __$error?: Err, __$value?: Value, __$id?: ID, __$name?: "Check" };
+export type Check<Cond extends string | ((value: unknown) => any), Err extends string = never, ID extends string = any, Value extends string | number = any> = unknown & { __$check?: Cond, __$error?: Err, __$value?: Value, __$id?: ID, __$name?: "Check" };
 
 /* Built-in Check types */
 
 /**
  * Combine with the `number` type to guarantee that the value is at least `T`.
  */
-export type Min<T extends string | number> = number & Check<`$self > ${T}`, `to be greater than ${T}`, "min", T>;
+export type Min<T extends string | number> = number & Check<`$self >= ${T}`, `to be greater than ${T}`, "min", T>;
 /**
  * Combine with the `number` type to guarantee that the value does not exceed `T`.
  */
-export type Max<T extends string | number> = number & Check<`$self < ${T}`, `to be less than ${T}`, "max", T>;
+export type Max<T extends string | number> = number & Check<`$self <= ${T}`, `to be less than ${T}`, "max", T>;
 /**
  * Combine with the `number` type to guarantee that the value is a floating point.
  */
@@ -250,11 +251,11 @@ export type Int = number & Check<"$self % 1 === 0", "to be an int", "int">;
 /**
  * Combine with any type which has a `length` property to guarantee that the value's length is at least `T`.
  */
-export type MinLen<T extends string | number> = Check<`$self.length > ${T}`, `to have a length greater than ${T}`, "minLen", T>;
+export type MinLen<T extends string | number> = Check<`$self.length >= ${T}`, `to have a length greater than ${T}`, "minLen", T>;
 /**
  * Combine with any type which has a `length` property to guarantee that the value's length does not exceed `T`.
  */
-export type MaxLen<T extends string | number> = Check<`$self.length < ${T}`, `to have a length less than ${T}`, "maxLen", T>;
+export type MaxLen<T extends string | number> = Check<`$self.length <= ${T}`, `to have a length less than ${T}`, "maxLen", T>;
 /**
  * Combine with any type which has a `length` property to guarantee that the value's length is equal to `T`.
  */
@@ -347,10 +348,10 @@ export type Infer<Type> = Type & { __$name?: "Infer" };
 export type Resolve<Type> = Type & { __$name?: "Resolve" };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
+export declare function is<T, _M = { __$marker: "is" }>(prop: unknown): prop is T;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
+export declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown): [T, Array<_rawErrorData extends true ? ValidationError : string>];
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean) : (val: U) => R;
+export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean): (val: U) => R;

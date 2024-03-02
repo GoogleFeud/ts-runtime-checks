@@ -47,7 +47,7 @@ describe("Object", () => {
             if (typeof a !== "object" || a === null)
                 throw new Error("Expected a to be an object");
             for (let p_1 in a) {
-                if (p_1.length <= 3)
+                if (p_1.length < 3)
                     throw new Error("Expected key " + p_1 + " of a to have a length greater than 3");
                 if (typeof a[p_1] !== "number")
                     throw new Error("Expected a[" + p_1 + "] to be a number");
@@ -63,7 +63,7 @@ describe("Object", () => {
             for (let p_2 in a)
                 if (!isNaN(p_2)) {
                     const numKey_1 = parseFloat(p_2);
-                    if (numKey_1 <= 3)
+                    if (numKey_1 < 3)
                         throw new Error("Expected key " + p_2 + " of a to be greater than 3");
                     if (typeof a[p_2] !== "string")
                         throw new Error("Expected a[" + p_2 + "] to be a string");

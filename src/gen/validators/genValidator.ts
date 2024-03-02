@@ -3,7 +3,7 @@ import { CheckTypeHint, ObjectTypeData, ObjectTypeDataExactOptions, TypeDataKind
 import { getCallSigFromType, getResolvedTypesFromCallSig, hasBit, isTrueType } from "../../utils";
 import { Transformer } from "../../transformer";
 
-export function genValidator(transformer: Transformer, type: ts.Type | undefined, name: ValidatorTargetName, exp?: ts.Expression, parent?: Validator) : Validator | undefined {
+export function genValidator(transformer: Transformer, type: ts.Type | undefined, name: ValidatorTargetName, exp?: ts.Expression, parent?: Validator, transforms?: boolean) : Validator | undefined {
     if (!type) return;
 
     if (parent) {
@@ -27,8 +27,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     else if (hasBit(type, ts.TypeFlags.AnyOrUnknown)) return;
     else if (type.isClass()) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
     else if (type.isTypeParameter()) return;
-    else if (transformer.checker.isTupleType(type)) return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, (parent: Validator) => transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i, undefined, parent)));
-    else if (transformer.checker.isArrayType(type)) return new Validator(type, name, { kind: TypeDataKinds.Array }, exp, parent, (parent) => [genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], "", undefined, parent)]);
+    else if (transformer.checker.isTupleType(type)) return new Validator(type, name, { kind: TypeDataKinds.Tuple }, exp, parent, (parent: Validator) => transformer.checker.getTypeArguments(type as ts.TypeReference).map((t, i) => genValidator(transformer, t, i, undefined, parent, transforms)));
+    else if (transformer.checker.isArrayType(type)) return new Validator(type, name, { kind: TypeDataKinds.Array }, exp, parent, (parent) => [genValidator(transformer, transformer.checker.getTypeArguments(type as ts.TypeReference)[0], "", undefined, parent, transforms)]);
     else if (type.symbol && hasBit(type.symbol, ts.SymbolFlags.FunctionScopedVariable) && hasBit(type.symbol, ts.SymbolFlags.Interface) && type.symbol.valueDeclaration) {
         const innerSym = transformer.checker.getTypeOfSymbolAtLocation(type.symbol, type.symbol.valueDeclaration).symbol;
         if (innerSym.members && innerSym.members.has("__new" as ts.__String)) return new Validator(type, name, { kind: TypeDataKinds.Class }, exp, parent);
@@ -39,21 +39,23 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
         // Check has precedence over other utility types
         if (type.getProperty("__$check")) {
             if (type.isIntersection()) {
-                const checks = [], hints: CheckTypeHint[] = [];
+                const checks: (string | ts.Symbol)[] = [], hints: CheckTypeHint[] = [];
                 let firstNonCheckType: ts.Type|undefined;
                 for (const innerType of type.types) {
                     const typeWithMapper = innerType as (ts.Type & { mapper: ts.TypeMapper });
                     const isUtilityType = transformer.getPropType(typeWithMapper, "name");
                     if (isUtilityType && isUtilityType.isStringLiteral() && !typeWithMapper.getProperty("__$check")) firstNonCheckType = typeWithMapper;
                     else if (typeWithMapper.mapper) {
-                        if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) {
-                            checks.push(typeWithMapper.mapper.target.value);
+                        if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple) {
+                            const target = typeWithMapper.mapper.target;
+                            if (target.isStringLiteral()) checks.push(target.value);
+                            else if (target.symbol) checks.push(target.symbol);
                             continue;
                         }
                         else {
-                            const exp = getMappedType(typeWithMapper, 0);
-                            if (typeof exp === "string") checks.push(exp);
-                            else continue;
+                            const exp = resolveCheck(typeWithMapper, 0);
+                            if (!exp) continue;
+                            checks.push(exp);
                             hints.push({
                                 error: getMappedType(typeWithMapper, 1) as string|undefined,
                                 name: getMappedType(typeWithMapper, 2) as string|undefined,
@@ -63,16 +65,16 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                     }
                     else if (!firstNonCheckType) firstNonCheckType = innerType;
                 }
-                return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: checks, hints }, exp, parent, firstNonCheckType ? (parent) => [genValidator(transformer, firstNonCheckType, "", undefined, parent)] : undefined);
+                return new Validator(type, name, { kind: TypeDataKinds.Check, expressions: checks, hints }, exp, parent, firstNonCheckType ? (parent) => [genValidator(transformer, firstNonCheckType, "", undefined, parent, transforms)] : undefined);
             } else {
                 const typeWithMapper = type as (ts.Type & { mapper: ts.TypeMapper });
                 let check, hint: CheckTypeHint|undefined = undefined;
                 if (typeWithMapper.mapper) {
                     if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) check = typeWithMapper.mapper.target.value;
                     else {
-                        const exp = getMappedType(typeWithMapper, 0);
-                        if (typeof exp === "string") check = exp;
-                        else return;
+                        const exp = resolveCheck(typeWithMapper, 0);
+                        if (!exp) return;
+                        check = exp;
                         hint = {
                             error: getMappedType(typeWithMapper, 1) as string|undefined,
                             name: getMappedType(typeWithMapper, 2) as string|undefined,
@@ -92,7 +94,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                     let validators = [];
                     for (let i=0; i < type.types.length; i++) {
                         const t = type.types[i];
-                        const validator = genValidator(transformer, t, "", undefined, parent);
+                        const validator = genValidator(transformer, t, "", undefined, parent, transforms);
                         if (!validator) continue;
                         if (validator.typeData.kind === TypeDataKinds.Null) includesNull = true;
                         else if (validator.typeData.kind === TypeDataKinds.Object) validator.typeData.couldBeNull = includesNull;
@@ -113,15 +115,15 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             }
             const properties = (parent: Validator) => type.getProperties().map(sym => {
                 const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
-                return genValidator(transformer, typeOfProp, sym.name, undefined, parent);
+                return genValidator(transformer, typeOfProp, sym.name, undefined, parent, transforms);
             });
             const objValidator = new Validator(type, name, {
                 kind: TypeDataKinds.Object
             }, exp, parent, properties);
             for (const info of ((type as ts.ObjectType).indexInfos as ts.IndexInfo[] || [])) {
-                const keyType = genValidator(transformer, info.keyType, "", undefined, objValidator);
+                const keyType = genValidator(transformer, info.keyType, "", undefined, objValidator, transforms);
                 if (!keyType) continue;
-                const valueType = genValidator(transformer, info.type, "", undefined, objValidator);
+                const valueType = genValidator(transformer, info.type, "", undefined, objValidator, transforms);
                 if (valueType) {
                     if (keyType.getBaseType() === TypeDataKinds.String) (objValidator.typeData as ObjectTypeData).stringIndexInfo = [keyType, valueType];
                     else if (keyType.getBaseType() === TypeDataKinds.Number) (objValidator.typeData as ObjectTypeData).numberIndexInfo = [keyType, valueType];
@@ -133,7 +135,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             switch (utility.value) {
             case "NoCheck": return;
             case "ExactProps": {
-                const obj = genValidator(transformer, transformer.getPropType(type, "type"), name, exp, parent);
+                const obj = genValidator(transformer, transformer.getPropType(type, "type"), name, exp, parent, transforms);
                 if (!obj || obj.typeData.kind !== TypeDataKinds.Object) return;
                 obj.typeData.exact = isTrueType(transformer.getPropType(type, "removeExcessive")) ? ObjectTypeDataExactOptions.RemoveExtra : ObjectTypeDataExactOptions.RaiseError;
                 obj.typeData.useDeleteOperator = isTrueType(transformer.getPropType(type, "useDeleteOprerator"));
@@ -148,7 +150,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 callSig.instantiations.forEach((sig) => {
                     const [resolvedType] = getResolvedTypesFromCallSig(transformer.checker, [typeParam], sig);
                     if (!resolvedType) return;
-                    const validator = genValidator(transformer, resolvedType, "", exp, parent);
+                    const validator = genValidator(transformer, resolvedType, "", exp, parent, transforms);
                     if (!validator) return;
                     possibleTypes.push(validator);
                 });
@@ -173,14 +175,28 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     }
 }
 
-export function getMappedType(type: ts.Type & { mapper: ts.TypeMapper}, index: number) : string|number|undefined {
-    if (type.mapper.kind === ts.TypeMapKind.Simple && type.mapper.target.isLiteral()) return type.mapper.target.value as string|number;
-    else if (type.mapper.kind === ts.TypeMapKind.Array && type.mapper.targets) {
-        let target = type.mapper.targets[index];
-        if (!target) return;
-        if (target.isUnion()) target = target.types[target.types.length - 1];
-        if (!target || !target.isLiteral()) return;
-        return target.value as string|number; 
-    }
-    else return;
+export function resolveCheck(type: ts.Type, index: number) : string | ts.Symbol | undefined {
+    const mappedVal = getMappedRawType(type, index);
+    if (!mappedVal) return;
+    if (mappedVal.isStringLiteral()) return mappedVal.value;
+    else if (mappedVal.symbol) return mappedVal.symbol;
+    else return undefined;
+}
+
+export function getMappedRawType(type: ts.Type, index: number) : ts.Type | undefined {
+    if (!("mapper" in type)) return;
+    const typeMapper = (type as (ts.Type & { mapper: ts.TypeMapper })).mapper;
+    let mappedType;
+    if (typeMapper.kind === ts.TypeMapKind.Simple) mappedType = typeMapper.target;
+    else if (typeMapper.kind === ts.TypeMapKind.Array && typeMapper.targets) mappedType = typeMapper.targets[index];
+    
+    if (!mappedType) return;
+    if (mappedType.isUnion()) return mappedType.types[mappedType.types.length - 1];
+    return mappedType;
+}
+
+export function getMappedType(type: ts.Type, index: number) : string|number|undefined {
+    const rawType = getMappedRawType(type, index);
+    if (!rawType || !rawType.isLiteral()) return;
+    return rawType.value as string | number;
 }

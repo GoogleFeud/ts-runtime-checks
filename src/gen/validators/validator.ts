@@ -29,7 +29,7 @@ export interface CheckTypeHint {
 
 export interface CheckTypeData {
     kind: TypeDataKinds.Check,
-    expressions: string[],
+    expressions: (string | ts.Symbol)[],
     hints: CheckTypeHint[]
 }
 

@@ -50,7 +50,7 @@ describe("Create Match function", () => {
                 return "str";
             }
             else if (typeof value_5 === "string") {
-                if (value_5.length > 5)
+                if (value_5.length >= 5)
                     return "str with minLen";
                 else if (/abc/.test(value_5))
                     return "str with matches";
@@ -58,7 +58,7 @@ describe("Create Match function", () => {
                     return "str";
             }
             else if (Array.isArray(value_5)) {
-                if (value_5.every(value_6 => typeof value_6 === "string") && value_5.length > 1)
+                if (value_5.every(value_6 => typeof value_6 === "string") && value_5.length >= 1)
                     return value_5.map(val => resolver(val)).join(", ");
             }
             return `UNKNOWN: ${value_5}`;
