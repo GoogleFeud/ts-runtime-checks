@@ -36,35 +36,26 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     }
     else if (type.getCallSignatures().length === 1) return new Validator(type, name, { kind: TypeDataKinds.Function }, exp, parent);
     else {
-        if (type.getProperty("__$transform")) {
-            if (!transforms) return;
-            const transformerFn = type.isIntersection() ? type.types.find(t => t.getProperty("__$transform")) : type;
-            if (!transformerFn) return;
-            const resolved = getMappedRawType(transformerFn, 0);
-            if (!resolved || !transformer.checker.isTupleType(resolved)) return;
-            return new Validator(type, name, {
-                kind: TypeDataKinds.Transformation,
-                transformers: transformer.checker.getTypeArguments(resolved as ts.TypeReference).map(t => t.symbol)
-            }, exp, parent);
-        }
         // Check has precedence over other utility types
         if (type.getProperty("__$check")) {
             if (type.isIntersection()) {
-                const checks = [], hints: CheckTypeHint[] = [];
+                const checks: (string | ts.Symbol)[] = [], hints: CheckTypeHint[] = [];
                 let firstNonCheckType: ts.Type|undefined;
                 for (const innerType of type.types) {
                     const typeWithMapper = innerType as (ts.Type & { mapper: ts.TypeMapper });
                     const isUtilityType = transformer.getPropType(typeWithMapper, "name");
                     if (isUtilityType && isUtilityType.isStringLiteral() && !typeWithMapper.getProperty("__$check")) firstNonCheckType = typeWithMapper;
                     else if (typeWithMapper.mapper) {
-                        if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) {
-                            checks.push(typeWithMapper.mapper.target.value);
+                        if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple) {
+                            const target = typeWithMapper.mapper.target;
+                            if (target.isStringLiteral()) checks.push(target.value);
+                            else if (target.symbol) checks.push(target.symbol);
                             continue;
                         }
                         else {
-                            const exp = getMappedType(typeWithMapper, 0);
-                            if (typeof exp === "string") checks.push(exp);
-                            else continue;
+                            const exp = resolveCheck(typeWithMapper, 0);
+                            if (!exp) continue;
+                            checks.push(exp);
                             hints.push({
                                 error: getMappedType(typeWithMapper, 1) as string|undefined,
                                 name: getMappedType(typeWithMapper, 2) as string|undefined,
@@ -81,9 +72,9 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 if (typeWithMapper.mapper) {
                     if (typeWithMapper.mapper.kind === ts.TypeMapKind.Simple && typeWithMapper.mapper.target.isStringLiteral()) check = typeWithMapper.mapper.target.value;
                     else {
-                        const exp = getMappedType(typeWithMapper, 0);
-                        if (typeof exp === "string") check = exp;
-                        else return;
+                        const exp = resolveCheck(typeWithMapper, 0);
+                        if (!exp) return;
+                        check = exp;
                         hint = {
                             error: getMappedType(typeWithMapper, 1) as string|undefined,
                             name: getMappedType(typeWithMapper, 2) as string|undefined,
@@ -184,18 +175,28 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
     }
 }
 
+export function resolveCheck(type: ts.Type, index: number) : string | ts.Symbol | undefined {
+    const mappedVal = getMappedRawType(type, index);
+    if (!mappedVal) return;
+    if (mappedVal.isStringLiteral()) return mappedVal.value;
+    else if (mappedVal.symbol) return mappedVal.symbol;
+    else return undefined;
+}
+
 export function getMappedRawType(type: ts.Type, index: number) : ts.Type | undefined {
     if (!("mapper" in type)) return;
     const typeMapper = (type as (ts.Type & { mapper: ts.TypeMapper })).mapper;
-    if (typeMapper.kind === ts.TypeMapKind.Simple) return typeMapper.target;
-    else if (typeMapper.kind === ts.TypeMapKind.Array && typeMapper.targets) return typeMapper.targets[index];
-    else return;
+    let mappedType;
+    if (typeMapper.kind === ts.TypeMapKind.Simple) mappedType = typeMapper.target;
+    else if (typeMapper.kind === ts.TypeMapKind.Array && typeMapper.targets) mappedType = typeMapper.targets[index];
+    
+    if (!mappedType) return;
+    if (mappedType.isUnion()) return mappedType.types[mappedType.types.length - 1];
+    return mappedType;
 }
 
 export function getMappedType(type: ts.Type, index: number) : string|number|undefined {
-    let rawType = getMappedRawType(type, index);
-    if (!rawType) return;
-    if (rawType.isUnion()) rawType = rawType.types[rawType.types.length - 1];
+    const rawType = getMappedRawType(type, index);
     if (!rawType || !rawType.isLiteral()) return;
     return rawType.value as string | number;
 }

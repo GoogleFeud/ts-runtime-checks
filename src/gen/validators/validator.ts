@@ -18,8 +18,7 @@ export enum TypeDataKinds {
     Union,
     Resolve,
     Recursive,
-    Check,
-    Transformation
+    Check
 }
 
 export interface CheckTypeHint {
@@ -30,7 +29,7 @@ export interface CheckTypeHint {
 
 export interface CheckTypeData {
     kind: TypeDataKinds.Check,
-    expressions: string[],
+    expressions: (string | ts.Symbol)[],
     hints: CheckTypeHint[]
 }
 
@@ -112,12 +111,7 @@ export interface ObjectTypeData {
     couldBeNull?: boolean
 }
 
-export interface TransformationTypeData {
-    kind: TypeDataKinds.Transformation,
-    transformers: ts.Symbol[]
-}
-
-export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | UndefinedTypeData | ResolveTypeData | RecursiveTypeData | CheckTypeData | TransformationTypeData;
+export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | UndefinedTypeData | ResolveTypeData | RecursiveTypeData | CheckTypeData;
 
 export type ValidatorTargetName = string | number | ts.Identifier;
 

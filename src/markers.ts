@@ -7,7 +7,6 @@ import { ValidationResultType, createContext, genNode, genStatements, minimizeGe
 import { genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName } from "./gen/validators";
 import { _access, _call, _not, _var } from "./gen/expressionUtils";
 import { genMatch } from "./gen/nodes/match";
-import { genTransformation } from "./gen/transformation";
 
 export interface MarkerCallData {
     parameters: Array<ts.Type>,
@@ -39,7 +38,7 @@ export const Markers: Record<string, MarkerFn> = {
         block.nodes.push(...forEachVar(callBy, (i, patternType) => {
             const validator = createValidator(trans, patternType !== undefined ? trans.checker.getTypeAtLocation(i) : parameters[0]!, ts.isIdentifier(i) ? i.text : i.getText(), i, resultType, optional);
             if (!validator) return [];
-            return fullValidate(validator, createContext(trans, resultType), optional);
+            return fullValidate(validator, createContext(trans, resultType, exp), optional);
         }));
         return callBy;
     }
@@ -51,7 +50,7 @@ export const Functions: Record<string, FnCallFn> = {
         if (!ts.isIdentifier(arg)) [stmt, arg] = _var("value", arg, ts.NodeFlags.Const);
         const validator = genValidator(transformer, data.parameters[0], (arg as ts.Identifier).text, arg);
         if (!validator) return;
-        const ctx = createContext(transformer, { return: ts.factory.createFalse() });
+        const ctx = createContext(transformer, { return: ts.factory.createFalse() }, data.call);
         const nodes = minimizeGenResult(genNode(validator, ctx), ctx);
         if (nodes.minimzed && !nodes.after && !nodes.before) {
             const block = data.block.parent || data.block;
@@ -102,7 +101,7 @@ export const Functions: Record<string, FnCallFn> = {
         block.nodes.push(...fullValidate(validator, createContext(transformer, {
             rawErrors: isTrueType(data.parameters[1]),
             custom: (msg) => ts.factory.createExpressionStatement(_call(_access(arrVariable, "push"), [msg]))
-        }, true)));
+        }, data.call, true)));
         if (block === data.block) block.nodes.push(ts.factory.createReturnStatement(ts.factory.createArrayLiteralExpression([dataVariable, arrVariable])));
     },
     createMatch: (transformer, data) => {
@@ -110,29 +109,6 @@ export const Functions: Record<string, FnCallFn> = {
         if (!ts.isArrayLiteralExpression(data.call.arguments[0])) throw TransformerError(data.call.arguments[0], "First parameter must be an array literal.");
         const discriminatedObjectAssert = data.call.arguments[1] ? isTrueType(transformer.checker.getTypeAtLocation(data.call.arguments[1])) : false;
         return genMatch(transformer, data.call.arguments[0], discriminatedObjectAssert);
-    },
-    transform: (transformer, data) => {
-        if (!data.call.arguments[0]) throw TransformerError(data.call, "Missing first parameter.");
-        const type = data.parameters[0];
-        if (!type)  throw TransformerError(data.call, "Missing first parameter.");
-        let stmt, toTransform;
-        if (!ts.isIdentifier(data.call.arguments[0])) {
-            [stmt, toTransform] = _var("temp", data.call.arguments[0], ts.NodeFlags.Const);
-        } else {
-            toTransform = data.call.arguments[0];
-        }
-        const validator = genValidator(transformer, type, "", toTransform, undefined, true);
-        if (!validator) return;
-        let startObject;
-        if (validator.typeData.kind === TypeDataKinds.Array || validator.typeData.kind === TypeDataKinds.Tuple) startObject = ts.factory.createArrayLiteralExpression([]);
-        else if (validator.typeData.kind === TypeDataKinds.Object) startObject = ts.factory.createObjectLiteralExpression();
-        else startObject = ts.factory.createNull();
-        const [definition, ident] = _var("result", startObject, ts.NodeFlags.Let);
-        if (stmt) data.prevBlock.nodes.push(stmt);
-        data.prevBlock.nodes.push(definition, ...genTransformation(validator, ident, {
-            handleRequestSymbolValue: (sym) => transformer.importSymbol(sym, data.call)
-        }));
-        return ident;
     }
 };
 
@@ -252,7 +228,7 @@ export type Expr<Expression extends string> = { __$type?: Expression, __$name?: 
  * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Check<Cond extends string, Err extends string = never, ID extends string = any, Value extends string | number = any> = unknown & { __$check?: Cond, __$error?: Err, __$value?: Value, __$id?: ID, __$name?: "Check" };
+export type Check<Cond extends string | ((value: unknown) => any), Err extends string = never, ID extends string = any, Value extends string | number = any> = unknown & { __$check?: Cond, __$error?: Err, __$value?: Value, __$id?: ID, __$name?: "Check" };
 
 /* Built-in Check types */
 
@@ -371,13 +347,6 @@ export type Infer<Type> = Type & { __$name?: "Infer" };
  */
 export type Resolve<Type> = Type & { __$name?: "Resolve" };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Transform<Fns extends ((value: any) => unknown)[]> = Fns extends [...((value: any) => unknown)[], infer Last] ? Last extends (value: any) => unknown ? { __$transform?: Fns, __$return?: ReturnType<Last> } : unknown : unknown;
-
-export type Transformed<T> = {
-    [Key in keyof T]: T[Key] extends { __$return?: unknown } ? Exclude<T[Key]["__$return"], undefined> : T[Key]
-}
-
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function is<T, _M = { __$marker: "is" }>(prop: unknown): prop is T;
 
@@ -386,6 +355,3 @@ export declare function check<T, _rawErrorData extends boolean = false, _M = { _
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
 export declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean): (val: U) => R;
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export declare function transform<T, _M = { __$marker: "transform" }>(value: T): Transformed<T>;

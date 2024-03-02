@@ -1,5 +1,5 @@
 import ts, { isNumericLiteral } from "typescript";
-import { ObjectTypeDataExactOptions, TypeDataKinds, Validator, genValidator } from "../validators";
+import { CheckTypeData, ObjectTypeDataExactOptions, TypeDataKinds, Validator, genValidator } from "../validators";
 import { _and, _bin, _bin_chain, _for, _if, _new, _not, _num, _or, _str, _throw, _typeof_cmp, BlockLike, UNDEFINED, concat, joinElements, _if_nest, _instanceof, _access, _call, _for_in, _ident, _bool, _obj_check, _obj, _obj_binding_decl, _arr_binding_decl, _concise, _ternary, _arr_check, _var } from "../expressionUtils";
 import { Transformer } from "../../transformer";
 import { isSingleIfStatement } from "../../utils";
@@ -19,18 +19,19 @@ export interface NodeGenContext {
     recursiveFns: ts.FunctionDeclaration[],
     recursiveFnNames: Map<ts.Type, ts.Identifier>,
     resolvedTypeArguments: Map<ts.Type, Validator>,
-    usedErrorClases?: ts.Symbol[],
+    origin: ts.Node,
     useElse?: boolean,
 }
 
-export function createContext(transformer: Transformer, resultType: ValidationResultType, useElse?: boolean): NodeGenContext {
+export function createContext(transformer: Transformer, resultType: ValidationResultType, origin: ts.Node, useElse?: boolean): NodeGenContext {
     return {
         transformer,
         resultType,
         useElse,
         recursiveFns: [],
         recursiveFnNames: new Map(),
-        resolvedTypeArguments: new Map()
+        resolvedTypeArguments: new Map(),
+        origin
     };
 }
 
@@ -205,8 +206,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
             before = first.before;
             errorMsg = first.error;
         }
-        const parseCtx = genCheckCtx(validator);
-        for (const check of validator.typeData.expressions) normalChecks.push(_not(ctx.transformer.stringToNode(check, parseCtx)));
+        normalChecks.push(...genChecks(validator.typeData.expressions, validator,  ctx, true));
         return {
             condition: _or(normalChecks),
             after,
@@ -354,6 +354,24 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
     }
     default: throw new Error("Unexpected TypeDataKind.");
     }
+}
+
+export function genChecks(checks: CheckTypeData["expressions"], validator: Validator, ctx: NodeGenContext, negate?: boolean) : ts.Expression[] {
+    const result = [];
+    let parseCtx;
+    for (const check of checks) {
+        if (typeof check === "string") {
+            if (!parseCtx) parseCtx = genCheckCtx(validator);
+            const value = ctx.transformer.stringToNode(check, parseCtx);
+            result.push(negate ? _not(value) : value);
+        } else {
+            const importedSym = ctx.transformer.importSymbol(check, ctx.origin);
+            if (!importedSym) continue;
+            const value = _call(importedSym, [validator.expression()]);
+            result.push(negate ? _not(value) : value);
+        }
+    }
+    return result;
 }
 
 export function isNullableNode(validator: Validator): ts.Expression {
