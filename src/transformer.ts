@@ -125,7 +125,7 @@ export class Transformer {
                     }
                     resolveTypeLoop:
                     for (const data of this.toBeResolved.get(decl) as ToBeResolved[]) {
-                        const ctx = createContext(this, data.resultType);
+                        const ctx = createContext(this, data.resultType, node);
                         const resolved = getResolvedTypesFromCallSig(this.checker, data.validators.map(v => (v.typeData as ResolveTypeData).type), sigOfCall);
                         if (resolved.length) {
                             for (let i=0; i < resolved.length; i++) {
