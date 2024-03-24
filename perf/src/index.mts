@@ -258,17 +258,24 @@ group("Typeof Number", () => {
 });
 
 group("Typeof Boolean", () => {
-    bench("Typeof Bumber", () => {
-        let counter = 0;
-        for (const data of allData3) {
-            if (typeof data !== "boolean") counter++;
-        }
-    });
-
     bench("true and false checks", () => {
         let counter = 0;
         for (const data of allData3) {
             if (data !== false && data !== true) counter++;
+        }
+    });
+    
+    bench("Typeof number", () => {
+        let counter = 0;
+        for (const data of allData3) {
+            if (typeof data === "number") counter++;
+        }
+    });
+
+    bench("Typeof boolean", () => {
+        let counter = 0;
+        for (const data of allData3) {
+            if (typeof data !== "boolean") counter++;
         }
     });
 });
