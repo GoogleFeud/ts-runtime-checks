@@ -164,7 +164,7 @@ export function importSymbol(thisSourceFile: ts.SourceFile, symbol: ts.Symbol): 
     if (originSourceFile === thisSourceFile) return;
     const fileExports = originSourceFile.symbol?.exports;
     if (!fileExports) return;
-    const fileName = ts.getRelativePathFromFile(thisSourceFile.fileName, originSourceFile.fileName, (name) => name).replace(".ts", "");
+    const fileName = ts.getRelativePathFromFile(thisSourceFile.fileName, originSourceFile.fileName, (name) => name).replace(".ts", ".js");
     let clause, specifier;
     const importIdentifier = ts.factory.createIdentifier(symbol.name);
     if (fileExports.get("default" as ts.__String) === symbol) {

@@ -294,8 +294,7 @@ export class Validator {
             sum++;
             break;
         case TypeDataKinds.String:
-            if (this.typeData.literal) return 0;
-            sum++;
+            sum += 2;
             break;
         case TypeDataKinds.Boolean:
             if (this.typeData.literal) return 0;
@@ -313,11 +312,11 @@ export class Validator {
         case TypeDataKinds.Function:
         case TypeDataKinds.Class:
         case TypeDataKinds.Tuple:
-            sum += 2;
+            sum += 3;
             break;
         case TypeDataKinds.Object:
             if (this.typeData.exact || this.typeData.stringIndexInfo || this.typeData.numberIndexInfo) sum += 8;
-            sum += 2;
+            sum += 3;
             break;
         case TypeDataKinds.Recursive:
             return 10;
