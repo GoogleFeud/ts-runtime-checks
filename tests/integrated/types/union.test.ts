@@ -50,7 +50,7 @@ describe("Unions", () => {
         it("Discriminated union: Throw when a different type is provided", () => {
             expect(call(test1, { kind: Members.A, value: 123})).to.throw("Expected a.value to be a string");
             expect(call(test1, { kind: Members.B, value: true})).to.throw("Expected a.value to be a number");
-            expect(call(test1, {})).to.throw("Expected a to be one of BMember, CMember, AMember");
+            expect(call(test1, {})).to.throw("Expected a to be one of CMember, BMember, AMember");
         });
 
         it("Discriminated union: Not throw when a value of the right type is provided", () => {

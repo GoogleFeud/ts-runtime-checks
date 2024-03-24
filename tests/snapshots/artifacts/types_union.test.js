@@ -28,23 +28,23 @@ describe("Unions", () => {
         });
         function test1(a) {
             if (typeof a !== "object" || a === null)
-                throw new Error("Expected a to be one of BMember, CMember, AMember");
+                throw new Error("Expected a to be one of CMember, BMember, AMember");
             else {
-                if (a.kind !== 1)
-                    if (a.kind !== 2)
+                if (a.kind !== 2)
+                    if (a.kind !== 1)
                         if (a.kind !== 0)
-                            throw new Error("Expected a to be one of BMember, CMember, AMember");
+                            throw new Error("Expected a to be one of CMember, BMember, AMember");
                         else {
                             if (typeof a.value !== "string")
                                 throw new Error("Expected a.value to be a string");
                         }
                     else {
-                        if (typeof a.value !== "boolean")
-                            throw new Error("Expected a.value to be a boolean");
+                        if (typeof a.value !== "number")
+                            throw new Error("Expected a.value to be a number");
                     }
                 else {
-                    if (typeof a.value !== "number")
-                        throw new Error("Expected a.value to be a number");
+                    if (a.value !== false && a.value !== true)
+                        throw new Error("Expected a.value to be a boolean");
                 }
             }
             return a;
@@ -52,7 +52,7 @@ describe("Unions", () => {
         it("Discriminated union: Throw when a different type is provided", () => {
             (0, chai_1.expect)((0, utils_1.call)(test1, { kind: 0, value: 123 })).to.throw("Expected a.value to be a string");
             (0, chai_1.expect)((0, utils_1.call)(test1, { kind: 1, value: true })).to.throw("Expected a.value to be a number");
-            (0, chai_1.expect)((0, utils_1.call)(test1, {})).to.throw("Expected a to be one of BMember, CMember, AMember");
+            (0, chai_1.expect)((0, utils_1.call)(test1, {})).to.throw("Expected a to be one of CMember, BMember, AMember");
         });
         it("Discriminated union: Not throw when a value of the right type is provided", () => {
             (0, chai_1.expect)((0, utils_1.call)(test1, { kind: 0, value: "hello" })).to.not.throw();

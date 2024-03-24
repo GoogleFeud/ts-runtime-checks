@@ -286,6 +286,7 @@ export class Validator {
         return;
     }
 
+    // Iteration / recursion automatically adds 10 to the weight
     weigh() : number {
         let sum = 0;
         switch (this.typeData.kind) {
@@ -294,11 +295,14 @@ export class Validator {
             sum++;
             break;
         case TypeDataKinds.String:
-            sum += 2;
+            // string comparisons are definitely slower than number / bool literals
+            if (this.typeData.literal) return 0.5;
+            sum++;
             break;
         case TypeDataKinds.Boolean:
             if (this.typeData.literal) return 0;
-            else return 1;
+            // Boolean checks are faster than string / number checks
+            else return 0.5;
         case TypeDataKinds.Array:
             sum += 10;
             break;
@@ -307,6 +311,8 @@ export class Validator {
             break;
         case TypeDataKinds.Null:
         case TypeDataKinds.Undefined:
+            sum += 1;
+            break;
         case TypeDataKinds.Symbol:
         case TypeDataKinds.BigInt:
         case TypeDataKinds.Function:

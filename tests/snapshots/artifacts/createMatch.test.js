@@ -10,13 +10,13 @@ var Values;
 describe("Create Match function", () => {
     it("Match the values correctly", () => {
         const resolver = value_1 => {
-            if (typeof value_1 === "string") {
+            if (value_1 === false || value_1 === true) {
+                return value_1.toString();
+            }
+            else if (typeof value_1 === "string") {
                 return value_1.toString();
             }
             else if (typeof value_1 === "number") {
-                return value_1.toString();
-            }
-            else if (typeof value_1 === "boolean") {
                 return value_1.toString();
             }
             else if ((value_1 instanceof Date)) {
@@ -78,7 +78,7 @@ describe("Create Match function", () => {
                     return value_7.value.length;
                 else if (value_7.kind === 1 && typeof value_7.value === "number")
                     return value_7.value;
-                else if (value_7.kind === 2 && typeof value_7.value === "boolean")
+                else if (value_7.kind === 2 && (value_7.value === false || value_7.value === true))
                     return value_7.value === true ? 1 : 0;
             }
             return -1;

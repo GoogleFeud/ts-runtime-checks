@@ -18,7 +18,7 @@ describe("Check", () => {
             if (typeof a !== "object" || a === null)
                 return false;
             const { two: two_1, one: one_1 } = a;
-            if (typeof two_1 !== "object" || two_1 === null || Object.keys(two_1).length !== 3 || typeof two_1.a !== "string" || typeof two_1.b !== "number" || typeof two_1.c !== "boolean" || !Array.isArray(one_1))
+            if (typeof two_1 !== "object" || two_1 === null || Object.keys(two_1).length !== 3 || two_1.c !== false && two_1.c !== true || typeof two_1.a !== "string" || typeof two_1.b !== "number" || !Array.isArray(one_1))
                 return false;
             for (let i_1 = 0; i_1 < one_1.length; i_1++) {
                 if (typeof one_1[i_1] !== "string" || one_1[i_1].length > 6)

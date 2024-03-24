@@ -29,14 +29,15 @@ describe("Early return", () => {
         const { a: a_1 } = a;
         if (!Array.isArray(a_1))
             return "Expected a.a to be an array";
-        if (typeof a_1[0] !== "string")
+        const [t_1, t_2, t_3] = a_1;
+        if (typeof t_1 !== "string")
             return "Expected a.a[0] to be a string";
-        if (typeof a_1[1] !== "number")
+        if (typeof t_2 !== "number")
             return "Expected a.a[1] to be a number";
-        if (a_1[2] !== undefined) {
-            if (typeof a_1[2] !== "object" || a_1[2] === null)
+        if (t_3 !== undefined) {
+            if (typeof t_3 !== "object" || t_3 === null)
                 return "Expected a.a[2] to be an object";
-            if (typeof a_1[2].b !== "number")
+            if (typeof t_3.b !== "number")
                 return "Expected a.a[2].b to be a number";
             ;
         }
