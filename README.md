@@ -11,7 +11,7 @@ Here are some examples you can try out in the [playground](https://googlefeud.gi
 
 **Asserting function parameters:**
 ```ts
-// Special `Assert` types get detected and generates validation code
+// Special `Assert` type get detected and generates validation code
 function greet(name: Assert<string>, age: Assert<number>) : string {
     return `Hello ${name}, you are ${age} years old!`
 }
@@ -39,10 +39,11 @@ const isUser = typeof maybeUser === "object" && maybeUser !== null && typeof may
 ```
 **Pattern Matching:**
 ```ts
+type WithValue = { value: string }
 // `createMatch` function creates a pattern-matching function
 const extractString = createMatch<string>([
     (value: string | number) => value.toString(),
-    ({value}: { value: string }) => value,
+    ({value}: WithValue) => value,
     () => {
         throw new Error("Could not extract string.");
     }
@@ -190,7 +191,7 @@ function onMessage(msg, content, timestamp) {
 
 #### `Check<Condition, Error, ID, Value>`
 
-Allows you to create custom conditions by providing a string containing javascript code.
+Allows you to create custom conditions by providing a string containing javascript code, or a reference to a function.
 
 - You can use the `$self` variable to get the value that's currently being validated.
 - You can use the `$parent` function to get the parent object of the value. You can pass a number to get nested parents.
@@ -328,9 +329,10 @@ function test(body) {
 Pass a type parameter to `Resolve<Type>` to *move* the validation logic to the call site, where the type parameter is resolved to an actual type.
 
 Currently, this marker has some limitations:
-- Can only be used in `Assert` markers (so you can't use it in `check` or `is`).
-- If used in a parameter declaration, the parameter name **has** to be an identifier (no deconstructions).
-- Cannot be used on rest parameters.
+- Can only be used in `Assert` markers (so you can't use it in `check` or `is`)
+- Can only be used in parameter declarations (so no `as` assertions)
+- The parameter name **has** to be an identifier (no deconstructions)
+- Cannot be used on rest parameters
 
 ```ts
 function validateBody<T>(data: Assert<{ body: Resolve<T> }>) {
@@ -512,7 +514,7 @@ function test({ user: { skills: [skill1, skill2, skill3] } }) {
 - `number`s and number literals
     - `typeof value === "number"` or `value === 420`
 - `boolean`
-    - `typeof value === "boolean"`
+    - `value === true || value === false`
 - `symbol`
     - `typeof value === "symbol"`
 - `bigint`

@@ -5,7 +5,7 @@ const chai_1 = require("chai");
 describe("Boolean", () => {
     describe("Assert", () => {
         function test(a) {
-            if (typeof a !== "boolean")
+            if (a !== false && a !== true)
                 throw new Error("Expected a to be a boolean");
             return a;
         }

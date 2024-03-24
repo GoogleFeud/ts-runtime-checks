@@ -6,7 +6,7 @@ describe("Infer", () => {
         function test(a, b) {
             if (typeof a !== "string" && typeof a !== "number")
                 return false;
-            if (typeof b !== "object" || b === null || typeof b.a !== "number" || typeof b.b !== "number" && typeof b.b !== "boolean")
+            if (typeof b !== "object" || b === null || typeof b.a !== "number" || b.b !== false && b.b !== true && typeof b.b !== "number")
                 return false;
             return true;
         }

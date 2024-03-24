@@ -138,7 +138,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
         };
     }
     case TypeDataKinds.Boolean: return {
-        condition: validator.typeData.literal !== undefined ? _bin(validator.expression(), _bool(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken) : _typeof_cmp(validator.expression(), "boolean", ts.SyntaxKind.ExclamationEqualsEqualsToken),
+        condition: validator.typeData.literal !== undefined ? _bin(validator.expression(), _bool(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken) : _and([_bin(validator.expression(), _bool(false), ts.SyntaxKind.ExclamationEqualsEqualsToken), _bin(validator.expression(), _bool(true), ts.SyntaxKind.ExclamationEqualsEqualsToken)]),
         error: [validator, [validator.typeData.literal !== undefined ? _str(`to be ${validator.typeData.literal}`) : _str("to be a boolean")]]
     };
     case TypeDataKinds.BigInt: return {
@@ -184,8 +184,9 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
     case TypeDataKinds.Tuple: {
         const large: [number, ts.Identifier][] = [];
         const after = [];
+        const isLarge = validator.children.some(child => !child.isRedirect() && child.weigh() > 4 && typeof child.name === "number");
         for (const child of validator.children) {
-            if (!child.isRedirect() && child.weigh() > 5 && typeof child.name === "number") large.push([child.name, child.setAlias(() => _ident("t"))]);
+            if (isLarge) large.push([child.name as number, child.setAlias(() => _ident("t"))]);
             after.push(...validateType(child, ctx));
         }
 
@@ -284,7 +285,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
         const checks: ts.Statement[] = [];
         const names: [string, ts.Identifier][] = [];
         for (const child of validator.children) {
-            if (!child.isRedirect() && child.weigh() > 5 && typeof child.name === "string") names.push([child.name, child.setAlias(() => _ident(child.name as string))]);
+            if (!child.isRedirect() && child.weigh() > 4 && typeof child.name === "string") names.push([child.name, child.setAlias(() => _ident(child.name as string))]);
             checks.push(...validateType(child, ctx));
         }
 
