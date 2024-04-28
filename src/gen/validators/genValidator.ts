@@ -48,15 +48,13 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             let rest: Validator | undefined;
 
             const resolveTransform = (type: ts.Type, processBase: boolean) => {
-                const param = type.aliasTypeArguments?.[0];
-                if (!param) return;
-                if (transformer.checker.isTupleType(param)) {
-                    for (const value of transformer.checker.getTypeArguments(param as ts.TypeReference)) {
+                if (transformer.checker.isTupleType(type)) {
+                    for (const value of transformer.checker.getTypeArguments(type as ts.TypeReference)) {
                         const codePoint = getCodeReference(value);
                         if (codePoint) expressions.push(codePoint);
                     }
                 } else {
-                    const codePoint = getCodeReference(param);
+                    const codePoint = getCodeReference(type);
                     if (codePoint) expressions.push(codePoint);
                 }
                 if (processBase) {
@@ -68,8 +66,9 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             if (type.isIntersection()) {
                 const otherTypes = [];
                 for (const inner of type.types) {
-                    if (inner.getProperty("__$transform")) {
-                        if (inner.aliasTypeArguments?.length) resolveTransform(inner, false);
+                    if (inner.getProperty("__$transformations")) {
+                        const transformations = transformer.checker.getNonNullableType(transformer.checker.getTypeOfSymbol(inner.getProperty("__$transformations") as ts.Symbol));
+                        resolveTransform(transformations, false);
                     } else {
                         otherTypes.push(inner);
                     }

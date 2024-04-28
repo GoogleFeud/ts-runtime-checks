@@ -195,7 +195,7 @@ export function importSymbol(thisSourceFile: ts.SourceFile, symbol: ts.Symbol): 
     return [statement, refIdent];
 }
 
-export function genCheckCtx(validator: Validator | ts.Expression) : CodeReferenceReplacement {
+export function genCheckCtx(validator: Validator | ts.Expression): CodeReferenceReplacement {
     if (validator instanceof Validator)
         return {
             $self: validator.expression(),

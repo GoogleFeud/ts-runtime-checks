@@ -30,10 +30,20 @@ type Not<T extends Check<string, string>> = Check<\`!(\${T["__$check"]})\`, \`no
 type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<\`\${L["__$check"]} || \${R["__$check"]}\`, \`\${L["__$error"]} or \${R["__$error"]}\`>;
 type Infer<Type> = Type & { __$name?: "Infer" };
 type Resolve<Type> = Type & { __$name?: "Resolve" };
-
+type Transformation = string | ((value: any) => any);
+type Transform<
+    Transformations extends Transformation | Transformation[],
+    V = Transformations extends [(value: infer R) => unknown, ...unknown[]] ? R : Transformations extends (value: infer R) => unknown ? R : unknown,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    T = Transformations extends [...unknown[], (value: unknown) => infer R] ? R : Transformations extends (value: any) => infer R ? R : unknown
+> = V & {__$transform?: T; __$transformations?: Transformations; __$name?: "Transform"};
+type Transformed<T> = {
+    [Key in keyof T]: T[Key] extends {__$transform?: unknown} ? NonNullable<T[Key]["__$transform"]> : T[Key];
+};
 declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
 declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean) : (val: U) => R;
+declare function transform<T, _M = {__$marker: "transform"}>(value: T): Transformed<T>;
 `;
 
 export const CompilerOptions: ts.CompilerOptions = {

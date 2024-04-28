@@ -22,7 +22,7 @@ export enum CodeReferenceKind {
 
 export type CodeReferenceExpand = {kind: CodeReferenceKind; expression: ts.Expression};
 
-export type CodeReferenceReplacement = Record<string, ts.Expression | ((...args: ts.Expression[]) => ts.Node)>
+export type CodeReferenceReplacement = Record<string, ts.Expression | ((...args: ts.Expression[]) => ts.Node)>;
 
 export class Transformer {
     checker: ts.TypeChecker;

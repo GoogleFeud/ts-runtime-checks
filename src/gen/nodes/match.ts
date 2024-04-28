@@ -3,7 +3,7 @@ import ts from "typescript";
 import {Transformer} from "../../transformer";
 import {TypeDataKinds, Validator, genValidator} from "../validators";
 import {UNDEFINED, _access, _and, _arr_check, _arrow_fn, _bin, _bool, _call, _ident, _not, _obj_check, _or, BlockLike, _if_chain, _var} from "../expressionUtils";
-import {GenResult, NodeGenContext, createContext, genChecks, genNode, getUnionMembers} from ".";
+import {GenResult, NodeGenContext, createContext, genChecks, genNode, getUnionMembers} from "./";
 import {doesAlwaysReturn} from "../../utils";
 
 export interface MatchArm {

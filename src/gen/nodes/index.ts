@@ -260,7 +260,10 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
         }
         case TypeDataKinds.Check: {
             const normalChecks = [],
-                errorMessages = validator.typeData.hints.filter(h => h.error).map(h => h.error).join(", ");
+                errorMessages = validator.typeData.hints
+                    .filter(h => h.error)
+                    .map(h => h.error)
+                    .join(", ");
             let after, before, errorMsg;
             if (validator.children.length) {
                 const first = genNode(validator.children[0] as Validator, ctx);
@@ -468,11 +471,13 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
 
 export function genChecks(checks: CodeReference[], validator: Validator, transformer: Transformer, origin: ts.Node, negate?: boolean): ts.Expression[] {
     const ctx = genCheckCtx(validator);
-    return transformer.expandCodeRef(checks, origin, () => ctx).map(check => {
-        if (check.kind === CodeReferenceKind.String) return negate ? _not(check.expression) : check.expression;
-        const call = _call(check.expression, [validator.expression()]);
-        return negate ? _not(call) : call;
-    });
+    return transformer
+        .expandCodeRef(checks, origin, () => ctx)
+        .map(check => {
+            if (check.kind === CodeReferenceKind.String) return negate ? _not(check.expression) : check.expression;
+            const call = _call(check.expression, [validator.expression()]);
+            return negate ? _not(call) : call;
+        });
 }
 
 export function isNullableNode(validator: Validator): ts.Expression {

@@ -7,7 +7,7 @@ import {ValidationResultType, createContext, genNode, genStatements, minimizeGen
 import {genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName} from "./gen/validators";
 import {_access, _call, _not, _var} from "./gen/expressionUtils";
 import {genMatch} from "./gen/nodes/match";
-import { genTransform } from "./gen/transform";
+import {genTransform} from "./gen/nodes/transform";
 
 export interface MarkerCallData {
     parameters: Array<ts.Type>;
@@ -137,11 +137,20 @@ export const Functions: Record<string, FnCallFn> = {
         let callBy = toTransform as ts.Expression;
         if (!ts.isIdentifier(callBy) && !ts.isBindingName(callBy)) {
             const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
-            data.block.nodes.push(decl);
+            data.prevBlock.nodes.push(decl);
             callBy = ident;
         }
-        const validator = genValidator(transformer, typeToTransform, callBy.getText(), toTransform);
-        const target = _var("result")
+        const validator = genValidator(transformer, typeToTransform, "", callBy);
+        if (!validator) return;
+        const target = _var("result", undefined, ts.NodeFlags.Let);
+        data.prevBlock.nodes.push(
+            target[0],
+            ...genTransform(validator, target[1], {
+                transformer,
+                origin: data.call
+            })
+        );
+        return target[1];
     }
 };
 
@@ -402,7 +411,7 @@ export type Transform<
     V = Transformations extends [(value: infer R) => unknown, ...unknown[]] ? R : Transformations extends (value: infer R) => unknown ? R : unknown,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     T = Transformations extends [...unknown[], (value: unknown) => infer R] ? R : Transformations extends (value: any) => infer R ? R : unknown
-> = V & {__$transform?: T; __$name?: "Transform"};
+> = V & {__$transform?: T; __$transformations?: Transformations; __$name?: "Transform"};
 
 export type Transformed<T> = {
     [Key in keyof T]: T[Key] extends {__$transform?: unknown} ? NonNullable<T[Key]["__$transform"]> : T[Key];
