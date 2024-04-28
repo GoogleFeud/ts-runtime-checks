@@ -1,7 +1,9 @@
+import {createContext, genNode} from ".";
 import {Transformer} from "../../transformer";
 import {genCheckCtx} from "../../utils";
-import {_access, _assign, _call, _for, _ident, _obj, _stmt, _var} from "../expressionUtils";
-import {TypeDataKinds, Validator} from "../validators";
+import {getUnionMembers} from "../../utils/unions";
+import {_access, _assign, _call, _for, _ident, _if_chain, _not, _obj, _stmt, _var} from "../expressionUtils";
+import {TransformTypeData, TypeDataKinds, Validator} from "../validators";
 import ts from "typescript";
 
 export interface TransformCtx {
@@ -10,11 +12,11 @@ export interface TransformCtx {
 }
 
 export function genTransform(validator: Validator, target: ts.Expression, ctx: TransformCtx): ts.Statement[] {
-    const assignTarget = validator.parent ? _access(target, validator.name) : target;
+    const assignTarget = validator.parent && validator.name !== "" ? _access(target, validator.name) : target;
 
     switch (validator.typeData.kind) {
         case TypeDataKinds.Transform: {
-            if (!validator.typeData.transformations) return [_stmt(ts.factory.createNull())];
+            if (!validator.typeData.transformations.length) return [];
             const prevStmts = [];
             let previousExp = validator.expression();
             for (let i = 0; i < validator.typeData.transformations.length; i++) {
@@ -51,6 +53,27 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
                 childType.setName(index);
             }
             return [_stmt(_assign(assignTarget, ts.factory.createArrayLiteralExpression())), _for(validator.expression(), index, genTransform(childType, assignTarget, ctx))[0]];
+        }
+        case TypeDataKinds.Union: {
+            const transforms = validator.getChildrenOfKind(TypeDataKinds.Transform);
+            if (!transforms.length) return [_stmt(_assign(assignTarget, validator.expression()))];
+            const transformBases = transforms.map(transform => (transform.typeData as TransformTypeData).rest).filter(i => i) as Validator[];
+
+            const { normal, compound } = getUnionMembers(transformBases);
+
+            const nodeCtx = createContext(ctx.transformer, {none: true}, ctx.origin);
+
+            return [
+                _if_chain(
+                    0,
+                    [...normal, ...compound].map(validator => {
+                        const check = genNode(validator, nodeCtx);
+                        const originalTransform = transforms[transformBases.indexOf(validator)] as Validator;
+
+                        return [_not(check.condition), genTransform(originalTransform, assignTarget, ctx)];
+                    })
+                ) as ts.Statement
+            ];
         }
         default:
             return [_stmt(_assign(assignTarget, validator.expression()))];

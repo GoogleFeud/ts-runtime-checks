@@ -277,15 +277,6 @@ export class Validator {
         return result;
     }
 
-    areChildrenSameKind(): boolean {
-        if (!this.children.length) return true;
-        const firstChildKind = (this.children[0] as Validator).typeData.kind;
-        for (let i = 1; i < this.children.length; i++) {
-            if ((this.children[i] as Validator).typeData.kind !== firstChildKind) return false;
-        }
-        return true;
-    }
-
     getFirstLiteralChild(): Validator | undefined {
         for (const child of this.children) {
             if ((child.typeData.kind === TypeDataKinds.String && child.typeData.literal !== undefined) || (child.typeData.kind === TypeDataKinds.Number && child.typeData.literal !== undefined))

@@ -43,7 +43,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
         else return;
     } else if (type.getCallSignatures().length === 1) return new Validator(type, name, {kind: TypeDataKinds.Function}, exp, parent);
     else {
-        if (type.getProperty("__$transform")) {
+        if (type.isUnion()) return createUnionValidator(type, type.types, transformer, name, exp, parent);
+        else if (type.getProperty("__$transform")) {
             const expressions: CodeReference[] = [];
             let rest: Validator | undefined;
 
@@ -108,7 +109,6 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
         }
         const utility = transformer.getPropType(type, "name");
         if (!utility || !utility.isStringLiteral()) {
-            if (type.isUnion()) return createUnionValidator(type, type.types, transformer, name, exp, parent);
             const properties = (parent: Validator) =>
                 type.getProperties().map(sym => {
                     const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
