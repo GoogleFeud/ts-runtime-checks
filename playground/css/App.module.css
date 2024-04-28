@@ -52,7 +52,10 @@
     height: calc(100% - 55px);
 }
 
-.header a, .header a:visited, .footer a, .footer a:visited {
+.header a,
+.header a:visited,
+.footer a,
+.footer a:visited {
     color: white !important;
 }
 

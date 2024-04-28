@@ -1,23 +1,23 @@
 name: Publish package to npm
 on:
-  workflow_dispatch:
-  release:
-    branches:
-      - dev
+    workflow_dispatch:
+    release:
+        branches:
+            - dev
 jobs:
-  build:
-    runs-on: ubuntu-latest 
-    permissions: 
-      contents: read
-      packages: write 
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
-        with:
-          registry-url: 'https://registry.npmjs.org'
-      - run: npm i
-      - run: tsc
-      - run: npm run ci
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    build:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - uses: actions/checkout@v2
+            - uses: actions/setup-node@v2
+              with:
+                  registry-url: "https://registry.npmjs.org"
+            - run: npm i
+            - run: tsc
+            - run: npm run ci
+            - run: npm publish
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

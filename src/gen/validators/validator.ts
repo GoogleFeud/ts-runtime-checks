@@ -1,6 +1,7 @@
 import ts from "typescript";
-import { _access, Stringifyable } from "../expressionUtils";
-import { isInt } from "../../utils";
+import {_access, Stringifyable} from "../expressionUtils";
+import {isInt} from "../../utils";
+import {CodeReference} from "./genValidator";
 
 export enum TypeDataKinds {
     Number,
@@ -18,75 +19,77 @@ export enum TypeDataKinds {
     Union,
     Resolve,
     Recursive,
-    Check
+    Check,
+    // The transform kind has precedence over Checks
+    Transform
 }
 
 export interface CheckTypeHint {
-    name?: string,
-    error?: string,
-    value?: string | number
+    name?: string;
+    error?: string;
+    value?: string | number;
 }
 
 export interface CheckTypeData {
-    kind: TypeDataKinds.Check,
-    expressions: (string | ts.Symbol)[],
-    hints: CheckTypeHint[]
+    kind: TypeDataKinds.Check;
+    expressions: CodeReference[];
+    hints: CheckTypeHint[];
 }
 
 export interface RecursiveTypeData {
-    kind: TypeDataKinds.Recursive
+    kind: TypeDataKinds.Recursive;
 }
 
 export interface ResolveTypeData {
-    kind: TypeDataKinds.Resolve,
-    type: ts.Type
+    kind: TypeDataKinds.Resolve;
+    type: ts.Type;
 }
 
 export interface BooleanTypeData {
-    kind: TypeDataKinds.Boolean,
-    literal?: boolean
+    kind: TypeDataKinds.Boolean;
+    literal?: boolean;
 }
 
 export interface SymbolTypeData {
-    kind: TypeDataKinds.Symbol
+    kind: TypeDataKinds.Symbol;
 }
 
 export interface ClassTypeData {
-    kind: TypeDataKinds.Class
+    kind: TypeDataKinds.Class;
 }
 
 export interface FunctionTypeData {
-    kind: TypeDataKinds.Function
+    kind: TypeDataKinds.Function;
 }
 
 export interface BigIntTypeData {
-    kind: TypeDataKinds.BigInt
+    kind: TypeDataKinds.BigInt;
 }
 
 export interface NullTypeData {
-    kind: TypeDataKinds.Null
+    kind: TypeDataKinds.Null;
 }
 
 export interface UndefinedTypeData {
-    kind: TypeDataKinds.Undefined
+    kind: TypeDataKinds.Undefined;
 }
 
 export interface TupleTypeData {
-    kind: TypeDataKinds.Tuple
+    kind: TypeDataKinds.Tuple;
 }
 
 export interface UnionTypeData {
-    kind: TypeDataKinds.Union
+    kind: TypeDataKinds.Union;
 }
 
 export interface NumberTypeData {
-    kind: TypeDataKinds.Number,
-    literal?: number,
+    kind: TypeDataKinds.Number;
+    literal?: number;
 }
 
 export interface StringTypeData {
-    kind: TypeDataKinds.String,
-    literal?: string
+    kind: TypeDataKinds.String;
+    literal?: string;
 }
 
 /**
@@ -94,7 +97,7 @@ export interface StringTypeData {
  * class, in the children array.
  */
 export interface ArrayTypeData {
-    kind: TypeDataKinds.Array
+    kind: TypeDataKinds.Array;
 }
 
 export const enum ObjectTypeDataExactOptions {
@@ -103,15 +106,38 @@ export const enum ObjectTypeDataExactOptions {
 }
 
 export interface ObjectTypeData {
-    kind: TypeDataKinds.Object,
-    numberIndexInfo?: [Validator, Validator],
-    stringIndexInfo?: [Validator, Validator],
-    exact?: ObjectTypeDataExactOptions,
-    useDeleteOperator?: boolean,
-    couldBeNull?: boolean
+    kind: TypeDataKinds.Object;
+    numberIndexInfo?: [Validator, Validator];
+    stringIndexInfo?: [Validator, Validator];
+    exact?: ObjectTypeDataExactOptions;
+    useDeleteOperator?: boolean;
+    couldBeNull?: boolean;
 }
 
-export type TypeData = BooleanTypeData | SymbolTypeData | FunctionTypeData | UnionTypeData | ClassTypeData | BigIntTypeData | NullTypeData | TupleTypeData | NumberTypeData | StringTypeData | ArrayTypeData | ObjectTypeData | UndefinedTypeData | ResolveTypeData | RecursiveTypeData | CheckTypeData;
+export interface TransformTypeData {
+    kind: TypeDataKinds.Transform;
+    transformations: CodeReference[];
+    rest?: Validator;
+}
+
+export type TypeData =
+    | BooleanTypeData
+    | SymbolTypeData
+    | FunctionTypeData
+    | UnionTypeData
+    | ClassTypeData
+    | BigIntTypeData
+    | NullTypeData
+    | TupleTypeData
+    | NumberTypeData
+    | StringTypeData
+    | ArrayTypeData
+    | ObjectTypeData
+    | UndefinedTypeData
+    | ResolveTypeData
+    | RecursiveTypeData
+    | CheckTypeData
+    | TransformTypeData;
 
 export type ValidatorTargetName = string | number | ts.Identifier;
 
@@ -124,7 +150,14 @@ export class Validator {
     typeData: TypeData;
     children!: Validator[];
     recursiveOrigins: ts.Type[];
-    constructor(original: ts.Type, targetName: ValidatorTargetName, data: TypeData, exp?: ts.Expression, parent?: Validator, children?: ((parent: Validator) => Array<Validator|undefined>)|Validator[]) {
+    constructor(
+        original: ts.Type,
+        targetName: ValidatorTargetName,
+        data: TypeData,
+        exp?: ts.Expression,
+        parent?: Validator,
+        children?: ((parent: Validator) => Array<Validator | undefined>) | Validator[]
+    ) {
         this._original = original;
         this.name = targetName;
         this.typeData = data;
@@ -134,23 +167,22 @@ export class Validator {
         if (children) {
             if (typeof children === "function") this.setChildren(children(this).filter(c => c) as Validator[]);
             else this.setChildren(children, true);
-        }
-        else this.children = [];
+        } else this.children = [];
     }
 
-    nameAsExpression() : ts.Expression {
+    nameAsExpression(): ts.Expression {
         if (typeof this.name === "object") return this.name;
-        else if (isInt(this.name))  return ts.factory.createNumericLiteral(this.name);
+        else if (isInt(this.name)) return ts.factory.createNumericLiteral(this.name);
         else return ts.factory.createStringLiteral(this.name as string);
     }
 
-    nameToString() : string {
+    nameToString(): string {
         if (typeof this.name === "string") return this.name;
         else if (typeof this.name === "number") return this.name.toString();
         else return this.name.text;
     }
 
-    path() : Stringifyable[] {
+    path(): Stringifyable[] {
         if (!this.parent) return [this.nameAsExpression()];
         const parentPath = this.parent.path();
         if (this.name === "") return parentPath;
@@ -160,36 +192,39 @@ export class Validator {
         return parentPath;
     }
 
-    expression() : ts.Expression {
+    expression(): ts.Expression {
         if (this.customExp) return this.customExp;
         if (this._exp) return this._exp;
         if (!this.parent) return ts.factory.createNull();
         if (this.name === "") return this.parent.expression();
-        return this._exp = _access(this.parent.expression(), this.name);
+        return (this._exp = _access(this.parent.expression(), this.name));
     }
 
     /**
      * If the type is a recursive type, or an union of a recursive type and undefined
      */
-    isRedirect() : boolean {
-        return this.typeData.kind === TypeDataKinds.Recursive || (this.typeData.kind === TypeDataKinds.Union && this.children.length === 2 && this.hasChildrenOfKind(TypeDataKinds.Undefined, TypeDataKinds.Recursive));
+    isRedirect(): boolean {
+        return (
+            this.typeData.kind === TypeDataKinds.Recursive ||
+            (this.typeData.kind === TypeDataKinds.Union && this.children.length === 2 && this.hasChildrenOfKind(TypeDataKinds.Undefined, TypeDataKinds.Recursive))
+        );
     }
 
     /**
      * If it will take more than expressions to validate the type (for loops, if...else chains)
      */
-    isComplexType() : boolean {
+    isComplexType(): boolean {
         switch (this.typeData.kind) {
-        case TypeDataKinds.Check:
-            if (!this.children.length) return false;
-            else return (this.children[0] as Validator).isComplexType();
-        case TypeDataKinds.Object:
-        case TypeDataKinds.Tuple:
-        case TypeDataKinds.Union:
-        case TypeDataKinds.Array:
-            return true;
-        default:
-            return false;
+            case TypeDataKinds.Check:
+                if (!this.children.length) return false;
+                else return (this.children[0] as Validator).isComplexType();
+            case TypeDataKinds.Object:
+            case TypeDataKinds.Tuple:
+            case TypeDataKinds.Union:
+            case TypeDataKinds.Array:
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -208,7 +243,7 @@ export class Validator {
         this.children = children;
     }
 
-    setAlias(alias: () => ts.Identifier) : ts.Identifier {
+    setAlias(alias: () => ts.Identifier): ts.Identifier {
         delete this._exp;
         if (this.customExp) return this.customExp as ts.Identifier;
         this.customExp = alias();
@@ -225,7 +260,7 @@ export class Validator {
         delete this._exp;
     }
 
-    hasChildrenOfKind(...kinds: TypeDataKinds[]) : boolean {
+    hasChildrenOfKind(...kinds: TypeDataKinds[]): boolean {
         const ownedKinds: Set<number> = new Set();
         for (const child of this.children) {
             if (kinds.includes(child.typeData.kind)) ownedKinds.add(child.typeData.kind);
@@ -233,7 +268,7 @@ export class Validator {
         return ownedKinds.size === kinds.length;
     }
 
-    getChildrenOfKind(kind: TypeDataKinds) : Validator[] {
+    getChildrenOfKind(kind: TypeDataKinds): Validator[] {
         const result = [];
         if (this.typeData.kind === kind) result.push(this);
         for (const child of this.children) {
@@ -242,25 +277,26 @@ export class Validator {
         return result;
     }
 
-    areChildrenSameKind() : boolean {
+    areChildrenSameKind(): boolean {
         if (!this.children.length) return true;
-        const firstChildKind =( this.children[0] as Validator).typeData.kind;
-        for (let i=1; i < this.children.length; i++) {
+        const firstChildKind = (this.children[0] as Validator).typeData.kind;
+        for (let i = 1; i < this.children.length; i++) {
             if ((this.children[i] as Validator).typeData.kind !== firstChildKind) return false;
         }
         return true;
     }
 
-    getFirstLiteralChild() : Validator|undefined {
+    getFirstLiteralChild(): Validator | undefined {
         for (const child of this.children) {
-            if ((child.typeData.kind === TypeDataKinds.String && child.typeData.literal !== undefined) || (child.typeData.kind === TypeDataKinds.Number && child.typeData.literal !== undefined)) return child;
+            if ((child.typeData.kind === TypeDataKinds.String && child.typeData.literal !== undefined) || (child.typeData.kind === TypeDataKinds.Number && child.typeData.literal !== undefined))
+                return child;
         }
         return;
     }
 
-    getParentWithType(t: ts.Type) : Validator|undefined {
+    getParentWithType(t: ts.Type): Validator | undefined {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
-        let parent: Validator|undefined = this;
+        let parent: Validator | undefined = this;
         while (parent) {
             if (parent._original.symbol && parent._original.symbol === t.symbol) return parent;
             parent = parent.parent;
@@ -268,7 +304,7 @@ export class Validator {
         return;
     }
 
-    getNonOptionalValue() : Validator | undefined {
+    getNonOptionalValue(): Validator | undefined {
         if (this.typeData.kind === TypeDataKinds.Union && this.children.length === 2) {
             if ((this.children[0] as Validator).typeData.kind === TypeDataKinds.Undefined) return this.children[1] as Validator;
             else if ((this.children[1] as Validator).typeData.kind === TypeDataKinds.Undefined) return this.children[0] as Validator;
@@ -276,7 +312,7 @@ export class Validator {
         return undefined;
     }
 
-    exactProps() : ObjectTypeDataExactOptions|undefined {
+    exactProps(): ObjectTypeDataExactOptions | undefined {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         let parent: Validator | undefined = this;
         while (parent) {
@@ -287,52 +323,52 @@ export class Validator {
     }
 
     // Iteration / recursion automatically adds 10 to the weight
-    weigh() : number {
+    weigh(): number {
         let sum = 0;
         switch (this.typeData.kind) {
-        case TypeDataKinds.Number:
-            if (this.typeData.literal) return 0;
-            sum++;
-            break;
-        case TypeDataKinds.String:
-            // string comparisons are definitely slower than number / bool literals
-            if (this.typeData.literal) return 0.5;
-            sum++;
-            break;
-        case TypeDataKinds.Boolean:
-            if (this.typeData.literal) return 0;
-            // Boolean checks are faster than string / number checks
-            else return 0.5;
-        case TypeDataKinds.Array:
-            sum += 10;
-            break;
-        case TypeDataKinds.Union:
-        case TypeDataKinds.Resolve:
-            break;
-        case TypeDataKinds.Null:
-        case TypeDataKinds.Undefined:
-            sum += 1;
-            break;
-        case TypeDataKinds.Symbol:
-        case TypeDataKinds.BigInt:
-        case TypeDataKinds.Function:
-        case TypeDataKinds.Class:
-        case TypeDataKinds.Tuple:
-            sum += 3;
-            break;
-        case TypeDataKinds.Object:
-            if (this.typeData.exact || this.typeData.stringIndexInfo || this.typeData.numberIndexInfo) sum += 8;
-            sum += 3;
-            break;
-        case TypeDataKinds.Recursive:
-            return 10;
-        case TypeDataKinds.Check:
-            sum += this.typeData.expressions.length;
+            case TypeDataKinds.Number:
+                if (this.typeData.literal) return 0;
+                sum++;
+                break;
+            case TypeDataKinds.String:
+                // string comparisons are definitely slower than number / bool literals
+                if (this.typeData.literal) return 0.5;
+                sum++;
+                break;
+            case TypeDataKinds.Boolean:
+                if (this.typeData.literal) return 0;
+                // Boolean checks are faster than string / number checks
+                else return 0.5;
+            case TypeDataKinds.Array:
+                sum += 10;
+                break;
+            case TypeDataKinds.Union:
+            case TypeDataKinds.Resolve:
+                break;
+            case TypeDataKinds.Null:
+            case TypeDataKinds.Undefined:
+                sum += 1;
+                break;
+            case TypeDataKinds.Symbol:
+            case TypeDataKinds.BigInt:
+            case TypeDataKinds.Function:
+            case TypeDataKinds.Class:
+            case TypeDataKinds.Tuple:
+                sum += 3;
+                break;
+            case TypeDataKinds.Object:
+                if (this.typeData.exact || this.typeData.stringIndexInfo || this.typeData.numberIndexInfo) sum += 8;
+                sum += 3;
+                break;
+            case TypeDataKinds.Recursive:
+                return 10;
+            case TypeDataKinds.Check:
+                sum += this.typeData.expressions.length;
         }
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
     }
 
-    getBaseType() : TypeDataKinds {
+    getBaseType(): TypeDataKinds {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         if (this.typeData.kind === TypeDataKinds.Check && this.children.length) return this.children[0]!.typeData.kind;
         return this.typeData.kind;
@@ -341,40 +377,46 @@ export class Validator {
     /**
      * Whether the validator is in it's simplest form - no children, extra checks, etc.
      */
-    isSimple() : boolean {
+    isSimple(): boolean {
         switch (this.typeData.kind) {
-        case TypeDataKinds.Number:
-        case TypeDataKinds.String:
-        case TypeDataKinds.Boolean:
-            return this.typeData.literal === undefined;
-        case TypeDataKinds.Object:
-        case TypeDataKinds.Array:
-        case TypeDataKinds.Tuple:
-        case TypeDataKinds.Check:
-            return this.children.length === 0;
-        case TypeDataKinds.Union:
-            return false;
-        default:
-            return true;
+            case TypeDataKinds.Number:
+            case TypeDataKinds.String:
+            case TypeDataKinds.Boolean:
+                return this.typeData.literal === undefined;
+            case TypeDataKinds.Object:
+            case TypeDataKinds.Array:
+            case TypeDataKinds.Tuple:
+            case TypeDataKinds.Check:
+                return this.children.length === 0;
+            case TypeDataKinds.Union:
+                return false;
+            default:
+                return true;
         }
     }
 
-    getRawTypeData() : Record<string, unknown> {
-        switch(this.typeData.kind) {
-        case TypeDataKinds.Check: {
-            const base = this.children[0] ? this.children[0].getRawTypeData() : { kind: TypeDataKinds.Check };
-            for (const hint of this.typeData.hints) {
-                if (hint.name) base[hint.name] = hint.value;
+    getRawTypeData(): Record<string, unknown> {
+        switch (this.typeData.kind) {
+            case TypeDataKinds.Check: {
+                const base = this.children[0] ? this.children[0].getRawTypeData() : {kind: TypeDataKinds.Check};
+                for (const hint of this.typeData.hints) {
+                    if (hint.name) base[hint.name] = hint.value;
+                }
+                return base;
             }
-            return base;
-        }
-        default:
-            return this.typeData as unknown as Record<string, unknown>;
+            default:
+                return this.typeData as unknown as Record<string, unknown>;
         }
     }
 
-    clone() : Validator {
-        return new Validator(this._original, this.name, {...this.typeData}, this._exp, this.parent, this.children.map(c => c.clone()));
+    clone(): Validator {
+        return new Validator(
+            this._original,
+            this.name,
+            {...this.typeData},
+            this._exp,
+            this.parent,
+            this.children.map(c => c.clone())
+        );
     }
-
 }

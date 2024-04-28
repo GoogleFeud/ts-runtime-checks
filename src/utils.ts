@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
-import type { Transformer } from "./transformer";
-import type { ValidationResultType } from "./gen/nodes";
+import type {Transformer} from "./transformer";
+import type {ValidationResultType} from "./gen/nodes";
 
-export function hasBit(thing: { flags: number }, bit: number): boolean {
+export function hasBit(thing: {flags: number}, bit: number): boolean {
     return (thing.flags & bit) !== 0;
 }
 
@@ -57,17 +57,15 @@ export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: 
     if (sig.mapper.kind === ts.TypeMapKind.Simple) {
         sources = [sig.mapper.source];
         targets = [sig.mapper.target];
-    }
-    else if (sig.mapper.kind === ts.TypeMapKind.Array && sig.mapper.targets) {
+    } else if (sig.mapper.kind === ts.TypeMapKind.Array && sig.mapper.targets) {
         sources = sig.mapper.sources;
         targets = sig.mapper.targets;
-    }
-    else return resolvedTypes;
+    } else return resolvedTypes;
     // For some reason type parameters declared in class method signatures have a mapper themselves...
     const resolvedSources = sources.map(p => {
         // Type of mapper is ts.TypeMapper
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const param: ts.Type & { mapper?: any } = p;
+        const param: ts.Type & {mapper?: any} = p;
         if (param.mapper && param.mapper.kind === ts.TypeMapKind.Composite && param.mapper.mapper1.kind === ts.TypeMapKind.Simple) return param.mapper.mapper1.source;
         else return param;
     });
@@ -80,14 +78,15 @@ export function getResolvedTypesFromCallSig(checker: ts.TypeChecker, typeParam: 
 }
 
 export function resolveResultType(transformer: Transformer, type?: ts.Type): ValidationResultType {
-    if (!type) return { throw: "Error" };
+    if (!type) return {throw: "Error"};
     const rawErrors = type.getProperty("__$raw_error") && isTrueType(transformer.checker.getTypeOfSymbol(type.getProperty("__$raw_error") as ts.Symbol));
-    if (type.getProperty("__$error_msg")) return { returnErr: true, rawErrors };
-    else if (type.getProperty("__$throw_err")) return {
-        throw: transformer.checker.getTypeOfSymbol(type.getProperty("__$throw_err") as ts.Symbol).symbol,
-        rawErrors
-    };
-    else return { return: transformer.typeValueToNode(type), rawErrors };
+    if (type.getProperty("__$error_msg")) return {returnErr: true, rawErrors};
+    else if (type.getProperty("__$throw_err"))
+        return {
+            throw: transformer.checker.getTypeOfSymbol(type.getProperty("__$throw_err") as ts.Symbol).symbol,
+            rawErrors
+        };
+    else return {return: transformer.typeValueToNode(type), rawErrors};
 }
 
 export const enum BindingPatternTypes {
@@ -95,9 +94,11 @@ export const enum BindingPatternTypes {
     Array
 }
 
-export function forEachVar(prop: ts.Expression | ts.BindingName | ts.QualifiedName,
+export function forEachVar(
+    prop: ts.Expression | ts.BindingName | ts.QualifiedName,
     cb: (i: ts.Expression, bindingPatternType?: BindingPatternTypes) => Array<ts.Statement>,
-    parentType?: BindingPatternTypes): Array<ts.Statement> {
+    parentType?: BindingPatternTypes
+): Array<ts.Statement> {
     if (ts.isIdentifier(prop)) return cb(prop, parentType);
     else if (ts.isQualifiedName(prop)) return cb(prop.right, parentType);
     else if (ts.isObjectBindingPattern(prop)) {
@@ -113,8 +114,7 @@ export function forEachVar(prop: ts.Expression | ts.BindingName | ts.QualifiedNa
             result.push(...forEachVar(el.name, cb, BindingPatternTypes.Array));
         }
         return result;
-    }
-    else return cb(prop);
+    } else return cb(prop);
 }
 
 export function isInt(str: string | number): boolean {
@@ -133,8 +133,7 @@ export function doesAlwaysReturn(stmt: ts.Statement): boolean {
         const last = stmt.statements[stmt.statements.length - 1];
         if (!last) return false;
         return doesAlwaysReturn(last);
-    }
-    else return false;
+    } else return false;
 }
 
 export function TransformerError(callSite: ts.Node, msg: string): void {
@@ -144,18 +143,25 @@ export function TransformerError(callSite: ts.Node, msg: string): void {
 
 export function TransformerErrorWrapper(start: number, length: number, msg: string, file: ts.SourceFile): void {
     if (!ts.sys || typeof process !== "object") throw new Error(msg);
-    console.error(ts.formatDiagnosticsWithColorAndContext([{
-        category: ts.DiagnosticCategory.Error,
-        code: 8000,
-        file,
-        start,
-        length,
-        messageText: msg
-    }], {
-        getNewLine: () => "\r\n",
-        getCurrentDirectory: ts.sys.getCurrentDirectory,
-        getCanonicalFileName: (fileName) => fileName
-    }));
+    console.error(
+        ts.formatDiagnosticsWithColorAndContext(
+            [
+                {
+                    category: ts.DiagnosticCategory.Error,
+                    code: 8000,
+                    file,
+                    start,
+                    length,
+                    messageText: msg
+                }
+            ],
+            {
+                getNewLine: () => "\r\n",
+                getCurrentDirectory: ts.sys.getCurrentDirectory,
+                getCanonicalFileName: fileName => fileName
+            }
+        )
+    );
 }
 
 export function importSymbol(thisSourceFile: ts.SourceFile, symbol: ts.Symbol): [ts.ImportDeclaration, ts.Identifier] | undefined {
@@ -164,17 +170,17 @@ export function importSymbol(thisSourceFile: ts.SourceFile, symbol: ts.Symbol): 
     if (originSourceFile === thisSourceFile) return;
     const fileExports = originSourceFile.symbol?.exports;
     if (!fileExports) return;
-    const fileName = ts.getRelativePathFromFile(thisSourceFile.fileName, originSourceFile.fileName, (name) => name).replace(".ts", ".js").replace(".mts", ".mjs");
+    const fileName = ts
+        .getRelativePathFromFile(thisSourceFile.fileName, originSourceFile.fileName, name => name)
+        .replace(".ts", ".js")
+        .replace(".mts", ".mjs");
     let clause, specifier;
     const importIdentifier = ts.factory.createIdentifier(symbol.name);
     if (fileExports.get("default" as ts.__String) === symbol) {
         clause = ts.factory.createImportClause(false, importIdentifier, undefined);
         specifier = clause.name!;
-    }
-    else {
-        clause = ts.factory.createImportClause(false, undefined, ts.factory.createNamedImports([
-            ts.factory.createImportSpecifier(false, undefined, importIdentifier)
-        ]));
+    } else {
+        clause = ts.factory.createImportClause(false, undefined, ts.factory.createNamedImports([ts.factory.createImportSpecifier(false, undefined, importIdentifier)]));
         specifier = (clause.namedBindings as ts.NamedImports).elements[0];
     }
     const statement = ts.factory.createImportDeclaration(undefined, clause, ts.factory.createStringLiteral(fileName), undefined);

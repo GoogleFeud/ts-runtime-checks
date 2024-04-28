@@ -1,4 +1,3 @@
-
 import ts from "typescript";
 import TsChecks from "../../dist/index";
 
@@ -38,25 +37,25 @@ declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(
 `;
 
 export const CompilerOptions: ts.CompilerOptions = {
-    ...ts.getDefaultCompilerOptions(),                    
-    noImplicitAny: true,                          
+    ...ts.getDefaultCompilerOptions(),
+    noImplicitAny: true,
     strictNullChecks: true,
     target: ts.ScriptTarget.ESNext
 };
 
-export function genTranspile(lib: string) : (str: string) => { code?: string, error?: unknown} {
+export function genTranspile(lib: string): (str: string) => {code?: string; error?: unknown} {
     const LibFile = ts.createSourceFile("lib.d.ts", lib + Markers, CompilerOptions.target || ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
-    return (str) => {
+    return str => {
         const SourceFile = ts.createSourceFile("module.ts", str, CompilerOptions.target || ts.ScriptTarget.ESNext, true);
         let output = "";
         const CompilerHost: ts.CompilerHost = {
-            getSourceFile: (fileName) => {
+            getSourceFile: fileName => {
                 if (fileName.endsWith(".d.ts")) return LibFile;
                 else if (fileName === "module.ts") return SourceFile;
             },
             getDefaultLibFileName: () => "lib.d.ts",
             useCaseSensitiveFileNames: () => false,
-            writeFile: (_name, text) => output = text,
+            writeFile: (_name, text) => (output = text),
             getCanonicalFileName: fileName => fileName,
             getCurrentDirectory: () => "",
             getNewLine: () => "\n",
@@ -67,10 +66,10 @@ export function genTranspile(lib: string) : (str: string) => { code?: string, er
         };
         const program = ts.createProgram(["module.ts"], CompilerOptions, CompilerHost);
         try {
-            program.emit(undefined, undefined, undefined, undefined, { before: [ TsChecks(program) as unknown as ts.TransformerFactory<ts.SourceFile> ]});
+            program.emit(undefined, undefined, undefined, undefined, {before: [TsChecks(program) as unknown as ts.TransformerFactory<ts.SourceFile>]});
         } catch (err: unknown) {
-            return { error: err };
+            return {error: err};
         }
-        return { code: output };
+        return {code: output};
     };
 }

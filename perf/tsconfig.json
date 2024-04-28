@@ -1,15 +1,13 @@
 {
     "compilerOptions": {
-      "target": "ES2021",
-      "module": "NodeNext",
-      "moduleResolution": "nodenext",
-      "rootDir": "./src",
-      "removeComments": true,
-      "outDir": "./dist",
-      "esModuleInterop": true,
-      "strictNullChecks": true, 
-      "plugins": [
-        { "transform": "../dist/index.js" }
-    ]
+        "target": "ES2021",
+        "module": "NodeNext",
+        "moduleResolution": "nodenext",
+        "rootDir": "./src",
+        "removeComments": true,
+        "outDir": "./dist",
+        "esModuleInterop": true,
+        "strictNullChecks": true,
+        "plugins": [{"transform": "../dist/index.js"}]
     }
 }

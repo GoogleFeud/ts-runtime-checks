@@ -1,17 +1,16 @@
-
 # Contributing
 
 Thank you for contributing to ts-runtime-checks! Your help is appreciated by the author of this library and everyone using it!
 
 ## Table of Contents
 
-- [How can I contribute?](#how-can-i-contribute)
-    - [Bug Reports](#bug-reports)
-    - [Feature Requests](#feature-requests)
-    - [Pull Requests](#pull-requests)
-        - [Setup](#setup)
-        - [Testing](#testing)
-        - [Finishing up](#finishing-up)
+-   [How can I contribute?](#how-can-i-contribute)
+    -   [Bug Reports](#bug-reports)
+    -   [Feature Requests](#feature-requests)
+    -   [Pull Requests](#pull-requests)
+        -   [Setup](#setup)
+        -   [Testing](#testing)
+        -   [Finishing up](#finishing-up)
 
 ## How can I contribute?
 
@@ -21,9 +20,9 @@ Before reporting a bug, plese [search for issues with similar keywords to yours]
 
 When writing a bug report:
 
-- Use a clear and descriptive title for the issue.
-- Post a link to the [playground](https://googlefeud.github.io/ts-runtime-checks/) with code that replicates the bug. (Paste the code inside of the playground and click on the "Copy Link" button)
-- Explain what you expected to see instead and why.
+-   Use a clear and descriptive title for the issue.
+-   Post a link to the [playground](https://googlefeud.github.io/ts-runtime-checks/) with code that replicates the bug. (Paste the code inside of the playground and click on the "Copy Link" button)
+-   Explain what you expected to see instead and why.
 
 ### Feature Requests
 
@@ -31,8 +30,8 @@ Suggestions are always welcome! Before writing a feature request, please [search
 
 When writing a feature request:
 
-- Use a clear and descriptive title for the issue.
-- Provide examples of how the feature will be useful.
+-   Use a clear and descriptive title for the issue.
+-   Provide examples of how the feature will be useful.
 
 ### Pull Requests
 
@@ -42,15 +41,15 @@ All future changes are made in the `dev` branch, so make sure to work in that br
 
 #### Setup
 
-- Fork this repository
-- Clone your fork
-- Install all dependencies: `npm i`
-- Build the project: `npm run build`
-- Run the tests to see if everything is running smoothly: `npm test`
+-   Fork this repository
+-   Clone your fork
+-   Install all dependencies: `npm i`
+-   Build the project: `npm run build`
+-   Run the tests to see if everything is running smoothly: `npm test`
 
 #### Testing
 
-ts-runtime-checks has integrated and snapshot testing implemented. To make sure any changes you've made have not changed the transformer for worse, run `npm test`. This will first run all integrated tests, which test the **transpiled code**, and then ask you to continue with the snapshot testing. 
+ts-runtime-checks has integrated and snapshot testing implemented. To make sure any changes you've made have not changed the transformer for worse, run `npm test`. This will first run all integrated tests, which test the **transpiled code**, and then ask you to continue with the snapshot testing.
 
 During snapshot testing, ts-runtime-checks compares the **trusted** transpiled integrated tests with the ones on your machine that have just been transpiled in the previous step. If any changes have been detected, it will ask you if you approve of these changes. If you notice some of the generated code is wrong or not up to standards, disprove the changes, make your fixes and run `npm test` again until the latest transpiled code matches the trusted version, or until you're satisfied with the generated code.
 
