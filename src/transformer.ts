@@ -3,7 +3,7 @@ import * as Block from "./block";
 import {FnCallFn, Functions, MarkerCallData, MarkerFn, Markers} from "./markers";
 import {TransformerError, getResolvedTypesFromCallSig, hasBit, importSymbol, resolveAsChain} from "./utils";
 import {UNDEFINED, _var} from "./gen/expressionUtils";
-import {ResolveTypeData, Validator, genValidator} from "./gen/validators";
+import {CodeReference, ResolveTypeData, Validator, genValidator} from "./gen/validators";
 import {ValidationResultType, createContext, fullValidate} from "./gen/nodes";
 import {TsRuntimeChecksConfig} from ".";
 import {typeToJSONSchema} from "./gen/jsonSchema";
@@ -14,6 +14,15 @@ interface ToBeResolved {
     resultType: ValidationResultType;
     top: Validator;
 }
+
+export enum CodeReferenceKind {
+    String,
+    Function
+}
+
+export type CodeReferenceExpand = {kind: CodeReferenceKind; expression: ts.Expression};
+
+export type CodeReferenceReplacement = Record<string, ts.Expression | ((...args: ts.Expression[]) => ts.Node)>
 
 export class Transformer {
     checker: ts.TypeChecker;
@@ -294,5 +303,20 @@ export class Transformer {
                 else return "";
             } else return "";
         }
+    }
+
+    expandCodeRef(codes: CodeReference[], origin: ts.Node, getReplacements: () => CodeReferenceReplacement): CodeReferenceExpand[] {
+        const refs: CodeReferenceExpand[] = [];
+
+        for (const code of codes) {
+            if (typeof code === "string") {
+                refs.push({kind: CodeReferenceKind.String, expression: this.stringToNode(code, getReplacements())});
+            } else {
+                const importedSym = this.importSymbol(code, origin);
+                if (!importedSym) continue;
+                refs.push({kind: CodeReferenceKind.Function, expression: importedSym});
+            }
+        }
+        return refs;
     }
 }

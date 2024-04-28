@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
-import type {Transformer} from "./transformer";
-import type {ValidationResultType} from "./gen/nodes";
+import type {CodeReferenceReplacement, Transformer} from "./transformer";
+import {type ValidationResultType} from "./gen/nodes";
+import {Validator} from "./gen/validators";
+import {UNDEFINED} from "./gen/expressionUtils";
 
 export function hasBit(thing: {flags: number}, bit: number): boolean {
     return (thing.flags & bit) !== 0;
@@ -191,4 +193,18 @@ export function importSymbol(thisSourceFile: ts.SourceFile, symbol: ts.Symbol): 
         emitNode.generatedImportReference = specifier as ts.ImportSpecifier;
     }
     return [statement, refIdent];
+}
+
+export function genCheckCtx(validator: Validator | ts.Expression) : CodeReferenceReplacement {
+    if (validator instanceof Validator)
+        return {
+            $self: validator.expression(),
+            $parent: (index?: ts.Expression) => {
+                let parentToGet = index && ts.isNumericLiteral(index) ? +index.text : 0;
+                let parent = validator.parent;
+                while (parent && parentToGet--) parent = parent.parent;
+                return parent ? parent.expression() : UNDEFINED;
+            }
+        };
+    return {$self: validator};
 }

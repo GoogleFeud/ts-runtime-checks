@@ -53,7 +53,7 @@ export function genConciseNode(validator: Validator, ctx: NodeGenContext, genBas
             };
         }
         case TypeDataKinds.Check: {
-            const checks = genChecks(validator.typeData.expressions, validator, ctx, false);
+            const checks = genChecks(validator.typeData.expressions, validator, ctx.transformer, ctx.origin, false);
             const child = validator.children[0];
             if (child) {
                 if (child.isComplexType()) checks.unshift(genConciseNode(child, ctx, genBaseCheck).condition);

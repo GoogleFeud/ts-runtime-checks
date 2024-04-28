@@ -7,6 +7,7 @@ import {ValidationResultType, createContext, genNode, genStatements, minimizeGen
 import {genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName} from "./gen/validators";
 import {_access, _call, _not, _var} from "./gen/expressionUtils";
 import {genMatch} from "./gen/nodes/match";
+import { genTransform } from "./gen/transform";
 
 export interface MarkerCallData {
     parameters: Array<ts.Type>;
@@ -128,6 +129,19 @@ export const Functions: Record<string, FnCallFn> = {
         if (!ts.isArrayLiteralExpression(data.call.arguments[0])) throw TransformerError(data.call.arguments[0], "First parameter must be an array literal.");
         const discriminatedObjectAssert = data.call.arguments[1] ? isTrueType(transformer.checker.getTypeAtLocation(data.call.arguments[1])) : false;
         return genMatch(transformer, data.call.arguments[0], discriminatedObjectAssert);
+    },
+    transform: (transformer, data) => {
+        const typeToTransform = data.parameters[0];
+        if (!data.call.arguments[0] || !typeToTransform) throw TransformerError(data.call, "Missing first parameter.");
+        const toTransform = data.call.arguments[0];
+        let callBy = toTransform as ts.Expression;
+        if (!ts.isIdentifier(callBy) && !ts.isBindingName(callBy)) {
+            const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
+            data.block.nodes.push(decl);
+            callBy = ident;
+        }
+        const validator = genValidator(transformer, typeToTransform, callBy.getText(), toTransform);
+        const target = _var("result")
     }
 };
 
@@ -402,5 +416,7 @@ export declare function check<T, _rawErrorData extends boolean = false, _M = {__
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
 export declare function createMatch<R, U = unknown, _M = {__$marker: "createMatch"}>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean): (val: U) => R;
-
-export declare function transform<T>(value: T): Transformed<T>;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export declare function transform<T, _M = {__$marker: "transform"}>(value: T): Transformed<T>;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+export declare function match<R, U = unknown, _M = {__$marker: "match"}>(value: U, fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean): R;
