@@ -8,7 +8,11 @@
         "export": "next export"
     },
     "dependencies": {
+        "@mdx-js/loader": "^3.0.1",
+        "@mdx-js/react": "^3.0.1",
         "@monaco-editor/react": "^4.5.1",
+        "@next/mdx": "^14.2.3",
+        "@types/mdx": "^2.0.13",
         "js-beautify": "^1.14.8",
         "lz-string": "^1.4.4",
         "monaco-editor": "^0.39.0",
