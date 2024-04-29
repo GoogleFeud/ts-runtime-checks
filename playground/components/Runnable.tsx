@@ -1,8 +1,9 @@
-import SplitPane from "react-split-pane";
-import styles from "../css/App.module.css";
+import {SplitPane} from "./shared/SplitPane";
+import styles from "../css/formatting.module.css";
 import {useEffect, useRef, useState} from "react";
 import Editor from "@monaco-editor/react";
 import beautify from "js-beautify";
+import {FormatCode} from "./shared/FormatCode";
 
 export enum LogKind {
     Log,
@@ -38,91 +39,9 @@ function resolveLogKind(kind: LogKind): JSX.Element {
     }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function formatObjectLike(obj: [string | number | symbol, unknown][], original: any, nestIdent?: number, extraCode?: string): JSX.Element {
-    return (
-        <>
-            <span className={styles.code}>
-                <span className={styles.classNameIdent}>{(original.constructor && original.constructor.name && original.constructor.name !== "Object" && original.constructor.name + " ") || ""}</span>
-                {extraCode || ""}
-                {"{"}
-                <br />
-                <span>
-                    {obj.map(([key, val], index) => (
-                        <span key={index}>
-                            {!!index && (
-                                <>
-                                    <span className={styles.comma}>, </span>
-                                    <br />
-                                </>
-                            )}
-                            <span>
-                                {"  ".repeat(nestIdent || 2)}
-                                {key}: {formatValue(val, (nestIdent || 2) + 1)}
-                            </span>
-                        </span>
-                    ))}
-                </span>
-                <br />
-                {"  ".repeat(nestIdent ? nestIdent - 1 : 1) + "}"}
-            </span>
-        </>
-    );
-}
-
-function formatValue(obj: unknown, nestIdent = 0): JSX.Element {
-    if (typeof obj === "string") return <span className={`${styles.code} ${styles.string}`}>"{obj.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}"</span>;
-    else if (typeof obj === "number") return <span className={`${styles.code} ${styles.number}`}>{obj}</span>;
-    else if (typeof obj === "function") return <span className={styles.code}>[Function]</span>;
-    else if (obj === undefined) return <span className={`${styles.code} ${styles.keyword}`}>undefined</span>;
-    else if (obj === null) return <span className={`${styles.code} ${styles.keyword}`}>null</span>;
-    else if (obj === true) return <span className={`${styles.code} ${styles.keyword}`}>true</span>;
-    else if (obj === false) return <span className={`${styles.code} ${styles.keyword}`}>false</span>;
-    else if (Array.isArray(obj))
-        return (
-            <span className={styles.code}>
-                [
-                {obj.map((element, index) => (
-                    <span key={index}>
-                        {!!index && <span className={styles.comma}>, </span>}
-                        {formatValue(element, nestIdent + 1)}
-                    </span>
-                ))}
-                ]
-            </span>
-        );
-    else if (obj instanceof Map) return formatObjectLike([...obj.entries()], obj, nestIdent, `(${obj.size}) `);
-    else if (obj instanceof Set)
-        return (
-            <span className={styles.code}>
-                <span className={styles.classNameIdent}>Set </span>({obj.size}){" {"}
-                {[...obj.values()].map((element, index) => (
-                    <span key={index}>
-                        {!!index && <span className={styles.comma}>, </span>}
-                        {formatValue(element, nestIdent + 1)}
-                    </span>
-                ))}
-                {"}"}
-            </span>
-        );
-    else {
-        const entries = Object.entries(obj);
-        if (entries.length === 0) return <>{"{}"}</>;
-        else return formatObjectLike(entries, obj, nestIdent);
-    }
-}
-
 export function Runnable(props: {code: string}) {
     const [logs, setLogs] = useState<Log[]>([]);
-    const [newHeight, setNewHeight] = useState<string>("100%");
-    const topPaneRef = useRef<HTMLDivElement>(null);
     const bottomPaneRef = useRef<HTMLDivElement>(null);
-
-    const recalcHeight = () => {
-        const current = topPaneRef.current;
-        if (!current) return;
-        setNewHeight(`${window.innerHeight - topPaneRef.current.clientHeight - 55 * 3}px`);
-    };
 
     const scrollToBottom = () => {
         const el = bottomPaneRef.current;
@@ -131,49 +50,50 @@ export function Runnable(props: {code: string}) {
     };
 
     useEffect(() => {
-        recalcHeight();
         scrollToBottom();
     }, [logs]);
 
     const specialConsole = {
         log: (...messages: unknown[]) => {
-            setLogs([...logs, ...messages.map(msg => ({kind: LogKind.Log, message: msg}))]);
+            setLogs(prev => [...prev, ...messages.map(msg => ({kind: LogKind.Log, message: msg}))]);
         },
         warn: (...messages: unknown[]) => {
-            setLogs([...logs, ...messages.map(msg => ({kind: LogKind.Warn, message: msg}))]);
+            setLogs(prev => [...prev, ...messages.map(msg => ({kind: LogKind.Warn, message: msg}))]);
         },
         error: (...messages: unknown[]) => {
-            setLogs([...logs, ...messages.map(msg => ({kind: LogKind.Error, message: msg}))]);
+            setLogs(prev => [...prev, ...messages.map(msg => ({kind: LogKind.Error, message: msg}))]);
         }
     };
 
     return (
-        <SplitPane split="horizontal" defaultSize={"70%"} primary="first" onDragFinished={recalcHeight}>
-            <div style={{width: "100%"}} ref={topPaneRef}>
-                <Editor height={"80vh"} language="javascript" theme="vs-dark" value={beautify(props.code)} options={{readOnly: true}} />;
+        <SplitPane split="horizontal" defaultSize={70} secondChildClass="overflow-auto">
+            <div>
+                <Editor height="calc(90vh - 50px)" language="javascript" theme="vs-dark" value={beautify(props.code)} options={{readOnly: true}} />;
             </div>
-            <div className={styles.runSection}>
-                <button
-                    className={styles.button}
-                    onClick={() => {
-                        try {
-                            const fn = new Function("console", props.code);
-                            fn(specialConsole);
-                        } catch (err) {
-                            if (err instanceof Error) specialConsole.error(err.message);
-                        }
-                    }}>
-                    Run
-                </button>
-                <button className={styles.button} onClick={() => setLogs([])}>
-                    Clear
-                </button>
+            <div className="bg-[#1e1e1e] text-white h-fit pl-4">
+                <div className="flex flex-row gap-4 py-2 sticky top-0 bg-[#1e1e1e]">
+                    <button
+                        className="p-1 border-2 text-sm rounded-sm border-white"
+                        onClick={() => {
+                            try {
+                                const fn = new Function("console", props.code);
+                                fn(specialConsole);
+                            } catch (err) {
+                                if (err instanceof Error) specialConsole.error(err.message);
+                            }
+                        }}>
+                        Run
+                    </button>
+                    <button className="p-1 border-2 text-sm rounded-sm border-white" onClick={() => setLogs([])}>
+                        Clear
+                    </button>
+                </div>
                 <br />
-                <div className={styles.runSectionResult} style={{height: newHeight}} ref={bottomPaneRef}>
+                <div className="pb-1" ref={bottomPaneRef}>
                     {logs.map((log, index) => (
                         <div key={index}>
                             {!!index && <div className={styles.logSeparator}></div>}
-                            {resolveLogKind(log.kind)} {formatValue(log.message)}
+                            {resolveLogKind(log.kind)} <FormatCode value={log.message} />
                         </div>
                     ))}
                 </div>
