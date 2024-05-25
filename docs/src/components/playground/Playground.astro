@@ -1,0 +1,19 @@
+---
+import PlaygroundHeader from "./PlaygroundHeader.astro";
+import PlaygroundFooter from "./PlaygroundFooter.astro";
+import {PlaygroundBody} from "./PlaygroundBody";
+
+interface Props {
+    libCode: string;
+}
+
+const {libCode} = Astro.props;
+---
+
+<div class="flex flex-col w-full h-screen">
+    <PlaygroundHeader />
+    <div class="h-[calc(100%-110px)] w-full">
+        <PlaygroundBody client:only="react" libCode={libCode} />
+    </div>
+    <PlaygroundFooter />
+</div>

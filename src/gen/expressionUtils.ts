@@ -1,5 +1,7 @@
-import ts, {factory} from "typescript";
+import ts from "typescript";
 import {isInt} from "../utils";
+
+const factory = ts.factory;
 
 export type Stringifyable = string | ts.Expression;
 export type BlockLike = ts.Expression | ts.Statement | ts.Block | ts.Statement[];
