@@ -2,11 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+    font-family: Domine;
+    src: url(/fonts/Domine-Regular.ttf);
+}
+
 body {
     overflow: hidden;
     margin: 0;
     font-family: Arial, sans-serif;
     background-color: #1e1e1e;
+    color: white;
+    line-height: 1.7;
+    font-family: Domine;
 }
 
 .Resizer {
@@ -59,4 +67,10 @@ body {
 
 .Resizer.disabled:hover {
     border-color: transparent;
+}
+
+li {
+    list-style: disc outside none;
+    display: list-item;
+    margin-left: 1em;
 }

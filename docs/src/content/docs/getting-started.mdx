@@ -1,0 +1,16 @@
+---
+title: "Getting started"
+description: "Learn more about ts-runtime checks and how to install and configure it"
+order: 0
+---
+
+## What is ts-runtime-checks?
+
+ts-runtime-checks is a typescript transformer which automatically generates validation code from your types. Think of it as a validation library like 
+[ajv](https://ajv.js.org/guide/typescript.html) and [zod](https://zod.dev/), except it completely relies on the typescript compiler, and generates
+ vanilla javascript code on demand. This comes with a lot of advantages:
+
+-   It's just types - no boilerplate or schemas needed.
+-   Only validate where you see fit.
+-   Code is generated during the transpilation phase, and can be easily optimized by V8.
+-   Powerful - built on top of typescript's type system, which is turing-complete.

@@ -14,12 +14,12 @@ jobs:
             - run: npm i
             - run: tsc
             - run: |
-                  cd ./playground
+                  cd ./docs
                   npm i
-                  npx next build
+                  npm run build
                   touch ./out/.nojekyll
             - name: Deploy to GitHub Pages
               uses: JamesIves/github-pages-deploy-action@4.1.3
               with:
                   branch: gh-pages
-                  folder: ./playground/out
+                  folder: ./docs/out

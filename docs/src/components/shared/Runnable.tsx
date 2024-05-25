@@ -5,7 +5,7 @@ import Editor from "@monaco-editor/react";
 import beautify from "js-beautify";
 import {FormatCode} from "./FormatCode";
 
-export enum LogKind {
+export const enum LogKind {
     Log,
     Error,
     Warn
@@ -72,12 +72,12 @@ export const Runnable: React.FC<RunnableProps> = ({code}) => {
     return (
         <SplitPane split="horizontal" defaultSize={70} secondChildClass="overflow-auto">
             <div>
-                <Editor height="calc(90vh - 50px)" language="javascript" theme="vs-dark" value={beautify(code)} options={{readOnly: true}} />;
+                <Editor height="calc(90vh - 50px)" language="javascript" theme="vs-dark" value={beautify(code)} options={{readOnly: true, minimap: { enabled: false }}} />;
             </div>
             <div className="bg-[#1e1e1e] text-white h-full pl-4">
                 <div className="flex flex-row gap-4 py-2 sticky top-0 bg-[#1e1e1e]">
                     <button
-                        className="p-1 border-2 text-sm rounded-sm border-white"
+                        className="hover:text-gray-400 transition-colors"
                         onClick={() => {
                             try {
                                 const fn = new Function("console", code);
@@ -86,10 +86,14 @@ export const Runnable: React.FC<RunnableProps> = ({code}) => {
                                 if (err instanceof Error) specialConsole.error(err.message);
                             }
                         }}>
-                        Run
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393" />
+                        </svg>
                     </button>
-                    <button className="p-1 border-2 text-sm rounded-sm border-white" onClick={() => setLogs([])}>
-                        Clear
+                    <button className="hover:text-gray-400 transition-colors" onClick={() => setLogs([])}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0" />
+                        </svg>
                     </button>
                 </div>
                 <br />
