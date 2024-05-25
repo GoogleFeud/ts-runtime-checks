@@ -361,6 +361,44 @@ const validatedBody = (() => {
 })();
 ```
 
+### Transformations
+
+You can also describe **transformations** in your types using the `Transform` marker. It accepts a reference to a function, a string containing javascript code, or a combination of both:
+
+```ts
+const timestampToDate = (ts: number) => new Date(ts);
+const incrementAge = (age: number) => age + 1;
+
+type User = {
+    username: string;
+    createdAt: Transform<typeof timestampToDate>;
+    age: string & Transform<["+$self", typeof incrementAge]>;
+};
+```
+
+It's recommended to use function references because all of the types will be inferred for you. In the example above, we're able to tell typescript that `createdAt` is of type `number` before it gets transformed to `Date`. However, in `age`, we have to specify the initial type (`string`) because the first transformation is a code string.
+
+Once you have a type you can transform, you can use the `transform` utility function to actually perform the transformation:
+
+```ts
+const myUser: User = {
+    username: "GoogleFeud",
+    createdAt: 1716657364400,
+    age: "123"
+}
+
+console.log(transform<User>(myUser))
+
+// Transpiles to:
+
+let result_1;
+result_1 = {};
+result_1.createdAt = timestampToDate(myUser.createdAt);
+result_1.age = incrementAge(+myUser.age);
+result_1.username = myUser.username;
+console.log(result_1);
+```
+
 ### `as` assertions
 
 You can use `as` type assertions to validate values in expressions. The transformer remembers what's safe to use, so you can't generate the same validation code twice.

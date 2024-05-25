@@ -169,8 +169,14 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
 
 export function getCodeReference(type: ts.Type): CodeReference | undefined {
     if (type.isStringLiteral()) return type.value;
-    else if (type.symbol) return type.symbol;
-    else return undefined;
+    else if (type.symbol) {
+        if (type.symbol.name === "__function") {
+            const parentDecl = type.symbol.declarations?.[0]?.parent;
+            if (!parentDecl) return;
+            return (parentDecl as { symbol?: ts.Symbol }).symbol;
+        }
+        return type.symbol;
+    } else return undefined;
 }
 
 export function createPossibleIntersectionCheckType(

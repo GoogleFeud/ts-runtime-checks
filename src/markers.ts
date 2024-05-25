@@ -28,8 +28,7 @@ export type FnCallFn = (transformer: Transformer, data: FnCallData) => ts.Expres
 
 export const Markers: Record<string, MarkerFn> = {
     Assert: (trans, {exp, block, parameters, optional}) => {
-        const resultType = resolveResultType(trans, parameters[1]);
-        if (resultType.throw && typeof resultType.throw !== "string") trans.importSymbol(resultType.throw, exp);
+        const resultType = resolveResultType(trans, exp, parameters[1]);
         let callBy = exp as ts.Expression;
         if (!ts.isIdentifier(callBy) && !ts.isBindingName(callBy)) {
             const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
@@ -426,6 +425,4 @@ export declare function check<T, _rawErrorData extends boolean = false, _M = {__
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
 export declare function createMatch<R, U = unknown, _M = {__$marker: "createMatch"}>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean): (val: U) => R;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export declare function transform<T, _M = {__$marker: "transform"}>(value: T): Transformed<T>;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-export declare function match<R, U = unknown, _M = {__$marker: "match"}>(value: U, fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean): R;
+export declare function transform<T, _ReturnType = unknown, _M = {__$marker: "transform"}>(value: T): Transformed<T>;

@@ -5,7 +5,7 @@ import {getUnionMembers} from "../../utils/unions";
 import {_access, _assign, _call, _for, _ident, _if_chain, _obj, _stmt, _var} from "../expressionUtils";
 import {TransformTypeData, TypeDataKinds, Validator} from "../validators";
 import ts from "typescript";
-import { genConciseNode } from "./match";
+import {genConciseNode} from "./match";
 
 export interface TransformCtx {
     transformer: Transformer;
@@ -18,7 +18,7 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
     switch (validator.typeData.kind) {
         case TypeDataKinds.Transform: {
             if (!validator.typeData.transformations.length) return [];
-            const prevStmts = [];
+            const prevStmts: ts.Statement[] = [];
             let previousExp = validator.expression();
             for (let i = 0; i < validator.typeData.transformations.length; i++) {
                 const code = validator.typeData.transformations[i] as string | ts.Symbol;
@@ -60,7 +60,7 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
             if (!transforms.length) return [_stmt(_assign(assignTarget, validator.expression()))];
             const transformBases = transforms.map(transform => (transform.typeData as TransformTypeData).rest).filter(i => i) as Validator[];
 
-            const { normal, compound } = getUnionMembers(transformBases);
+            const {normal, compound} = getUnionMembers(transformBases);
 
             const nodeCtx = createContext(ctx.transformer, {none: true}, ctx.origin);
 

@@ -40,6 +40,11 @@ function formatValue(obj: unknown, nestIdent = 0): JSX.Element {
     else if (obj === null) return <span className={`${styles.code} ${styles.keyword}`}>null</span>;
     else if (obj === true) return <span className={`${styles.code} ${styles.keyword}`}>true</span>;
     else if (obj === false) return <span className={`${styles.code} ${styles.keyword}`}>false</span>;
+    else if (obj instanceof Date) return (
+        <span>
+            <span className={`${styles.code} ${styles.classNameIdent}`}>Date</span>({obj.getTime()})
+        </span>
+    );
     else if (Array.isArray(obj))
         return (
             <span className={styles.code}>
