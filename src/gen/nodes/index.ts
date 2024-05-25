@@ -33,9 +33,9 @@ import {
     _arr_check,
     _var
 } from "../expressionUtils";
-import {CodeReferenceKind, Transformer} from "../../transformer";
+import {CodeReferenceKind, CodeReferenceReplacement, Transformer} from "../../transformer";
 import {TransformerError, genCheckCtx, isSingleIfStatement} from "../../utils";
-import { getUnionMembers } from "../../utils/unions";
+import {getUnionMembers} from "../../utils/unions";
 
 export interface ValidationResultType {
     throw?: string | ts.Symbol;
@@ -261,10 +261,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
         }
         case TypeDataKinds.Check: {
             const normalChecks = [],
-                errorMessages = validator.typeData.hints
-                    .filter(h => h.error)
-                    .map(h => h.error)
-                    .join(", ");
+                errorMessages = validator.typeData.hints.map(h => h.error || "").join(", ");
             let after, before, errorMsg;
             if (validator.children.length) {
                 const first = genNode(validator.children[0] as Validator, ctx);
@@ -273,7 +270,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                 before = first.before;
                 errorMsg = first.error;
             }
-            normalChecks.push(...genChecks(validator.typeData.expressions, validator, ctx.transformer, ctx.origin, true));
+            normalChecks.push(...genChecks(validator.typeData.expressions, validator.typeData.alternatives, validator, ctx.transformer, ctx.origin, true));
             return {
                 condition: _or(normalChecks),
                 after,
@@ -470,15 +467,27 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
     }
 }
 
-export function genChecks(checks: CodeReference[], validator: Validator, transformer: Transformer, origin: ts.Node, negate?: boolean): ts.Expression[] {
-    const ctx = genCheckCtx(validator);
-    return transformer
+export function genChecks(
+    checks: CodeReference[],
+    alts: CodeReference[],
+    validator: Validator,
+    transformer: Transformer,
+    origin: ts.Node,
+    negate?: boolean,
+    dCtx?: CodeReferenceReplacement
+): ts.Expression[] {
+    const ctx = dCtx || genCheckCtx(validator);
+    const exps = transformer
         .expandCodeRef(checks, origin, () => ctx)
         .map(check => {
-            if (check.kind === CodeReferenceKind.String) return negate ? _not(check.expression) : check.expression;
-            const call = _call(check.expression, [validator.expression()]);
-            return negate ? _not(call) : call;
+            if (check.kind === CodeReferenceKind.String) return check.expression;
+            else return _call(check.expression, [validator.expression()]);
         });
+    let result;
+    if (alts.length) result  = [_or([_and(exps), _or(genChecks(alts, [], validator, transformer, origin, false, ctx))])];
+    else result = exps;
+
+    return negate ? result.map(val => _not(val)) : result;
 }
 
 export function isNullableNode(validator: Validator): ts.Expression {

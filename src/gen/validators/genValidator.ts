@@ -1,5 +1,5 @@
 import ts from "typescript";
-import {CheckTypeHint, ObjectTypeData, ObjectTypeDataExactOptions, TypeDataKinds, Validator, ValidatorTargetName} from "./validator";
+import {CheckTypeData, CheckTypeHint, ObjectTypeData, ObjectTypeDataExactOptions, TypeDataKinds, Validator, ValidatorTargetName} from "./validator";
 import {getCallSigFromType, getResolvedTypesFromCallSig, hasBit, isTrueType} from "../../utils";
 import {Transformer} from "../../transformer";
 
@@ -104,7 +104,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                     }
                 }
                 if (!check) return;
-                return new Validator(type, name, {kind: TypeDataKinds.Check, expressions: [check], hints: hint ? [hint] : []}, exp, parent);
+                return new Validator(type, name, {kind: TypeDataKinds.Check, alternatives: [], expressions: [check], hints: hint ? [hint] : []}, exp, parent);
             }
         }
         const utility = transformer.getPropType(type, "name");
@@ -208,7 +208,7 @@ export function createPossibleIntersectionCheckType(
     return new Validator(
         originalType,
         name,
-        {kind: TypeDataKinds.Check, expressions: checks, hints},
+        {kind: TypeDataKinds.Check, expressions: checks, hints, alternatives: []},
         exp,
         parent,
         firstNonCheckType ? parent => [genValidator(transformer, firstNonCheckType, "", undefined, parent)] : undefined
@@ -225,7 +225,17 @@ export function createUnionValidator(originalType: ts.Type, members: ts.Type[], 
             const t = members[i];
             const validator = genValidator(transformer, t, "", undefined, parent);
             if (!validator) continue;
-            if (validator.typeData.kind === TypeDataKinds.Null) includesNull = true;
+
+            if (validator.typeData.kind === TypeDataKinds.Check) {
+                const existing = validators.find(val => val.cmp(validator));
+                if (existing) {
+                    const typeData = existing.typeData as CheckTypeData;
+                    typeData.alternatives.push(...validator.typeData.expressions);
+                    const hints = validator.typeData.hints.filter(hint => hint.error).map(hint => hint.error || "");
+                    if (hints) typeData.hints.push({error: `or ${hints.join(", ")}`});
+                    continue;
+                }
+            } else if (validator.typeData.kind === TypeDataKinds.Null) includesNull = true;
             else if (validator.typeData.kind === TypeDataKinds.Object) validator.typeData.couldBeNull = includesNull;
             else if (validator.typeData.kind === TypeDataKinds.Boolean) {
                 if (validator.typeData.literal === true) hasTrue = i;

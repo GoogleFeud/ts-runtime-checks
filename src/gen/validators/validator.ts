@@ -33,6 +33,7 @@ export interface CheckTypeHint {
 export interface CheckTypeData {
     kind: TypeDataKinds.Check;
     expressions: CodeReference[];
+    alternatives: CodeReference[];
     hints: CheckTypeHint[];
 }
 
@@ -409,5 +410,15 @@ export class Validator {
             this.parent,
             this.children.map(c => c.clone())
         );
+    }
+
+    cmp(other: Validator): boolean {
+        if (this.typeData.kind !== other.typeData.kind || this.children.length !== other.children.length) return false;
+        for (let i = 0; i < this.children.length; i++) {
+            const thisChild = this.children[i] as Validator;
+            const otherChild = other.children[i] as Validator;
+            if (!thisChild.cmp(otherChild)) return false;
+        }
+        return true;
     }
 }

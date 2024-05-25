@@ -36,7 +36,6 @@ type Transformation = string | ((value: any) => any);
 type Transform<
     Transformations extends Transformation | Transformation[],
     V = Transformations extends [(value: infer R) => unknown, ...unknown[]] ? R : Transformations extends (value: infer R) => unknown ? R : unknown,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     T = Transformations extends [...unknown[], (value: unknown) => infer R] ? R : Transformations extends (value: any) => infer R ? R : unknown
 > = V & {__$transform?: T; __$transformations?: Transformations; __$name?: "Transform"};
 type Transformed<T> = {

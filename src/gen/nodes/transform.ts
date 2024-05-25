@@ -1,10 +1,11 @@
-import {createContext, genNode} from ".";
+import {createContext} from ".";
 import {Transformer} from "../../transformer";
 import {genCheckCtx} from "../../utils";
 import {getUnionMembers} from "../../utils/unions";
-import {_access, _assign, _call, _for, _ident, _if_chain, _not, _obj, _stmt, _var} from "../expressionUtils";
+import {_access, _assign, _call, _for, _ident, _if_chain, _obj, _stmt, _var} from "../expressionUtils";
 import {TransformTypeData, TypeDataKinds, Validator} from "../validators";
 import ts from "typescript";
+import { genConciseNode } from "./match";
 
 export interface TransformCtx {
     transformer: Transformer;
@@ -67,10 +68,10 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
                 _if_chain(
                     0,
                     [...normal, ...compound].map(validator => {
-                        const check = genNode(validator, nodeCtx);
+                        const check = genConciseNode(validator, nodeCtx);
                         const originalTransform = transforms[transformBases.indexOf(validator)] as Validator;
 
-                        return [_not(check.condition), genTransform(originalTransform, assignTarget, ctx)];
+                        return [check.condition, genTransform(originalTransform, assignTarget, ctx)];
                     })
                 ) as ts.Statement
             ];
