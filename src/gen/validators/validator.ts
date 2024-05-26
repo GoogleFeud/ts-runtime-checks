@@ -407,7 +407,7 @@ export class Validator {
             this.name,
             {...this.typeData},
             this._exp,
-            this.parent,
+            this.parent?.clone(),
             this.children.map(c => c.clone())
         );
     }
@@ -421,4 +421,5 @@ export class Validator {
         }
         return true;
     }
+
 }

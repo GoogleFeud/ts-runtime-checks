@@ -2,7 +2,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import {Transformer} from "./transformer";
-import {TransformerError, forEachVar, getCallSigFromType, isTrueType, resolveResultType} from "./utils";
+import {TransformerError, extractReference, forEachVar, getCallSigFromType, isTrueType, resolveResultType} from "./utils";
 import {ValidationResultType, createContext, genNode, genStatements, minimizeGenResult, fullValidate} from "./gen/nodes";
 import {genValidator, ResolveTypeData, TypeData, TypeDataKinds, Validator, ValidatorTargetName} from "./gen/validators";
 import {_access, _call, _not, _var} from "./gen/expressionUtils";
@@ -13,7 +13,7 @@ export interface MarkerCallData {
     parameters: Array<ts.Type>;
     block: Block.Block<unknown>;
     optional?: boolean;
-    exp: ts.Expression | ts.BindingName;
+    exp: ts.Expression;
 }
 
 export interface FnCallData {
@@ -29,12 +29,7 @@ export type FnCallFn = (transformer: Transformer, data: FnCallData) => ts.Expres
 export const Markers: Record<string, MarkerFn> = {
     Assert: (trans, {exp, block, parameters, optional}) => {
         const resultType = resolveResultType(trans, exp, parameters[1]);
-        let callBy = exp as ts.Expression;
-        if (!ts.isIdentifier(callBy) && !ts.isBindingName(callBy)) {
-            const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
-            block.nodes.push(decl);
-            callBy = ident;
-        }
+        const [callBy] = extractReference(exp, block);
         block.nodes.push(
             ...forEachVar(callBy, (i, patternType) => {
                 const validator = createValidator(
@@ -132,21 +127,18 @@ export const Functions: Record<string, FnCallFn> = {
     transform: (transformer, data) => {
         const typeToTransform = data.parameters[0];
         if (!data.call.arguments[0] || !typeToTransform) throw TransformerError(data.call, "Missing first parameter.");
+        const validateResult = data.parameters[1];
         const toTransform = data.call.arguments[0];
-        let callBy = toTransform as ts.Expression;
-        if (!ts.isIdentifier(callBy) && !ts.isBindingName(callBy)) {
-            const [decl, ident] = _var("value", callBy as ts.Expression, ts.NodeFlags.Const);
-            data.prevBlock.nodes.push(decl);
-            callBy = ident;
-        }
-        const validator = genValidator(transformer, typeToTransform, "", callBy);
+        const [callBy, callByName] = extractReference(toTransform, data.prevBlock);
+        const validator = genValidator(transformer, typeToTransform, callByName, callBy);
         if (!validator) return;
         const target = _var("result", undefined, ts.NodeFlags.Let);
         data.prevBlock.nodes.push(
             target[0],
             ...genTransform(validator, target[1], {
                 transformer,
-                origin: data.call
+                origin: data.call,
+                validate: validateResult ? createContext(transformer, resolveResultType(transformer, data.call, validateResult), data.call) : undefined
             })
         );
         return target[1];

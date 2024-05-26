@@ -372,7 +372,7 @@ const incrementAge = (age: number) => age + 1;
 type User = {
     username: string;
     createdAt: Transform<typeof timestampToDate>;
-    age: string & Transform<["+$self", typeof incrementAge]>;
+    age: Transform<["+$self", typeof incrementAge], string>;
 };
 ```
 

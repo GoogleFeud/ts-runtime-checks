@@ -3,7 +3,8 @@ import ts from "typescript";
 import type {CodeReferenceReplacement, Transformer} from "./transformer";
 import {type ValidationResultType} from "./gen/nodes";
 import {Validator} from "./gen/validators";
-import {UNDEFINED} from "./gen/expressionUtils";
+import {UNDEFINED, _var} from "./gen/expressionUtils";
+import {Block} from "./block";
 
 export function hasBit(thing: {flags: number}, bit: number): boolean {
     return (thing.flags & bit) !== 0;
@@ -209,4 +210,13 @@ export function genCheckCtx(validator: Validator | ts.Expression): CodeReference
             }
         };
     return {$self: validator};
+}
+
+export function extractReference(exp: ts.Expression, block: Block<unknown>): [ts.Expression, string] {
+    if (!ts.isIdentifier(exp) && !ts.isBindingName(exp)) {
+        const [decl, ident] = _var("value", exp, ts.NodeFlags.Const);
+        block.nodes.push(decl);
+        return [ident, ident.text];
+    }
+    return [exp, exp.text];
 }

@@ -1,8 +1,8 @@
-import {createContext} from ".";
+import {NodeGenContext, createContext, error, fullValidate} from ".";
 import {Transformer} from "../../transformer";
 import {genCheckCtx} from "../../utils";
 import {getUnionMembers} from "../../utils/unions";
-import {_access, _assign, _call, _for, _ident, _if_chain, _obj, _stmt, _var} from "../expressionUtils";
+import {_access, _assign, _call, _for, _ident, _if_chain, _obj, _stmt, _str, _var} from "../expressionUtils";
 import {TransformTypeData, TypeDataKinds, Validator} from "../validators";
 import ts from "typescript";
 import {genConciseNode} from "./match";
@@ -10,15 +10,17 @@ import {genConciseNode} from "./match";
 export interface TransformCtx {
     transformer: Transformer;
     origin: ts.Node;
+    validate?: NodeGenContext;
 }
 
-export function genTransform(validator: Validator, target: ts.Expression, ctx: TransformCtx): ts.Statement[] {
+export function genTransform(validator: Validator, target: ts.Expression, ctx: TransformCtx, validate: NodeGenContext | false | undefined = ctx.validate): ts.Statement[] {
     const assignTarget = validator.parent && validator.name !== "" ? _access(target, validator.name) : target;
 
     switch (validator.typeData.kind) {
         case TypeDataKinds.Transform: {
             if (!validator.typeData.transformations.length) return [];
             const prevStmts: ts.Statement[] = [];
+            if (validate) prevStmts.push(...fullValidate(validator, validate));
             let previousExp = validator.expression();
             for (let i = 0; i < validator.typeData.transformations.length; i++) {
                 const code = validator.typeData.transformations[i] as string | ts.Symbol;
@@ -71,12 +73,16 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
                         const check = genConciseNode(validator, nodeCtx);
                         const originalTransform = transforms[transformBases.indexOf(validator)] as Validator;
 
-                        return [check.condition, genTransform(originalTransform, assignTarget, ctx)];
-                    })
+                        return [check.condition, genTransform(originalTransform, assignTarget, ctx, false)];
+                    }),
+                    validate ? error(validate, [validator, [_str("to be one of "), _str(transformBases.map(base => ctx.transformer.checker.typeToString(base._original)).join(", "))]]) : undefined
                 ) as ts.Statement
             ];
         }
-        default:
-            return [_stmt(_assign(assignTarget, validator.expression()))];
+        default: {
+            const statements: ts.Statement[] = [];
+            if (ctx.validate) statements.push(...fullValidate(validator, ctx.validate));
+            return [...statements, _stmt(_assign(assignTarget, validator.expression()))];
+        }
     }
 }

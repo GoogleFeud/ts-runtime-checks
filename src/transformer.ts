@@ -82,7 +82,7 @@ export class Transformer {
             this.validatedDecls.set(node, node);
             if (!node.body) return node;
             const fnBody = Block.createBlock<ts.Statement>(body);
-            for (const param of node.parameters) this.callMarker(param.type, fnBody, {exp: param.name, optional: Boolean(param.questionToken)});
+            for (const param of node.parameters) this.callMarker(param.type, fnBody, {exp: param.name as ts.Expression, optional: Boolean(param.questionToken)});
             if (ts.isBlock(node.body)) this.visitEach(node.body.statements, fnBody);
             else {
                 const exp = ts.visitNode(node.body, node => this.visitor(node, fnBody));
