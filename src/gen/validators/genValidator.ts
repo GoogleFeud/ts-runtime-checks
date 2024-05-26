@@ -104,7 +104,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                     }
                 }
                 if (!check) return;
-                return new Validator(type, name, {kind: TypeDataKinds.Check, alternatives: [], expressions: [check], hints: hint ? [hint] : []}, exp, parent);
+                return new Validator(type, name, {kind: TypeDataKinds.Check, alternatives: [], expressions: [check], hints: hint ? [hint] : [], altHints: []}, exp, parent);
             }
         }
         const utility = transformer.getPropType(type, "name");
@@ -173,7 +173,7 @@ export function getCodeReference(type: ts.Type): CodeReference | undefined {
         if (type.symbol.name === "__function") {
             const parentDecl = type.symbol.declarations?.[0]?.parent;
             if (!parentDecl) return;
-            return (parentDecl as { symbol?: ts.Symbol }).symbol;
+            return (parentDecl as {symbol?: ts.Symbol}).symbol;
         }
         return type.symbol;
     } else return undefined;
@@ -214,7 +214,7 @@ export function createPossibleIntersectionCheckType(
     return new Validator(
         originalType,
         name,
-        {kind: TypeDataKinds.Check, expressions: checks, hints, alternatives: []},
+        {kind: TypeDataKinds.Check, expressions: checks, hints, alternatives: [], altHints: []},
         exp,
         parent,
         firstNonCheckType ? parent => [genValidator(transformer, firstNonCheckType, "", undefined, parent)] : undefined
@@ -237,8 +237,7 @@ export function createUnionValidator(originalType: ts.Type, members: ts.Type[], 
                 if (existing) {
                     const typeData = existing.typeData as CheckTypeData;
                     typeData.alternatives.push(...validator.typeData.expressions);
-                    const hints = validator.typeData.hints.filter(hint => hint.error).map(hint => hint.error || "");
-                    if (hints) typeData.hints.push({error: `or ${hints.join(", ")}`});
+                    typeData.altHints.push(...validator.typeData.hints);
                     continue;
                 }
             } else if (validator.typeData.kind === TypeDataKinds.Null) includesNull = true;

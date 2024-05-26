@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
 import * as Block from "./block";
 import {Transformer} from "./transformer";

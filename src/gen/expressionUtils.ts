@@ -58,13 +58,11 @@ export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse?: Block
 
 export function _if_chain(ind: number, check: [ts.Expression, BlockLike][], last?: ts.Statement): ts.Statement | undefined {
     if (ind >= check.length) return last;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return factory.createIfStatement(check[ind]![0], _stmt(check[ind]![1]), _if_chain(ind + 1, check, last));
 }
 
 export function _if_nest(ind: number, check: [ts.Expression, BlockLike][], last: ts.Statement): ts.Statement {
     if (ind >= check.length) return last;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return factory.createIfStatement(check[ind]![0], _if_nest(ind + 1, check, last), _stmt(check[ind]![1]));
 }
 

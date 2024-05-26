@@ -15,7 +15,6 @@ import {
     _typeof_cmp,
     BlockLike,
     UNDEFINED,
-    concat,
     joinElements,
     _if_nest,
     _instanceof,
@@ -68,7 +67,7 @@ export function createContext(transformer: Transformer, resultType: ValidationRe
     };
 }
 
-export type GenResultError = [validator: Validator, message: ts.Expression[]];
+export type GenResultError = [validator: Validator, message?: ts.Expression[]];
 
 export interface GenResult {
     condition: ts.Expression;
@@ -88,13 +87,17 @@ export function error(ctx: NodeGenContext, error?: GenResultError, isFull = fals
     if (ctx.resultType.none) return ts.factory.createReturnStatement();
     if (ctx.resultType.return) return ts.factory.createReturnStatement(ctx.resultType.return);
     if (!error) return ts.factory.createReturnStatement();
-    const finalMsg = ctx.resultType.rawErrors
-        ? _obj({
-              value: error[0].expression(),
-              valueName: _bin_chain(joinElements(error[0].path()), ts.SyntaxKind.PlusToken),
-              expectedType: _obj(error[0].getRawTypeData() as unknown as Record<string, ts.Expression>)
-          })
-        : _bin_chain(isFull ? error[1] : joinElements(["Expected ", ...error[0].path(), " ", ...error[1]]), ts.SyntaxKind.PlusToken);
+    let finalMsg: ts.Expression;
+    if (ctx.resultType.rawErrors) {
+        finalMsg = _obj({
+            value: error[0].expression(),
+            valueName: _bin_chain(joinElements(error[0].path()), ts.SyntaxKind.PlusToken),
+            expectedType: _obj(error[0].getRawTypeData() as unknown as Record<string, ts.Expression>)
+        });
+    } else {
+        const messageElements = error[1] || [_str("to be " + error[0].translate())];
+        finalMsg = _bin_chain(isFull && error[1] ? error[1] : joinElements(["Expected ", ...error[0].path(), " ", ...messageElements]), ts.SyntaxKind.PlusToken);
+    }
     if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
     else if (ctx.resultType.throw) {
         let throwClass;
@@ -140,7 +143,6 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                     [ts.factory.createParameterDeclaration(undefined, undefined, typeValidator.customExp as ts.Identifier, undefined, undefined, undefined)],
                     undefined,
                     ts.factory.createBlock(
-                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                         statements.length === 1 && isSingleIfStatement(statements[0]!)
                             ? [ts.factory.createReturnStatement(_not(statements[0].expression))]
                             : [...statements, ts.factory.createReturnStatement(_bool(true))]
@@ -156,7 +158,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
 
         return {
             condition: _not(_call(calledName as ts.Identifier, [validator.expression()])),
-            error: [validator, [_str(`to be ${ctx.transformer.checker.typeToString(validator._original)}`)]]
+            error: [validator]
         };
     }
 
@@ -165,22 +167,22 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
             if (validator.typeData.literal !== undefined)
                 return {
                     condition: _bin(validator.expression(), _num(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken),
-                    error: [validator, concat`to be equal to ${validator.typeData.literal.toString()}`]
+                    error: [validator]
                 };
             return {
                 condition: _typeof_cmp(validator.expression(), "number", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-                error: [validator, [_str("to be a number")]]
+                error: [validator]
             };
         }
         case TypeDataKinds.String: {
             if (validator.typeData.literal !== undefined)
                 return {
                     condition: _bin(validator.expression(), _str(validator.typeData.literal), ts.SyntaxKind.ExclamationEqualsEqualsToken),
-                    error: [validator, concat`to be equal to "${validator.typeData.literal}"`]
+                    error: [validator]
                 };
             return {
                 condition: _typeof_cmp(validator.expression(), "string", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-                error: [validator, [_str("to be a string")]]
+                error: [validator]
             };
         }
         case TypeDataKinds.Boolean:
@@ -192,44 +194,44 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                               _bin(validator.expression(), _bool(false), ts.SyntaxKind.ExclamationEqualsEqualsToken),
                               _bin(validator.expression(), _bool(true), ts.SyntaxKind.ExclamationEqualsEqualsToken)
                           ]),
-                error: [validator, [validator.typeData.literal !== undefined ? _str(`to be ${validator.typeData.literal}`) : _str("to be a boolean")]]
+                error: [validator]
             };
         case TypeDataKinds.BigInt:
             return {
                 condition: _typeof_cmp(validator.expression(), "bigint", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-                error: [validator, [_str("to be a bigint")]]
+                error: [validator]
             };
         case TypeDataKinds.Symbol:
             return {
                 condition: _typeof_cmp(validator.expression(), "symbol", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-                error: [validator, [_str("to be a symbol")]]
+                error: [validator]
             };
         case TypeDataKinds.Class:
             return {
                 condition: _not(_instanceof(validator.expression(), validator._original.symbol.name)),
-                error: [validator, [_str(`to be an instance of "${validator._original.symbol.name}"`)]]
+                error: [validator]
             };
         case TypeDataKinds.Function:
             return {
                 condition: _typeof_cmp(validator.expression(), "function", ts.SyntaxKind.ExclamationEqualsEqualsToken),
-                error: [validator, [_str("to be a function")]]
+                error: [validator]
             };
         case TypeDataKinds.Null:
             return {
                 condition: _bin(validator.expression(), ts.factory.createNull(), ts.SyntaxKind.ExclamationEqualsEqualsToken),
-                error: [validator, [_str("to be null")]]
+                error: [validator]
             };
         case TypeDataKinds.Undefined:
             return {
                 condition: _bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken),
-                error: [validator, [_str("to be undefined")]]
+                error: [validator]
             };
         case TypeDataKinds.Resolve: {
             const resolved = ctx.resolvedTypeArguments.get(validator._original);
             if (!resolved)
                 return {
                     condition: _bool(false),
-                    error: [validator, [_str("to be a type parameter")]]
+                    error: [validator]
                 };
             return genNode(resolved, ctx);
         }
@@ -238,7 +240,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
             const fnName = ctx.recursiveFnNames.get(validator._original) as ts.Identifier;
             return {
                 condition: _not(_call(fnName, [validator.expression()])),
-                error: [validator, [_str(`to be ${ctx.transformer.checker.typeToString(validator._original)}`)]]
+                error: [validator]
             };
         }
         case TypeDataKinds.Tuple: {
@@ -252,7 +254,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
 
             return {
                 condition: _not(_arr_check(validator.expression())),
-                error: [validator, [_str("to be an array")]],
+                error: [validator],
                 before: large.length
                     ? [ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([_arr_binding_decl(large, validator.expression())], ts.NodeFlags.Const))]
                     : undefined,
@@ -260,36 +262,32 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
             };
         }
         case TypeDataKinds.Check: {
-            const normalChecks = [],
-                errorMessages = validator.typeData.hints.map(h => h.error || "").join(", ");
-            let after, before, errorMsg;
+            const normalChecks = [];
+            let after, before;
             if (validator.children.length) {
                 const first = genNode(validator.children[0] as Validator, ctx);
                 normalChecks.push(first.condition);
                 after = first.after;
                 before = first.before;
-                errorMsg = first.error;
             }
             normalChecks.push(...genChecks(validator.typeData.expressions, validator.typeData.alternatives, validator, ctx.transformer, ctx.origin, true));
             return {
                 condition: _or(normalChecks),
                 after,
                 before,
-                error: [validator, errorMsg ? [...errorMsg[1], _str(", "), _str(errorMessages)] : [_str(errorMessages)]]
+                error: [validator]
             };
         }
         case TypeDataKinds.Union: {
             const {compound, normal, object, isNullable} = getUnionMembers(validator.children);
 
-            const normalTypeConditions = [],
-                normalTypeErrors = [];
+            const normalTypeConditions = [];
             const compoundTypes = compound.map(c => genNode(c, ctx));
             const typeNames = validator.children.map(c => ctx.transformer.checker.typeToString(c._original));
 
             for (const normalCheck of normal) {
                 const node = genNode(normalCheck, ctx);
                 normalTypeConditions.push(node.condition);
-                if (node.error) normalTypeErrors.push(node.error);
             }
 
             if (object.length)
@@ -299,7 +297,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                         _if_nest(
                             0,
                             object.map(([childNode, propNode]) => [genNode(propNode, ctx).condition, joinResultStmts(genNode(childNode, ctx))]),
-                            error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]])
+                            error(ctx, [validator, [_str("to be "), _str(typeNames.join(" | "))]])
                         )
                     ]
                 });
@@ -307,8 +305,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
             if (!compoundTypes.length)
                 return {
                     condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    error: normalTypeConditions.length === 1 ? normalTypeErrors[0]! : [validator, [_str("to be one of "), _str(typeNames.join(", "))]]
+                    error: [validator]
                 };
             else {
                 if (!normalTypeConditions.length) {
@@ -335,13 +332,13 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                                       _if_nest(
                                           0,
                                           compoundTypes.map(t => [t.condition, joinResultStmts(t)]),
-                                          error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]])
+                                          error(ctx, [validator])
                                       )
                                   )
                                 : _if_nest(
                                       0,
                                       compoundTypes.map(t => [t.condition, t.after || []]),
-                                      error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]])
+                                      error(ctx, [validator])
                                   ),
                             ifFalse: joinResultStmts(firstCompound)
                         };
@@ -351,7 +348,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                         ifTrue: _if_nest(
                             0,
                             compoundTypes.map(t => [t.condition, joinResultStmts(t)]),
-                            error(ctx, [validator, [_str("to be one of "), _str(typeNames.join(", "))]])
+                            error(ctx, [validator])
                         )
                     };
             }
@@ -361,7 +358,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
             if (!childType)
                 return {
                     condition: _not(_call(_access(_ident("Array", true), "isArray"), [validator.expression()])),
-                    error: [validator, [_str("to be an array")]]
+                    error: [validator]
                 };
 
             let index: ts.Identifier;
@@ -373,7 +370,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
 
             return {
                 condition: _not(_arr_check(validator.expression())),
-                error: [validator, [_str("to be an array")]],
+                error: [validator],
                 after: [_for(validator.expression(), index, validateType(childType, ctx))[0]]
             };
         }
@@ -414,7 +411,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                         indexType.setChildren([]);
                         const node = genNode(indexType, ctx);
                         stringCond = node.condition;
-                        stringErr = [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", ...(node.error?.[1] || [])])] as [Validator, ts.Expression[]];
+                        stringErr = [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", indexType.translate("to be ")])] as [Validator, ts.Expression[]];
                     }
                     valueType.setName(keyName);
                     finalCheck = stringCond ? [_if(stringCond, error(ctx, stringErr, true)), ...validateType(valueType, ctx)] : validateType(valueType, ctx);
@@ -433,16 +430,13 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                         const indexTypeCheck = genNode(indexType, ctx);
                         checkBody = [
                             stmt,
-                            _if(
-                                indexTypeCheck.condition,
-                                error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", ...(indexTypeCheck.error?.[1] || [])])], true)
-                            ),
+                            _if(indexTypeCheck.condition, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", indexType.translate("to be ")])], true)),
                             ...validateType(valueType, ctx)
                         ];
                     } else checkBody = validateType(valueType, ctx);
 
                     if (finalCheck) finalCheck = _if(typeCheck, checkBody, finalCheck);
-                    else finalCheck = _if(typeCheck, checkBody, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " to be a number"])], true));
+                    else finalCheck = _if(typeCheck, checkBody, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), indexType.translate("to be ")])], true));
                 }
 
                 checks.push(_for_in(validator.expression(), keyName, finalCheck)[0]);
@@ -450,7 +444,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
 
             return {
                 condition: _obj_check(validator.expression(), validator.typeData.couldBeNull),
-                error: [validator, [_str("to be an object")]],
+                error: [validator],
                 before: names.length
                     ? [ts.factory.createVariableStatement(undefined, ts.factory.createVariableDeclarationList([_obj_binding_decl(names, validator.expression())], ts.NodeFlags.Const))]
                     : undefined,
@@ -484,7 +478,7 @@ export function genChecks(
             else return _call(check.expression, [validator.expression()]);
         });
     let result;
-    if (alts.length) result  = [_or([_and(exps), _or(genChecks(alts, [], validator, transformer, origin, false, ctx))])];
+    if (alts.length) result = [_or([_and(exps), _or(genChecks(alts, [], validator, transformer, origin, false, ctx))])];
     else result = exps;
 
     return negate ? result.map(val => _not(val)) : result;

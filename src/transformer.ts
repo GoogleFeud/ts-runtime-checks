@@ -188,7 +188,6 @@ export class Transformer {
                                     call: node,
                                     block,
                                     prevBlock: body,
-                                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                                     parameters: node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || []
                                 });
                                 if (exp) return exp;
@@ -258,7 +257,6 @@ export class Transformer {
             return ts.factory.createBigIntLiteral(value);
         } else if (t.isUnion()) {
             const res = t.types.map(t => this.typeValueToNode(t, true));
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             if (firstOnly) return res[0]!;
             else return res;
         }

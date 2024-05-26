@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
 import {Transformer} from "../../transformer";
 import {TypeDataKinds, Validator, genValidator} from "../validators";

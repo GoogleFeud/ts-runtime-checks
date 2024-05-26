@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import ts from "typescript";
 import type {CodeReferenceReplacement, Transformer} from "./transformer";
 import {type ValidationResultType} from "./gen/nodes";
@@ -219,4 +218,10 @@ export function extractReference(exp: ts.Expression, block: Block<unknown>): [ts
         return [ident, ident.text];
     }
     return [exp, exp.text];
+}
+
+export function addArticle(msg: string): string {
+    const firstLetter = msg[0];
+    if (firstLetter === "a" || firstLetter === "e" || firstLetter === "o" || firstLetter === "i" || firstLetter === "u") return `an ${msg}`;
+    return `a ${msg}`;
 }

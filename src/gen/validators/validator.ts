@@ -1,6 +1,6 @@
 import ts from "typescript";
 import {_access, Stringifyable} from "../expressionUtils";
-import {isInt} from "../../utils";
+import {addArticle, isInt} from "../../utils";
 import {CodeReference} from "./genValidator";
 
 export enum TypeDataKinds {
@@ -33,6 +33,7 @@ export interface CheckTypeHint {
 export interface CheckTypeData {
     kind: TypeDataKinds.Check;
     expressions: CodeReference[];
+    altHints: CheckTypeHint[];
     alternatives: CodeReference[];
     hints: CheckTypeHint[];
 }
@@ -145,6 +146,7 @@ export type ValidatorTargetName = string | number | ts.Identifier;
 export class Validator {
     _original: ts.Type;
     private _exp?: ts.Expression;
+    private unorderedChildren!: Validator[];
     customExp?: ts.Expression;
     name: ValidatorTargetName;
     parent?: Validator;
@@ -240,6 +242,7 @@ export class Validator {
                 child.parent = this;
             }
         }
+        this.unorderedChildren = [...children];
         children.sort((a, b) => a.weigh() - b.weigh());
         this.children = children;
     }
@@ -361,7 +364,6 @@ export class Validator {
     }
 
     getBaseType(): TypeDataKinds {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         if (this.typeData.kind === TypeDataKinds.Check && this.children.length) return this.children[0]!.typeData.kind;
         return this.typeData.kind;
     }
@@ -422,4 +424,91 @@ export class Validator {
         return true;
     }
 
+    translate(prefix?: string, includeArticle = true): string {
+        let value: string;
+        switch (this.typeData.kind) {
+            case TypeDataKinds.String:
+                if (this.typeData.literal) {
+                    value = `"${this.typeData.literal}"`;
+                    includeArticle = false;
+                }
+                else value = "string";
+                break;
+            case TypeDataKinds.Number:
+                if (this.typeData.literal) {
+                    value = this.typeData.literal.toString();
+                    includeArticle = false;
+                }
+                else value = "number";
+                break;
+            case TypeDataKinds.Boolean:
+                if (this.typeData.literal) {
+                    value = this.typeData.literal ? "true" : "false";
+                    includeArticle = false;
+                }
+                else value = "boolean";
+                break;
+            case TypeDataKinds.Undefined:
+                value = "undefined";
+                break;
+            case TypeDataKinds.Null:
+                value = "null";
+                break;
+            case TypeDataKinds.BigInt:
+                value = "bigint";
+                break;
+            case TypeDataKinds.Function:
+                value = "function";
+                break;
+            case TypeDataKinds.Symbol:
+                value = "symbol";
+                break;
+            case TypeDataKinds.Class:
+                value = `instance of "${this._original.symbol.name}"`;
+                break;
+            case TypeDataKinds.Resolve:
+                value = "type parameter";
+                break;
+            case TypeDataKinds.Recursive:
+                includeArticle = false;
+                value = this._original.symbol.name;
+                break;
+            case TypeDataKinds.Transform:
+                includeArticle = false;
+                value = this.typeData.rest?.toString() || "transformation";
+                break;
+            case TypeDataKinds.Array:
+                if (!this.children.length) value = "array";
+                else value = `array<${this.children[0]!.translate(undefined, false)}>`;
+                break;
+            case TypeDataKinds.Object:
+                if (this._original.symbol) {
+                    if (this._original.symbol.name.startsWith("__")) {
+                        value = "object";
+                        includeArticle = false;
+                    }
+                    else value = this._original.symbol.name;
+                } else {
+                    value = "object";
+                }
+                break;
+            case TypeDataKinds.Tuple:
+                value = `[${this.unorderedChildren.map(child => child.translate(undefined, false)).join(", ")}]`;
+                includeArticle = false;
+                break;
+            case TypeDataKinds.Union:
+                value = this.unorderedChildren.map(child => child.translate(undefined, false)).join(" | ");
+                includeArticle = false;
+                break;
+            case TypeDataKinds.Check: {
+                const errMessages = this.typeData.hints.map(h => h.error || "").join(" & ");
+                const altErrors = this.typeData.altHints.map(h => h.error || "").join(" | ");
+                const mainType = this.children[0]?.translate(prefix, includeArticle);
+                includeArticle = false;
+                return `${mainType ? `${mainType}, ` : ""}${errMessages}${altErrors ? ` or ${altErrors}` : ""}`;
+            }
+        }
+        if (includeArticle) value = addArticle(value);
+        return prefix ? prefix + value : value;
+    }
 }

@@ -32,9 +32,9 @@ describe("Unions", () => {
         }
 
         it("Simple union: Throw when a different type is provided", () => {
-            expect(call(test, true)).to.throw("Expected a to be one of string, number, [string | number, string]");
-            expect(call(test, test)).to.throw("Expected a to be one of string, number, [string | number, string]");
-            expect(call(test, {})).to.throw("Expected a to be one of string, number, [string | number, string]");
+            expect(call(test, true)).to.throw("Expected a to be string | number | [string | number, string]");
+            expect(call(test, test)).to.throw("Expected a to be string | number | [string | number, string]");
+            expect(call(test, {})).to.throw("Expected a to be string | number | [string | number, string]");
         });
     
         it("Simple union: Not throw when a value of the right type is provided", () => {
@@ -50,7 +50,7 @@ describe("Unions", () => {
         it("Discriminated union: Throw when a different type is provided", () => {
             expect(call(test1, { kind: Members.A, value: 123})).to.throw("Expected a.value to be a string");
             expect(call(test1, { kind: Members.B, value: true})).to.throw("Expected a.value to be a number");
-            expect(call(test1, {})).to.throw("Expected a to be one of CMember, BMember, AMember");
+            expect(call(test1, {})).to.throw("Expected a to be CMember | BMember | AMember");
         });
 
         it("Discriminated union: Not throw when a value of the right type is provided", () => {
@@ -69,8 +69,8 @@ describe("Unions", () => {
 
         it("Complex union: Throw when a different type is provided", () => {
             expect(call(test2, { kind: Members.A, value: 123})).to.throw("Expected a.value to be a string");
-            expect(call(test2, { kind: Members.C, value: true})).to.throw("Expected a to be one of string, BMember, AMember, (AMember | BMember)[]");
-            expect(call(test2, [123])).to.throw("Expected a[0] to be one of BMember, AMember");
+            expect(call(test2, { kind: Members.C, value: true})).to.throw("Expected a to be AMember | BMember | array<AMember | BMember> | string");
+            expect(call(test2, [123])).to.throw("Expected a[0] to be AMember | BMember");
         });
 
         
