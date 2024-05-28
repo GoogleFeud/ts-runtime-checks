@@ -425,6 +425,8 @@ if (typeof value_1.age === "string") {
     throw new Error("Expected value.age to be one of string | number");
 ```
 
+To see some pretty complex conditional transformations, check out [this unit test](https://github.com/GoogleFeud/ts-runtime-checks/blob/main/tests/integrated/transforms.test.ts)
+
 ### `as` assertions
 
 You can use `as` type assertions to validate values in expressions. The transformer remembers what's safe to use, so you can't generate the same validation code twice.
