@@ -404,8 +404,8 @@ You can also perform **conditional transformations** via unions:
 
 ```ts
 interface ConditionalTransform {
-    age: number | string & Transform<typeof stringToNum>,
-    id: string & Transform<typeof stringToNum> | number & Min<3> & Transform<"$self + 1">
+    age: number | Transform<typeof stringToNum>,
+    id: Transform<typeof stringToNum> | Min<3> & Transform<"$self + 1">
 }
 
 transform<ConditionalTransform, ThrowError>({ age: "3", id: 12 })
