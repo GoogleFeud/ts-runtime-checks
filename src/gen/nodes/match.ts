@@ -39,11 +39,11 @@ export function genConciseNode(validator: Validator, ctx: NodeGenContext, genBas
             };
         }
         case TypeDataKinds.Union: {
-            const {compound, normal, object, isNullable} = getUnionMembers(validator.children);
+            const {compound, normal, object, canBeUndefined} = getUnionMembers(validator.children);
             const checks = [...normal, ...compound].map(c => genConciseNode(c, ctx, false).condition);
             if (object.length) checks.push(...object.map(([childNode, propNode]) => _and([genConciseNode(propNode, ctx, false).condition, genConciseNode(childNode, ctx, false).condition])));
             return {
-                condition: isNullable ? _and([_bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken), _or(checks)]) : _or(checks)
+                condition: canBeUndefined ? _and([_bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken), _or(checks)]) : _or(checks)
             };
         }
         case TypeDataKinds.Object: {

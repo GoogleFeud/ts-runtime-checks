@@ -15,7 +15,7 @@ describe("Object deconstruction", () => {
             if (typeof a !== "number")
                 throw new Error("Expected a to be a number");
             if (c !== 123)
-                throw new Error("Expected c to be equal to 123");
+                throw new Error("Expected c to be 123");
             return [a, c];
         }
         it("Throw when one of the deconstructed properties has a wrong type", () => {
@@ -25,7 +25,7 @@ describe("Object deconstruction", () => {
             (0, chai_1.expect)((0, utils_1.call)(test, { a: 123, b: "123", c: 123 })).to.not.throw();
         });
         it("Throw when one of the nested deconstructed properties has a wrong type", () => {
-            (0, chai_1.expect)((0, utils_1.call)(test2, { a: 123, d: { c: 456 } })).to.throw("Expected c to be equal to 123");
+            (0, chai_1.expect)((0, utils_1.call)(test2, { a: 123, d: { c: 456 } })).to.throw("Expected c to be 123");
         });
         it("Not throw when a nested non-deconstructed property has a wrong type", () => {
             (0, chai_1.expect)((0, utils_1.call)(test2, { a: 123, d: { c: 123, b: 345 } })).to.not.throw();

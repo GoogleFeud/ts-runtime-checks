@@ -221,7 +221,7 @@ export function extractReference(exp: ts.Expression, block: Block<unknown>): [ts
 }
 
 export function addArticle(msg: string): string {
-    const firstLetter = msg[0];
+    const firstLetter = msg[0]!.toLowerCase();
     if (firstLetter === "a" || firstLetter === "e" || firstLetter === "o" || firstLetter === "i" || firstLetter === "u") return `an ${msg}`;
     return `a ${msg}`;
 }

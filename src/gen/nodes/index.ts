@@ -95,7 +95,7 @@ export function error(ctx: NodeGenContext, error?: GenResultError, isFull = fals
             expectedType: _obj(error[0].getRawTypeData() as unknown as Record<string, ts.Expression>)
         });
     } else {
-        const messageElements = error[1] || [_str("to be " + error[0].translate())];
+        const messageElements = error[1] || [_str(error[0].translate("to be ", true))];
         finalMsg = _bin_chain(isFull && error[1] ? error[1] : joinElements(["Expected ", ...error[0].path(), " ", ...messageElements]), ts.SyntaxKind.PlusToken);
     }
     if (ctx.resultType.returnErr) return ts.factory.createReturnStatement(finalMsg);
@@ -279,11 +279,11 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
             };
         }
         case TypeDataKinds.Union: {
-            const {compound, normal, object, isNullable} = getUnionMembers(validator.children);
+            const {compound, normal, object, canBeUndefined} = getUnionMembers(validator.children);
 
             const normalTypeConditions = [];
             const compoundTypes = compound.map(c => genNode(c, ctx));
-            const typeNames = validator.children.map(c => ctx.transformer.checker.typeToString(c._original));
+            const typeNames = validator.unorderedChildren.map(c => c.translate());
 
             for (const normalCheck of normal) {
                 const node = genNode(normalCheck, ctx);
@@ -304,13 +304,13 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
 
             if (!compoundTypes.length)
                 return {
-                    condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
+                    condition: canBeUndefined ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
                     error: [validator]
                 };
             else {
                 if (!normalTypeConditions.length) {
                     const firstCompound = compoundTypes.shift() as GenResult;
-                    if (isNullable)
+                    if (canBeUndefined)
                         return {
                             condition: isNullableNode(validator),
                             ifTrue: [
@@ -325,8 +325,8 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                         };
                     else
                         return {
-                            condition: isNullable ? isNullableNode(validator) : firstCompound.condition,
-                            ifTrue: isNullable
+                            condition: canBeUndefined ? isNullableNode(validator) : firstCompound.condition,
+                            ifTrue: canBeUndefined
                                 ? _if(
                                       firstCompound.condition,
                                       _if_nest(
@@ -344,7 +344,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                         };
                 } else
                     return {
-                        condition: isNullable ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
+                        condition: canBeUndefined ? _and([isNullableNode(validator), ...normalTypeConditions]) : _and(normalTypeConditions),
                         ifTrue: _if_nest(
                             0,
                             compoundTypes.map(t => [t.condition, joinResultStmts(t)]),
@@ -411,7 +411,7 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                         indexType.setChildren([]);
                         const node = genNode(indexType, ctx);
                         stringCond = node.condition;
-                        stringErr = [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", indexType.translate("to be ")])] as [Validator, ts.Expression[]];
+                        stringErr = [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", indexType.translate("to be ", true)])] as [Validator, ts.Expression[]];
                     }
                     valueType.setName(keyName);
                     finalCheck = stringCond ? [_if(stringCond, error(ctx, stringErr, true)), ...validateType(valueType, ctx)] : validateType(valueType, ctx);
@@ -430,13 +430,13 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                         const indexTypeCheck = genNode(indexType, ctx);
                         checkBody = [
                             stmt,
-                            _if(indexTypeCheck.condition, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", indexType.translate("to be ")])], true)),
+                            _if(indexTypeCheck.condition, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", indexType.translate("to be ", true)])], true)),
                             ...validateType(valueType, ctx)
                         ];
                     } else checkBody = validateType(valueType, ctx);
 
                     if (finalCheck) finalCheck = _if(typeCheck, checkBody, finalCheck);
-                    else finalCheck = _if(typeCheck, checkBody, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), indexType.translate("to be ")])], true));
+                    else finalCheck = _if(typeCheck, checkBody, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), indexType.translate("to be ", true)])], true));
                 }
 
                 checks.push(_for_in(validator.expression(), keyName, finalCheck)[0]);

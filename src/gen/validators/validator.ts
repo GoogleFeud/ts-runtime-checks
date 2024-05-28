@@ -146,7 +146,7 @@ export type ValidatorTargetName = string | number | ts.Identifier;
 export class Validator {
     _original: ts.Type;
     private _exp?: ts.Expression;
-    private unorderedChildren!: Validator[];
+    unorderedChildren!: Validator[];
     customExp?: ts.Expression;
     name: ValidatorTargetName;
     parent?: Validator;
@@ -279,6 +279,16 @@ export class Validator {
             result.push(...child.getChildrenOfKind(kind));
         }
         return result;
+    }
+
+    canBeOfKind(kind: TypeDataKinds): boolean {
+        if (this.typeData.kind === kind) return true;
+        else if (this.typeData.kind === TypeDataKinds.Union) {
+            for (const child of this.children) {
+                if (child.typeData.kind === kind) return true;
+            }
+        }
+        return false;
     }
 
     getFirstLiteralChild(): Validator | undefined {
@@ -424,29 +434,26 @@ export class Validator {
         return true;
     }
 
-    translate(prefix?: string, includeArticle = true): string {
+    translate(prefix?: string, includeArticle = false): string {
         let value: string;
         switch (this.typeData.kind) {
             case TypeDataKinds.String:
                 if (this.typeData.literal) {
                     value = `"${this.typeData.literal}"`;
                     includeArticle = false;
-                }
-                else value = "string";
+                } else value = "string";
                 break;
             case TypeDataKinds.Number:
                 if (this.typeData.literal) {
                     value = this.typeData.literal.toString();
                     includeArticle = false;
-                }
-                else value = "number";
+                } else value = "number";
                 break;
             case TypeDataKinds.Boolean:
                 if (this.typeData.literal) {
                     value = this.typeData.literal ? "true" : "false";
                     includeArticle = false;
-                }
-                else value = "boolean";
+                } else value = "boolean";
                 break;
             case TypeDataKinds.Undefined:
                 value = "undefined";
@@ -475,29 +482,30 @@ export class Validator {
                 break;
             case TypeDataKinds.Transform:
                 includeArticle = false;
-                value = this.typeData.rest?.toString() || "transformation";
+                value = this.typeData.rest?.translate(undefined, includeArticle) || "transformation";
                 break;
             case TypeDataKinds.Array:
                 if (!this.children.length) value = "array";
-                else value = `array<${this.children[0]!.translate(undefined, false)}>`;
+                else value = `array<${this.children[0]!.translate()}>`;
                 break;
             case TypeDataKinds.Object:
                 if (this._original.symbol) {
                     if (this._original.symbol.name.startsWith("__")) {
                         value = "object";
+                    } else {
+                        value = this._original.symbol.name;
                         includeArticle = false;
                     }
-                    else value = this._original.symbol.name;
                 } else {
                     value = "object";
                 }
                 break;
             case TypeDataKinds.Tuple:
-                value = `[${this.unorderedChildren.map(child => child.translate(undefined, false)).join(", ")}]`;
+                value = `[${this.unorderedChildren.map(child => child.translate()).join(", ")}]`;
                 includeArticle = false;
                 break;
             case TypeDataKinds.Union:
-                value = this.unorderedChildren.map(child => child.translate(undefined, false)).join(" | ");
+                value = this.unorderedChildren.map(child => child.translate()).join(" | ");
                 includeArticle = false;
                 break;
             case TypeDataKinds.Check: {

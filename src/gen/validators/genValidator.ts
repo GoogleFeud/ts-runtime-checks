@@ -48,7 +48,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             const expressions: CodeReference[] = [];
             let rest: Validator | undefined;
 
-            const resolveTransform = (type: ts.Type, processBase: boolean) => {
+            const resolveTransform = (nullableType: ts.Type, processBase: boolean) => {
+                const type = transformer.checker.getNonNullableType(nullableType);
                 if (transformer.checker.isTupleType(type)) {
                     for (const value of transformer.checker.getTypeArguments(type as ts.TypeReference)) {
                         const codePoint = getCodeReference(value);
@@ -68,8 +69,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 const otherTypes = [];
                 for (const inner of type.types) {
                     if (inner.getProperty("__$transformations")) {
-                        const transformations = transformer.checker.getNonNullableType(transformer.checker.getTypeOfSymbol(inner.getProperty("__$transformations") as ts.Symbol));
-                        resolveTransform(transformations, false);
+                        const transformations = transformer.checker.getTypeOfSymbol(inner.getProperty("__$transformations") as ts.Symbol);
+                        resolveTransform(transformations, true);
                     } else {
                         otherTypes.push(inner);
                     }
@@ -129,6 +130,10 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             switch (utility.value) {
                 case "NoCheck":
                     return;
+                case "Null":
+                    return new Validator(type, name, {kind: TypeDataKinds.Null}, exp, parent);
+                case "Undefined":
+                    return new Validator(type, name, {kind: TypeDataKinds.Undefined}, exp, parent);
                 case "ExactProps": {
                     const obj = genValidator(transformer, transformer.getPropType(type, "type"), name, exp, parent);
                     if (!obj || obj.typeData.kind !== TypeDataKinds.Object) return;

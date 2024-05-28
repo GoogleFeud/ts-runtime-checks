@@ -13,7 +13,8 @@ export function TextEditor(props: {onChange: (code: string | undefined) => void;
         });
         const filename = "ts:ts-runtime-checks/index.d.ts";
         monaco.languages.typescript.javascriptDefaults.addExtraLib(Markers, filename);
-        monaco.editor.createModel(Markers, "typescript", monaco.Uri.parse(filename));
+        const uri = monaco.Uri.parse(filename);
+        if (!monaco.editor.getModel(uri)) monaco.editor.createModel(Markers, "typescript", monaco.Uri.parse(filename));
     }, [monaco]);
 
     return <Editor height="calc(90vh - 50px)" language="typescript" theme="vs-dark" value={props.code} onChange={props.onChange} />;

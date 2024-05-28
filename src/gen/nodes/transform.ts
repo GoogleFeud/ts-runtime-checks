@@ -2,7 +2,7 @@ import {NodeGenContext, createContext, error, fullValidate} from ".";
 import {Transformer} from "../../transformer";
 import {genCheckCtx} from "../../utils";
 import {getUnionMembers} from "../../utils/unions";
-import {_access, _assign, _call, _for, _ident, _if_chain, _obj, _stmt, _str, _var} from "../expressionUtils";
+import {UNDEFINED, _access, _and, _assign, _bin, _call, _for, _ident, _if, _if_chain, _obj, _stmt, _str, _var} from "../expressionUtils";
 import {TransformTypeData, TypeDataKinds, Validator} from "../validators";
 import ts from "typescript";
 import {genConciseNode} from "./match";
@@ -61,23 +61,26 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
             const transforms = validator.getChildrenOfKind(TypeDataKinds.Transform);
             if (!transforms.length) return [_stmt(_assign(assignTarget, validator.expression()))];
             const transformBases = transforms.map(transform => (transform.typeData as TransformTypeData).rest).filter(i => i) as Validator[];
+            const {normal, compound} = getUnionMembers(transformBases, false);
+            const nodeCtx = validate || createContext(ctx.transformer, {none: true}, ctx.origin);
 
-            const {normal, compound} = getUnionMembers(transformBases);
+            let result = _if_chain(
+                0,
+                [...normal, ...compound].map(validator => {
+                    const check = genConciseNode(validator, nodeCtx);
+                    const originalTransform = transforms[transformBases.indexOf(validator)] as Validator;
 
-            const nodeCtx = createContext(ctx.transformer, {none: true}, ctx.origin);
+                    return [check.condition, genTransform(originalTransform, assignTarget, ctx, false)];
+                }),
+                validate ? error(validate, [validator, [_str("to be one of "), _str(transformBases.map(base => base.translate()).join(" | "))]]) : undefined
+            ) as ts.Statement;
 
-            return [
-                _if_chain(
-                    0,
-                    [...normal, ...compound].map(validator => {
-                        const check = genConciseNode(validator, nodeCtx);
-                        const originalTransform = transforms[transformBases.indexOf(validator)] as Validator;
+            const extraChecks = [];
+            if (validator.canBeOfKind(TypeDataKinds.Undefined))extraChecks.push(_bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken));
+            if (validator.canBeOfKind(TypeDataKinds.Null)) extraChecks.push(_bin(validator.expression(), ts.factory.createNull(), ts.SyntaxKind.ExclamationEqualsEqualsToken));
+            if (extraChecks.length) result = _if(_and(extraChecks), result);
 
-                        return [check.condition, genTransform(originalTransform, assignTarget, ctx, false)];
-                    }),
-                    validate ? error(validate, [validator, [_str("to be one of "), _str(transformBases.map(base => ctx.transformer.checker.typeToString(base._original)).join(", "))]]) : undefined
-                ) as ts.Statement
-            ];
+            return [result];
         }
         default: {
             const statements: ts.Statement[] = [];

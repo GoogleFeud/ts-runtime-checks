@@ -6,13 +6,13 @@ describe("Exact Props", () => {
     describe("Raise Error", () => {
         function test(a) {
             if (typeof a !== "object" || a === null)
-                throw new Error("Expected a to be an object");
+                throw new Error("Expected a to be object");
             if (typeof a.a !== "string")
                 throw new Error("Expected a.a to be a string");
             if (typeof a.b !== "number")
                 throw new Error("Expected a.b to be a number");
             if (a.c !== undefined && typeof a.c !== "string")
-                throw new Error("Expected a.c to be a string");
+                throw new Error("Expected a.c to be undefined | string");
             for (let p_1 in a) {
                 if (p_1 !== "a" && p_1 !== "b" && p_1 !== "c")
                     throw new Error("Property a." + p_1 + " is excessive");
@@ -27,9 +27,9 @@ describe("Exact Props", () => {
         });
         function test2(a) {
             if (typeof a !== "object" || a === null)
-                throw new Error("Expected a to be an object");
+                throw new Error("Expected a to be object");
             if (typeof a.a !== "object" || a.a === null)
-                throw new Error("Expected a.a to be an object");
+                throw new Error("Expected a.a to be object");
             if (typeof a.a.b !== "string")
                 throw new Error("Expected a.a.b to be a string");
             for (let p_2 in a.a) {
@@ -50,12 +50,12 @@ describe("Exact Props", () => {
         });
         function test3(a) {
             if (typeof a !== "object" || a === null)
-                throw new Error("Expected a to be an object");
+                throw new Error("Expected a to be object");
             const { b: b_1 } = a;
             if (typeof a.a !== "string")
                 throw new Error("Expected a.a to be a string");
             if (typeof b_1 !== "object" || b_1 === null)
-                throw new Error("Expected a.b to be an object");
+                throw new Error("Expected a.b to be object");
             if (typeof b_1.c !== "number")
                 throw new Error("Expected a.b.c to be a number");
             for (let p_4 in b_1) {
@@ -75,13 +75,13 @@ describe("Exact Props", () => {
         it("Should remove extra properties", () => {
             function test(a) {
                 if (typeof a !== "object" || a === null)
-                    throw new Error("Expected a to be an object");
+                    throw new Error("Expected a to be object");
                 if (typeof a.a !== "string")
                     throw new Error("Expected a.a to be a string");
                 if (typeof a.b !== "number")
                     throw new Error("Expected a.b to be a number");
                 if (a.c !== undefined && typeof a.c !== "string")
-                    throw new Error("Expected a.c to be a string");
+                    throw new Error("Expected a.c to be undefined | string");
                 for (let p_5 in a) {
                     if (p_5 !== "a" && p_5 !== "b" && p_5 !== "c")
                         a[p_5] = undefined;

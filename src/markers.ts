@@ -407,6 +407,9 @@ export type Transformed<T> = {
     [Key in keyof T]: T[Key] extends {__$transform?: unknown} ? NonNullable<T[Key]["__$transform"]> : T[Key];
 };
 
+export type Null = {__$name?: "Null"};
+export type Undefined = {__$name?: "Undefined"};
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function is<T, _M = {__$marker: "is"}>(prop: unknown): prop is T;
 

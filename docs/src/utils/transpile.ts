@@ -41,10 +41,12 @@ type Transform<
 type Transformed<T> = {
     [Key in keyof T]: T[Key] extends {__$transform?: unknown} ? NonNullable<T[Key]["__$transform"]> : T[Key];
 };
+type Null = {__$name?: "Null"};
+type Undefined = {__$name?: "Undefined"};
 declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
 declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean) : (val: U) => R;
-declare function transform<T, _M = {__$marker: "transform"}>(value: T): Transformed<T>;
+declare function transform<T, _ReturnType = unknown, _M = {__$marker: "transform"}>(value: T): Transformed<T>;
 `;
 
 export const CompilerOptions: ts.CompilerOptions = {

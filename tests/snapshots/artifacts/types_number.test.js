@@ -11,7 +11,7 @@ describe("Number", () => {
         }
         function test2(a) {
             if (a !== 123)
-                throw new Error("Expected a to be equal to 123");
+                throw new Error("Expected a to be 123");
             return a;
         }
         it("Throw when a number is not provided", () => {
@@ -22,7 +22,7 @@ describe("Number", () => {
             (0, chai_1.expect)((0, utils_1.call)(test, 123)).to.not.throw();
         });
         it("Throw when the number literal is not the same", () => {
-            (0, chai_1.expect)((0, utils_1.call)(test2, 1234)).to.throw("Expected a to be equal to 123");
+            (0, chai_1.expect)((0, utils_1.call)(test2, 1234)).to.throw("Expected a to be 123");
         });
         it("Not throw when the number literal is the same", () => {
             (0, chai_1.expect)((0, utils_1.call)(test2, 123)).to.not.throw();

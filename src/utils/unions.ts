@@ -1,20 +1,23 @@
-import { Validator, TypeDataKinds } from "../gen/validators";
+import {Validator, TypeDataKinds} from "../gen/validators";
 
-export function getUnionMembers(validators: Validator[]): {
+export function getUnionMembers(
+    validators: Validator[],
+    ignoreUndefined = true
+): {
     compound: Validator[];
     normal: Validator[];
     object: [Validator, Validator][];
-    isNullable: boolean;
+    canBeUndefined: boolean;
 } {
     const compoundTypes: Validator[] = [],
         normalTypes: Validator[] = [],
         objectTypes: [Validator, Validator][] = [];
-    let isNullable = false;
+    let canBeUndefined = false;
     const objectKind = validators.filter(v => v.typeData.kind === TypeDataKinds.Object).length;
     for (const child of validators) {
         if (child.typeData.kind === TypeDataKinds.Undefined) {
-            isNullable = true;
-            continue;
+            canBeUndefined = true;
+            if (!ignoreUndefined) normalTypes.push(child);
         } else if (child.children.length && child.typeData.kind === TypeDataKinds.Object && objectKind > 1) {
             const idRepresent = child.getFirstLiteralChild();
             if (idRepresent) {
@@ -28,6 +31,6 @@ export function getUnionMembers(validators: Validator[]): {
         compound: compoundTypes,
         normal: normalTypes,
         object: objectTypes,
-        isNullable
+        canBeUndefined
     };
 }

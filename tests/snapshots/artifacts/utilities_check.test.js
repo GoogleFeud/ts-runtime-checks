@@ -6,13 +6,13 @@ describe("Check", () => {
     describe("Assert", () => {
         function test(a) {
             if (typeof a !== "number" || a < 5 || a > 15)
-                throw new Error("Expected a to be a number, to be greater than 5, to be less than 15");
+                throw new Error("Expected a to be a number, to be greater than 5 & to be less than 15");
             return a;
         }
         it("Combine different checks", () => {
             (0, chai_1.expect)((0, utils_1.call)(test, 6)).to.not.throw();
             (0, chai_1.expect)((0, utils_1.call)(test, 13)).to.not.throw();
-            (0, chai_1.expect)((0, utils_1.call)(test, 3)).to.throw("Expected a to be a number, to be greater than 5, to be less than 15");
+            (0, chai_1.expect)((0, utils_1.call)(test, 3)).to.throw("Expected a to be a number, to be greater than 5 & to be less than 15");
         });
         function test1(a) {
             if (typeof a !== "object" || a === null)
