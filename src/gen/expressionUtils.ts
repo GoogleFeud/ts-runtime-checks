@@ -56,8 +56,8 @@ export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse?: Block
     return factory.createIfStatement(condition, _stmt(ifTrue), ifFalse ? _stmt(ifFalse) : undefined);
 }
 
-export function _if_chain(ind: number, check: [ts.Expression, BlockLike][], last?: ts.Statement): ts.Statement | undefined {
-    if (ind >= check.length) return last;
+export function _if_chain(ind: number, check: [ts.Expression, BlockLike][], last?: BlockLike): ts.Statement | undefined {
+    if (ind >= check.length) return last ? _stmt(last) : undefined;;
     return factory.createIfStatement(check[ind]![0], _stmt(check[ind]![1]), _if_chain(ind + 1, check, last));
 }
 

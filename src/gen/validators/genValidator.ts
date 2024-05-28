@@ -78,7 +78,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 if (otherTypes.length === 1) rest = genValidator(transformer, otherTypes[0], name, exp, parent);
                 else rest = createPossibleIntersectionCheckType(type, otherTypes, transformer, name, exp, parent);
             } else {
-                resolveTransform(type, true);
+                const transformations = transformer.checker.getTypeOfSymbol(type.getProperty("__$transformations") as ts.Symbol);
+                resolveTransform(transformations, true);
             }
 
             return new Validator(type, name, {kind: TypeDataKinds.Transform, transformations: expressions, rest}, exp, parent);

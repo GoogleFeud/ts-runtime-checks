@@ -25,7 +25,7 @@ describe("Early return", () => {
     });
     function test3(a) {
         if (typeof a !== "object" || a === null)
-            return "Expected a to be object";
+            return "Expected a to be an object";
         const { a: a_1 } = a;
         if (!Array.isArray(a_1))
             return "Expected a.a to be [string, number, undefined | object]";
@@ -36,7 +36,7 @@ describe("Early return", () => {
             return "Expected a.a[1] to be a number";
         if (t_3 !== undefined) {
             if (typeof t_3 !== "object" || t_3 === null)
-                return "Expected a.a[2] to be object";
+                return "Expected a.a[2] to be an object";
             if (typeof t_3.b !== "number")
                 return "Expected a.a[2].b to be a number";
             ;

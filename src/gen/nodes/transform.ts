@@ -60,19 +60,31 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
         case TypeDataKinds.Union: {
             const transforms = validator.getChildrenOfKind(TypeDataKinds.Transform);
             if (!transforms.length) return [_stmt(_assign(assignTarget, validator.expression()))];
-            const transformBases = transforms.map(transform => (transform.typeData as TransformTypeData).rest).filter(i => i) as Validator[];
-            const {normal, compound} = getUnionMembers(transformBases, false);
+            const bases: Validator[] = [], withoutBases: Validator[] = [];
+            for (const transform of transforms) {
+                const typeData = transform.typeData as TransformTypeData;
+                if (typeData.rest) bases.push(typeData.rest);
+                else withoutBases.push(transform);
+            }
+            const {normal, compound} = getUnionMembers(bases, false);
             const nodeCtx = validate || createContext(ctx.transformer, {none: true}, ctx.origin);
+
+            let elseStmt;
+            if (withoutBases.length === 1) {
+                elseStmt = genTransform(withoutBases[0]!, assignTarget, ctx, false);
+            } else if (validate) {
+                elseStmt = error(validate, [validator, [_str("to be one of "), _str(bases.map(base => base.translate()).join(" | "))]]);
+            }
 
             let result = _if_chain(
                 0,
                 [...normal, ...compound].map(validator => {
                     const check = genConciseNode(validator, nodeCtx);
-                    const originalTransform = transforms[transformBases.indexOf(validator)] as Validator;
+                    const originalTransform = transforms[bases.indexOf(validator)] as Validator;
 
                     return [check.condition, genTransform(originalTransform, assignTarget, ctx, false)];
                 }),
-                validate ? error(validate, [validator, [_str("to be one of "), _str(transformBases.map(base => base.translate()).join(" | "))]]) : undefined
+                elseStmt
             ) as ts.Statement;
 
             const extraChecks = [];

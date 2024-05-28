@@ -12,7 +12,7 @@ describe("Type assertions (as)", () => {
                     throw new Error("Expected a[" + i_1 + "] to be a number");
             }
             if (typeof b !== "object" || b === null)
-                throw new Error("Expected b to be object");
+                throw new Error("Expected b to be an object");
             const { d: d_1, c: c_1 } = b;
             if (typeof b.a !== "number")
                 throw new Error("Expected b.a to be a number");
@@ -45,7 +45,7 @@ describe("Type assertions (as)", () => {
                     throw new Error("Expected a[" + i_3 + "] to be a number");
             }
             if (typeof b !== "object" || b === null)
-                throw new Error("Expected b to be object");
+                throw new Error("Expected b to be an object");
             const { d: d_2, c: c_2 } = b;
             if (typeof b.a !== "number")
                 throw new Error("Expected b.a to be a number");

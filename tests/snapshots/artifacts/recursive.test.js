@@ -16,7 +16,7 @@ describe("Recursive data structures", () => {
         } if (typeof param_1.name !== "string" || typeof param_1.id !== "number")
             return false; return true; }
         if (!user_1(user))
-            throw new Error("Expected user to be an User");
+            throw new Error("Expected user to be User");
         return true;
     }
     it("Throw when the recursive data is incorrect", () => {
@@ -24,7 +24,7 @@ describe("Recursive data structures", () => {
             name: "abc",
             id: 123,
             friends: [0]
-        })).to.throw("Expected user to be an User");
+        })).to.throw("Expected user to be User");
     });
     it("Return false when the recursive data is incorrect", () => {
         const value_1 = {

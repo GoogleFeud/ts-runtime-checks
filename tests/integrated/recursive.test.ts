@@ -27,7 +27,7 @@ describe("Recursive data structures", () => {
             name: "abc",
             id: 123,
             friends: [0]
-        })).to.throw("Expected user to be an User");
+        })).to.throw("Expected user to be User");
     });
 
     it("Return false when the recursive data is incorrect", () => {

@@ -12,7 +12,7 @@ describe("Check function", () => {
         };
         const errs = [];
         if (typeof value_1 !== "object" || value_1 === null)
-            errs.push("Expected value to be object");
+            errs.push("Expected value to be an object");
         else {
             const { c: c_1 } = value_1;
             if (typeof value_1.a !== "number")
@@ -20,7 +20,7 @@ describe("Check function", () => {
             if (typeof value_1.b !== "string")
                 errs.push("Expected value.b to be a string");
             if (typeof c_1 !== "object" || c_1 === null)
-                errs.push("Expected value.c to be object");
+                errs.push("Expected value.c to be an object");
             else {
                 if (typeof c_1.d !== "number" || c_1.d < 1 || c_1.d > 10)
                     errs.push("Expected value.c.d to be a number, to be greater than 1 & to be less than 10");
