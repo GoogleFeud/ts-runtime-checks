@@ -34,6 +34,13 @@ export interface ConditionalTransform {
             Transform<"1">
 }
 
+const incrementArr = (arr: Array<number>) => arr.map(value => value + 1);
+ 
+export type ArraysTransform = {
+    fieldA: Transform<typeof incrementArr>,
+    fieldB?: Array<Max<3> & Transform<"$self + 1"> | number & Eq<"10"> & Transform<"$self - 1">>
+}
+
 describe("Transformations", () => {
     
     it("Simple transform (no validation)", () => {
@@ -45,6 +52,7 @@ describe("Transformations", () => {
             return () => transform<SimpleTransform, ThrowError>(values as SimpleTransform);
         };
 
+        expect(performTransform(123)).to.throw("Expected value to be an object");
         expect(performTransform({ fieldA: 123, fieldB: "123", fieldC: "1"})).to.throw("Expected value.fieldA to be a string");
         expect(performTransform({ fieldA: "123", fieldB: "12", fieldC: "1"})()).to.be.deep.equal({fieldA: "123", fieldB: 12, fieldC: 2});
         expect(performTransform({ fieldA: "123", fieldC: "1"})()).to.be.deep.equal({fieldA: "123", fieldC: 2});
@@ -64,6 +72,16 @@ describe("Transformations", () => {
         expect(performTransform({ fieldA: true, fieldB: 3 })).to.throw("Expected value.fieldA to be one of string | number");
         expect(performTransform({ fieldA: "30", fieldB: "ab" })).to.throw("Expected value.fieldB to be one of number, to be less than 3 | number, to be equal to 10");
         expect(performTransform({ fieldA: "30", fieldB: 1, fieldC: "123" })()).to.be.deep.equal({ fieldA: "31", fieldB: "11", fieldC: 124 });
+    });
+
+    it("Array transform (validation)", () => {
+        const performTransform = (values: unknown) => {
+            return () => transform<ArraysTransform, ThrowError>(values as ArraysTransform);
+        };
+
+        expect(performTransform({ fieldA: [1, 2, 3], fieldB: [2, 1, 10] })()).to.be.deep.equal({ fieldA: [2, 3, 4], fieldB: [3, 2, 9]});
+        expect(performTransform({ fieldA: [1, 2, 6], fieldB: [2, 10, 4] })).to.throw("Expected value.fieldB[2] to be one of number, to be less than 3 | number, to be equal to 10");
+        expect(performTransform({ fieldA: [1, 2, 1] })()).to.be.deep.equal({ fieldA: [2, 3, 2] });
     });
 
 });

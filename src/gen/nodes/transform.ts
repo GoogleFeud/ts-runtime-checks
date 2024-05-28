@@ -2,7 +2,7 @@ import {NodeGenContext, createContext, error, fullValidate} from ".";
 import {Transformer} from "../../transformer";
 import {genCheckCtx} from "../../utils";
 import {getUnionMembers} from "../../utils/unions";
-import {UNDEFINED, _access, _and, _assign, _bin, _call, _for, _ident, _if, _if_chain, _obj, _stmt, _str, _var} from "../expressionUtils";
+import {BlockLike, UNDEFINED, _access, _and, _arr_check, _assign, _bin, _call, _for, _ident, _if, _if_chain, _not, _obj, _obj_check, _or, _stmt, _str, _var} from "../expressionUtils";
 import {TransformTypeData, TypeDataKinds, Validator} from "../validators";
 import ts from "typescript";
 import {genConciseNode} from "./match";
@@ -20,7 +20,10 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
         case TypeDataKinds.Transform: {
             if (!validator.typeData.transformations.length) return [];
             const prevStmts: ts.Statement[] = [];
-            if (validate) prevStmts.push(...fullValidate(validator, validate));
+            if (validate && validator.typeData.rest) {
+                validator.typeData.rest.inherits(validator);
+                prevStmts.push(...fullValidate(validator, validate));
+            }
             let previousExp = validator.expression();
             for (let i = 0; i < validator.typeData.transformations.length; i++) {
                 const code = validator.typeData.transformations[i] as string | ts.Symbol;
@@ -43,8 +46,14 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
         }
         case TypeDataKinds.Tuple:
         case TypeDataKinds.Object: {
-            const initializer = validator.typeData.kind === TypeDataKinds.Tuple ? ts.factory.createArrayLiteralExpression() : _obj({});
-            return [_stmt(_assign(assignTarget, initializer)), ...validator.children.map(child => genTransform(child, assignTarget, ctx)).flat()];
+            const isTuple = validator.typeData.kind === TypeDataKinds.Tuple;
+            const initializer = isTuple ? ts.factory.createArrayLiteralExpression() : _obj({});
+            const validation: ts.Statement[] = [];
+            if (validate) {
+                if (isTuple) validation.push(_if(_arr_check(validator.expression()), error(validate, [validator])));
+                else validation.push(_if(_obj_check(validator.expression()), error(validate, [validator])));
+            }
+            return [...validation, _stmt(_assign(assignTarget, initializer)), ...validator.children.map(child => genTransform(child, assignTarget, ctx)).flat()];
         }
         case TypeDataKinds.Array: {
             const childType = validator.children[0];
@@ -55,12 +64,34 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
                 index = _ident("i");
                 childType.setName(index);
             }
-            return [_stmt(_assign(assignTarget, ts.factory.createArrayLiteralExpression())), _for(validator.expression(), index, genTransform(childType, assignTarget, ctx))[0]];
+            const validation = validate ? [_if(_not(_arr_check(validator.expression())), error(validate, [validator]))] : [];
+            return [...validation, _stmt(_assign(assignTarget, ts.factory.createArrayLiteralExpression())), _for(validator.expression(), index, genTransform(childType, assignTarget, ctx))[0]];
         }
         case TypeDataKinds.Union: {
-            const transforms = validator.getChildrenOfKind(TypeDataKinds.Transform);
-            if (!transforms.length) return [_stmt(_assign(assignTarget, validator.expression()))];
-            const bases: Validator[] = [], withoutBases: Validator[] = [];
+            const transforms: Validator[] = [],
+                regularTypes: Validator[] = [];
+            let containsUndefined: Validator | undefined = undefined,
+                containsNull: Validator | undefined = undefined;
+            for (const child of validator.children) {
+                if (child.typeData.kind === TypeDataKinds.Transform) transforms.push(child);
+                else if (child.typeData.kind === TypeDataKinds.Undefined) containsUndefined = child;
+                else if (child.typeData.kind === TypeDataKinds.Null) containsNull = child;
+                else regularTypes.push(child);
+            }
+
+            const extraChecks = [];
+            if (containsUndefined) extraChecks.push(_bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken));
+            if (containsNull) extraChecks.push(_bin(validator.expression(), ts.factory.createNull(), ts.SyntaxKind.ExclamationEqualsEqualsToken));
+
+            if (!transforms.length) {
+                if (extraChecks.length) return [_if(_and(extraChecks), regularTypes.map(type => genTransform(type, assignTarget, ctx, validate)).flat())];
+                else return [_stmt(_assign(assignTarget, validator.expression()))];
+            }
+
+            if (!transforms.length) return regularTypes.map(t => genTransform(t, assignTarget, ctx, validate)).flat();
+
+            const bases: Validator[] = [],
+                withoutBases: Validator[] = [];
             for (const transform of transforms) {
                 const typeData = transform.typeData as TransformTypeData;
                 if (typeData.rest) bases.push(typeData.rest);
@@ -69,36 +100,35 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
             const {normal, compound} = getUnionMembers(bases, false);
             const nodeCtx = validate || createContext(ctx.transformer, {none: true}, ctx.origin);
 
+            const ifChecks: [ts.Expression, BlockLike][] = [...normal, ...compound].map(validator => {
+                const check = genConciseNode(validator, nodeCtx);
+                const originalTransform = transforms[bases.indexOf(validator)]!;
+
+                return [check.condition, genTransform(originalTransform, assignTarget, ctx, false)];
+            });
+
             let elseStmt;
             if (withoutBases.length === 1) {
                 elseStmt = genTransform(withoutBases[0]!, assignTarget, ctx, false);
             } else if (validate) {
                 elseStmt = error(validate, [validator, [_str("to be one of "), _str(validator.children.map(base => base.translate()).join(" | "))]]);
+                if (regularTypes.length) {
+                    const conditions = regularTypes.map(t => genConciseNode(t, nodeCtx).condition);
+                    if (conditions.length) ifChecks.push([_or(conditions), _stmt(_assign(assignTarget, validator.expression()))]);
+                }
             } else {
-                elseStmt = genTransform(bases[0]!, assignTarget, ctx, false);
+                elseStmt = _stmt(_assign(assignTarget, validator.expression()));
             }
 
-            let result = _if_chain(
-                0,
-                [...normal, ...compound].map(validator => {
-                    const check = genConciseNode(validator, nodeCtx);
-                    const originalTransform = transforms[bases.indexOf(validator)] as Validator;
+            let result = _if_chain(0, ifChecks, elseStmt) as ts.Statement;
 
-                    return [check.condition, genTransform(originalTransform, assignTarget, ctx, false)];
-                }),
-                elseStmt
-            ) as ts.Statement;
-
-            const extraChecks = [];
-            if (validator.canBeOfKind(TypeDataKinds.Undefined))extraChecks.push(_bin(validator.expression(), UNDEFINED, ts.SyntaxKind.ExclamationEqualsEqualsToken));
-            if (validator.canBeOfKind(TypeDataKinds.Null)) extraChecks.push(_bin(validator.expression(), ts.factory.createNull(), ts.SyntaxKind.ExclamationEqualsEqualsToken));
             if (extraChecks.length) result = _if(_and(extraChecks), result);
 
             return [result];
         }
         default: {
             const statements: ts.Statement[] = [];
-            if (ctx.validate) statements.push(...fullValidate(validator, ctx.validate));
+            if (validate) statements.push(...fullValidate(validator, validate));
             return [...statements, _stmt(_assign(assignTarget, validator.expression()))];
         }
     }

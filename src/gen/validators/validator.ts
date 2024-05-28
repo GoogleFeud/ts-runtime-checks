@@ -419,9 +419,13 @@ export class Validator {
             this.name,
             {...this.typeData},
             this._exp,
-            this.parent?.clone(),
+            this.parent,
             this.children.map(c => c.clone())
         );
+    }
+
+    inherits(other: Validator) : void {
+        this.customExp = other.expression();
     }
 
     cmp(other: Validator): boolean {

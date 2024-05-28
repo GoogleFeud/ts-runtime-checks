@@ -421,6 +421,8 @@ if (typeof value_1.id === "string") {
     throw new Error("Expected value.id to be one of string | number, to be greater than 3");
 if (typeof value_1.age === "string") {
     result_1.age = stringToNum(value_1.age);
+} else if (typeof value_1.age === "number") {
+    result_1.age = value_1.age;
 } else
     throw new Error("Expected value.age to be one of string | number");
 ```
