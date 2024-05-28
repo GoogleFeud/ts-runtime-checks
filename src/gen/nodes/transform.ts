@@ -73,7 +73,9 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
             if (withoutBases.length === 1) {
                 elseStmt = genTransform(withoutBases[0]!, assignTarget, ctx, false);
             } else if (validate) {
-                elseStmt = error(validate, [validator, [_str("to be one of "), _str(bases.map(base => base.translate()).join(" | "))]]);
+                elseStmt = error(validate, [validator, [_str("to be one of "), _str(validator.children.map(base => base.translate()).join(" | "))]]);
+            } else {
+                elseStmt = genTransform(bases[0]!, assignTarget, ctx, false);
             }
 
             let result = _if_chain(

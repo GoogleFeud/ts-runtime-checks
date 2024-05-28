@@ -195,7 +195,7 @@ function createValidator(transformer: Transformer, type: ts.Type, name: Validato
  * }
  * ```
  */
-export type Assert<T, ReturnValue = ThrowError<Error>> = T & {__$marker?: "Assert"; __$marker_params?: [T, ReturnValue]};
+export type Assert<T, Action = ThrowError<Error>> = T & {__$marker?: "Assert"; __$marker_params?: [T, Action]};
 export type ErrorMsg<_rawErrorData = false> = {__$error_msg: true; __$raw_error: _rawErrorData};
 export type ThrowError<ErrorType = Error, _rawErrorData = false> = {__$throw_err: ErrorType; __$raw_error: _rawErrorData};
 
@@ -314,15 +314,11 @@ export type Matches<T extends string> = string & Check<`${T}.test($self)`, `to m
 /**
  * Compares the value with the expression `Expr`. Does **not** validate `T`.
  */
-export type Eq<T, Expr extends string> = NoCheck<T> & Check<`$self === ${Expr}`, `to be equal to "${Expr}"`, "eq", Expr>;
+export type Eq<Expr extends string, T = unknown> = unknown extends T ? Check<`$self === ${Expr}`, `to be equal to ${Expr}`, "eq", Expr> : NoCheck<T> & Check<`$self === ${Expr}`, `to be equal to ${Expr}`, "eq", Expr>;
 /**
  * Negate the check `T`.
  */
 export type Not<T extends Check<string, string>> = Check<`!(${T["__$check"]})`, `not ${T["__$error"]}`>;
-/**
- * The check passes if either `L` or `R` is true. Same behaviour as the logical OR (`||`) operator.
- */
-export type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<`${L["__$check"]} || ${R["__$check"]}`, `${L["__$error"]} or ${R["__$error"]}`>;
 
 /**
  * You can use this utility type on type parameters - the transformer is going to go through all call locations of the function the type parameter belongs to, figure out the actual type used, create a union of all the possible types and validate it.
@@ -419,4 +415,4 @@ export declare function check<T, _rawErrorData extends boolean = false, _M = {__
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
 export declare function createMatch<R, U = unknown, _M = {__$marker: "createMatch"}>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean): (val: U) => R;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export declare function transform<T, _ReturnType = unknown, _M = {__$marker: "transform"}>(value: T): Transformed<T>;
+export declare function transform<T, _Action = unknown, _M = {__$marker: "transform"}>(value: T): Transformed<T>;

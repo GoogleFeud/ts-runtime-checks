@@ -153,9 +153,8 @@ The library also exports a set of built-in `Check` type aliases, which can be us
 -   `Int` / `Float` - Limit a number to integer / floating point.
 -   `Matches<Regex>` - Check if the value matches a pattern.
 -   `MaxLen<Size>` / `MinLen<Size>` / `Length<Size>` - Used with anything that has a `length` property to check if it's within bounds.
--   `Eq` - Compares the value with the expression provided.
+-   `Eq` - Compares the value with the provided expression.
 -   `Not` - Negates a `Check`.
--   `Or` - Logical OR operator for `Check`.
 
 #### `Assert<Type, Action>`
 
@@ -397,6 +396,33 @@ result_1.createdAt = timestampToDate(myUser.createdAt);
 result_1.age = incrementAge(+myUser.age);
 result_1.username = myUser.username;
 console.log(result_1);
+```
+
+The second type parameter of the `transform` function is an `Action`, and if it's provided, the type will be validated before being transformed. Check out the `Assert` section for all possible actions.
+
+You can also perform **conditional transformations** via unions:
+
+```ts
+interface ConditionalTransform {
+    age: number | string & Transform<typeof stringToNum>,
+    id: string & Transform<typeof stringToNum> | number & Min<3> & Transform<"$self + 1">
+}
+
+transform<ConditionalTransform, ThrowError>({ age: "3", id: 12 })
+
+// Transpiles to:
+let result_1;
+result_1 = {};
+if (typeof value_1.id === "string") {
+    result_1.id = stringToNum(value_1.id);
+} else if (typeof value_1.id === "number" && value_1.id >= 3) {
+    result_1.id = value_1.id + 1;
+} else
+    throw new Error("Expected value.id to be one of string | number, to be greater than 3");
+if (typeof value_1.age === "string") {
+    result_1.age = stringToNum(value_1.age);
+} else
+    throw new Error("Expected value.age to be one of string | number");
 ```
 
 ### `as` assertions

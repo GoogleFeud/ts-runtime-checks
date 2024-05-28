@@ -4,7 +4,7 @@ import ts from "typescript";
 const TsChecks = checks.default;
 
 export const Markers = `
-type Assert<T, ReturnValue = ThrowError<Error>> = T & { __$marker?: "Assert", __$marker_params?: [T, ReturnValue] };
+type Assert<T, Action = ThrowError<Error>> = T & { __$marker?: "Assert", __$marker_params?: [T, Action] };
 type ErrorMsg<_rawErrorData = false> = { __$error_msg: true, __$raw_error: _rawErrorData };
 type ThrowError<ErrorType = Error, _rawErrorData = false> = { __$throw_err: ErrorType, __$raw_error: _rawErrorData };
 interface ValidationError {
@@ -27,9 +27,8 @@ type MinLen<T extends string | number> = Check<\`$self.length >= \${T}\`, \`to h
 type MaxLen<T extends string | number> = Check<\`$self.length <= \${T}\`, \`to have a length less than \${T}\`, "maxLen", T>;
 type Length<T extends string | number> = Check<\`$self.length === \${T}\`, \`to have a length equal to \${T}\`, "length", T>;
 type Matches<T extends string> = string & Check<\`\${T}.test($self)\`, \`to match \${T}\`, "matches", T>;
-type Eq<T, Expr extends string> = NoCheck<T> & Check<\`$self === \${Expr}\`, \`to be equal to "\${Expr}"\`, "eq", Expr>;
+type Eq<Expr extends string, T = unknown> = unknown extends T ? Check<\`$self === \${Expr}\`, \`to be equal to \${Expr}\`, "eq", Expr> : NoCheck<T> & Check<\`$self === \${Expr}\`, \`to be equal to \${Expr}\`, "eq", Expr>;
 type Not<T extends Check<string, string>> = Check<\`!(\${T["__$check"]})\`, \`not \${T["__$error"]}\`>;
-type Or<L extends Check<string, string>, R extends Check<string, string>> = Check<\`\${L["__$check"]} || \${R["__$check"]}\`, \`\${L["__$error"]} or \${R["__$error"]}\`>;
 type Infer<Type> = Type & { __$name?: "Infer" };
 type Resolve<Type> = Type & { __$name?: "Resolve" };
 type Transformation = string | ((value: any) => any);
@@ -46,7 +45,7 @@ type Undefined = {__$name?: "Undefined"};
 declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;
 declare function check<T, _rawErrorData extends boolean = false, _M = { __$marker: "check" }>(prop: unknown) : [T, Array<_rawErrorData extends true ? ValidationError : string>];
 declare function createMatch<R, U = unknown, _M = { __$marker: "createMatch" }>(fns: ((val: any) => R)[], noDiscriminatedObjAssert?: boolean) : (val: U) => R;
-declare function transform<T, _ReturnType = unknown, _M = {__$marker: "transform"}>(value: T): Transformed<T>;
+declare function transform<T, _Action = unknown, _M = {__$marker: "transform"}>(value: T): Transformed<T>;
 `;
 
 export const CompilerOptions: ts.CompilerOptions = {
