@@ -13,7 +13,7 @@ export default defineConfig({
     site: "https://googlefeud.github.io/ts-runtime-checks",
     base: "./",
     redirects: {
-        "/": "./playground"
+        "/": "https://googlefeud.github.io/ts-runtime-checks/playground"
     },
     integrations: [mdx(), sitemap(), react(), tailwind(), relativeLinks()]
 });
