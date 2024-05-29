@@ -17,7 +17,7 @@ jobs:
                   cd ./docs
                   npm i
                   npm run build
-                  touch ./out/.nojekyll
+#                  touch ./out/.nojekyll
             - name: Deploy to GitHub Pages
               uses: JamesIves/github-pages-deploy-action@4.1.3
               with:
