@@ -40,6 +40,7 @@ type Transform<
 type Transformed<T> = {
     [Key in keyof T]: T[Key] extends {__$transform?: unknown} ? NonNullable<T[Key]["__$transform"]> : T[Key];
 };
+type PostCheck<Checks> = {__$post?: Checks};
 type Null = {__$name?: "Null"};
 type Undefined = {__$name?: "Undefined"};
 declare function is<T, _M = { __$marker: "is" }>(prop: unknown) : prop is T;

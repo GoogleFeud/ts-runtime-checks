@@ -120,6 +120,7 @@ export interface TransformTypeData {
     kind: TypeDataKinds.Transform;
     transformations: CodeReference[];
     rest?: Validator;
+    postChecks?: Validator;
 }
 
 export type TypeData =
@@ -401,10 +402,24 @@ export class Validator {
 
     getRawTypeData(): Record<string, unknown> {
         switch (this.typeData.kind) {
+            case TypeDataKinds.Union:
+                return {
+                    kind: TypeDataKinds.Union,
+                    variants: this.children.map(child => child.getRawTypeData())
+                };
+            case TypeDataKinds.Transform:
+                if (this.typeData.rest) return this.typeData.rest.getRawTypeData();
+                return {kind: TypeDataKinds.Transform};
             case TypeDataKinds.Check: {
                 const base = this.children[0] ? this.children[0].getRawTypeData() : {kind: TypeDataKinds.Check};
                 for (const hint of this.typeData.hints) {
                     if (hint.name) base[hint.name] = hint.value;
+                }
+                if (this.typeData.altHints.length) {
+                    base.alt = {};
+                    for (const altHint of this.typeData.altHints) {
+                        if (altHint.name) (base.alt as Record<string, unknown>)[altHint.name] = altHint.value;
+                    }
                 }
                 return base;
             }
@@ -424,7 +439,7 @@ export class Validator {
         );
     }
 
-    inherits(other: Validator) : void {
+    inherits(other: Validator): void {
         this.customExp = other.expression();
     }
 

@@ -404,7 +404,9 @@ You can also perform **conditional transformations** via unions:
 
 ```ts
 interface ConditionalTransform {
+    // "age" is either a number or a string
     age: number | Transform<typeof stringToNum>,
+    // "id" is either a string or a number that must be larger than 3.
     id: Transform<typeof stringToNum> | Min<3> & Transform<"$self + 1">
 }
 
@@ -427,7 +429,7 @@ if (typeof value_1.age === "string") {
     throw new Error("Expected value.age to be one of string | number");
 ```
 
-To see some pretty complex conditional transformations, check out [this unit test](https://github.com/GoogleFeud/ts-runtime-checks/blob/main/tests/integrated/transforms.test.ts)
+You can also use the `PostCheck` type to perform checks after the value has been transformed! Check out the `PostCheck` examples and other pretty crazy conditional transformations [in this unit test](https://github.com/GoogleFeud/ts-runtime-checks/blob/main/tests/integrated/transforms.test.ts)
 
 ### `as` assertions
 

@@ -1,4 +1,4 @@
-import type { Max, Check, Transformed, Transform, ThrowError, Matches, Eq } from "../../dist/index";
+import type { Max, Check, Transformed, Transform, ThrowError, Matches, Eq, PostCheck, MaxLen, Min } from "../../dist/index";
 import { expect } from "chai";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -6,6 +6,11 @@ export declare function transform<T, _ReturnType = unknown, _M = {__$marker: "tr
 
 const stringToNum = (str: string) => +str;
 const numToString = (num: number) => num.toString();
+const numToDate = (num: number) => new Date(num);
+const incrementArr = (arr: Array<number>) => arr.map(value => value + 1);
+
+export type NotNaN = Check<"!isNaN($self)", "to not be NaN", "notNaN">
+export type DateBefore<T extends string> = Check<`$self.getTime() < new Date("${T}").getTime()`, `to be before ${T}`, "dateBefore", T>
 
 export type SimpleTransform = {
     fieldA: string,
@@ -33,12 +38,16 @@ export interface ConditionalTransform {
             string & Matches<"/\\b[^\\d\\W]+\\b/g"> & Transform<"$self.repeat(2)"> | 
             Transform<"1">
 }
-
-const incrementArr = (arr: Array<number>) => arr.map(value => value + 1);
  
 export type ArraysTransform = {
     fieldA: Transform<typeof incrementArr>,
     fieldB?: Array<Max<3> & Transform<"$self + 1"> | number & Eq<"10"> & Transform<"$self - 1">>
+}
+
+export type PostCheckTransform = {
+    fieldA: Transform<[typeof stringToNum]> & PostCheck<NotNaN> | null,
+    fieldB: Max<10000> & Transform<typeof numToString> & PostCheck<MaxLen<3>> | 
+            Min<10000> & Transform<typeof numToDate> & PostCheck<DateBefore<"01/01/2021">>
 }
 
 describe("Transformations", () => {
@@ -83,5 +92,18 @@ describe("Transformations", () => {
         expect(performTransform({ fieldA: [1, 2, 6], fieldB: [2, 10, 4] })).to.throw("Expected value.fieldB[2] to be one of number, to be less than 3 | number, to be equal to 10");
         expect(performTransform({ fieldA: [1, 2, 1] })()).to.be.deep.equal({ fieldA: [2, 3, 2] });
     });
+
+    it("Post check transformation", () => {
+        const performTransform = (values: unknown) => {
+            return () => transform<PostCheckTransform, ThrowError>(values as PostCheckTransform);
+        };
+
+        expect(performTransform({ fieldA: "123", fieldB: 32 })()).to.be.deep.equal({ fieldA: 123, fieldB: "32"});
+        expect(performTransform({ fieldA: "abc", fieldB: 32 })).to.throw("Expected value.fieldA to not be NaN");
+        expect(performTransform({ fieldA: 33, fieldB: 3333 })).to.throw("Expected value.fieldB to have a length less than 3");
+        expect(performTransform({ fieldA: null, fieldB: 1704060000000 })).to.throw("Expected value.fieldB to be before 01/01/2021");
+        expect(performTransform({ fieldA: null, fieldB: 1577829600000 })()).to.deep.equal({ fieldB: new Date(1577829600000)});
+    });
+
 
 });

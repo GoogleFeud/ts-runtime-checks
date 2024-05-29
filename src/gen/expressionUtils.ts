@@ -197,19 +197,32 @@ export function _for_in(arr: ts.Expression, elName: ts.Identifier | string, body
     return [factory.createForInStatement(initializerCreate.declarationList, arr, _stmt(body)), initializer];
 }
 
-export function _obj(props: Record<string, ts.Expression | string | number | boolean | undefined>): ts.Expression {
+export function _val(val: unknown) : ts.Expression {
+     if (typeof val === "string") return _str(val);
+     else if (typeof val === "number") return _num(val);
+     else if (val === true) return _bool(true);
+     else if (val === false) return _bool(false);
+     else if (Array.isArray(val)) return _arr(val);
+     else if (val === null) return ts.factory.createNull();
+     else if (typeof val === "object") {
+        if ("kind" in val && "pos" in val) return val as ts.Expression;
+        else return _obj(val as Record<string, unknown>);
+    }
+    else return UNDEFINED;
+}
+
+export function _arr(array: Array<unknown>) : ts.Expression {
+    console.log(array.map(val => _val(val)));
+    return ts.factory.createArrayLiteralExpression(array.map(val => _val(val)));
+}
+
+export function _obj(props: Record<string | number | symbol, unknown>): ts.Expression {
     const propNodes: ts.PropertyAssignment[] = [];
     for (const property in props) {
-        const propValue = props[property];
-        let nodePropValue;
-        if (propValue === undefined) continue;
-        else if (typeof propValue === "string") nodePropValue = _str(propValue);
-        else if (typeof propValue === "number") nodePropValue = _num(propValue);
-        else if (propValue === true) nodePropValue = _bool(true);
-        else if (propValue === false) nodePropValue = _bool(false);
-        else if ("kind" in propValue) nodePropValue = propValue as ts.Expression;
-        else continue;
-        propNodes.push(factory.createPropertyAssignment(property, nodePropValue));
+        if (typeof property !== "string") continue;
+        const value = _val(props[property]);
+        if (value.kind === ts.SyntaxKind.UndefinedKeyword) continue;
+        propNodes.push(factory.createPropertyAssignment(property, value));
     }
     return factory.createObjectLiteralExpression(propNodes);
 }

@@ -314,7 +314,9 @@ export type Matches<T extends string> = string & Check<`${T}.test($self)`, `to m
 /**
  * Compares the value with the expression `Expr`. Does **not** validate `T`.
  */
-export type Eq<Expr extends string, T = unknown> = unknown extends T ? Check<`$self === ${Expr}`, `to be equal to ${Expr}`, "eq", Expr> : NoCheck<T> & Check<`$self === ${Expr}`, `to be equal to ${Expr}`, "eq", Expr>;
+export type Eq<Expr extends string, T = unknown> = unknown extends T
+    ? Check<`$self === ${Expr}`, `to be equal to ${Expr}`, "eq", Expr>
+    : NoCheck<T> & Check<`$self === ${Expr}`, `to be equal to ${Expr}`, "eq", Expr>;
 /**
  * Negate the check `T`.
  */
@@ -405,6 +407,8 @@ export type Transformed<T> = {
 
 export type Null = {__$name?: "Null"};
 export type Undefined = {__$name?: "Undefined"};
+
+export type PostCheck<Checks> = {__$post?: Checks};
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare function is<T, _M = {__$marker: "is"}>(prop: unknown): prop is T;

@@ -7,6 +7,9 @@ const stringToNum = (str) => {
 const numToString = (num) => {
     return num.toString();
 };
+const numToDate = (num) => {
+    return new Date(num);
+};
 const incrementArr = (arr) => {
     return arr.map((value) => {
         return value + 1;
@@ -206,5 +209,42 @@ describe("Transformations", () => {
         (0, chai_1.expect)(performTransform({ fieldA: [1, 2, 3], fieldB: [2, 1, 10] })()).to.be.deep.equal({ fieldA: [2, 3, 4], fieldB: [3, 2, 9] });
         (0, chai_1.expect)(performTransform({ fieldA: [1, 2, 6], fieldB: [2, 10, 4] })).to.throw("Expected value.fieldB[2] to be one of number, to be less than 3 | number, to be equal to 10");
         (0, chai_1.expect)(performTransform({ fieldA: [1, 2, 1] })()).to.be.deep.equal({ fieldA: [2, 3, 2] });
+    });
+    it("Post check transformation", () => {
+        const performTransform = (values) => {
+            return () => {
+                const value_7 = values;
+                let result_7;
+                if (typeof value_7 !== "object" || value_7 === null)
+                    throw new Error("Expected value to be an object");
+                result_7 = {};
+                if (typeof value_7.fieldB === "number" && value_7.fieldB <= 10000) {
+                    result_7.fieldB = numToString(value_7.fieldB);
+                    if (result_7.fieldB.length > 3)
+                        throw new Error("Expected value.fieldB to have a length less than 3");
+                }
+                else if (typeof value_7.fieldB === "number" && value_7.fieldB >= 10000) {
+                    result_7.fieldB = numToDate(value_7.fieldB);
+                    if (result_7.fieldB.getTime() >= new Date("01/01/2021").getTime())
+                        throw new Error("Expected value.fieldB to be before 01/01/2021");
+                }
+                else
+                    throw new Error("Expected value.fieldB to be one of number, to be less than 10000 | number, to be greater than 10000");
+                if (value_7.fieldA !== null)
+                    if (typeof value_7.fieldA === "string") {
+                        result_7.fieldA = stringToNum(value_7.fieldA);
+                        if (isNaN(result_7.fieldA))
+                            throw new Error("Expected value.fieldA to not be NaN");
+                    }
+                    else
+                        throw new Error("Expected value.fieldA to be one of string | null");
+                return result_7;
+            };
+        };
+        (0, chai_1.expect)(performTransform({ fieldA: "123", fieldB: 32 })()).to.be.deep.equal({ fieldA: 123, fieldB: "32" });
+        (0, chai_1.expect)(performTransform({ fieldA: "abc", fieldB: 32 })).to.throw("Expected value.fieldA to not be NaN");
+        (0, chai_1.expect)(performTransform({ fieldA: 33, fieldB: 3333 })).to.throw("Expected value.fieldB to have a length less than 3");
+        (0, chai_1.expect)(performTransform({ fieldA: null, fieldB: 1704060000000 })).to.throw("Expected value.fieldB to be before 01/01/2021");
+        (0, chai_1.expect)(performTransform({ fieldA: null, fieldB: 1577829600000 })()).to.deep.equal({ fieldB: new Date(1577829600000) });
     });
 });

@@ -47,6 +47,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
         else if (type.getProperty("__$transform")) {
             const expressions: CodeReference[] = [];
             let rest: Validator | undefined;
+            let postChecks: Validator | undefined;
 
             const resolveTransform = (nullableType: ts.Type, processBase: boolean) => {
                 const type = transformer.checker.getNonNullableType(nullableType);
@@ -71,6 +72,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                     if (inner.getProperty("__$transformations")) {
                         const transformations = transformer.checker.getTypeOfSymbol(inner.getProperty("__$transformations") as ts.Symbol);
                         resolveTransform(transformations, true);
+                    } else if (inner.getProperty("__$post")) {
+                        postChecks = genValidator(transformer, transformer.checker.getNonNullableType(transformer.checker.getTypeOfSymbol(inner.getProperty("__$post")!)), name, exp, parent);
                     } else {
                         otherTypes.push(inner);
                     }
@@ -82,7 +85,7 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 resolveTransform(transformations, true);
             }
 
-            return new Validator(type, name, {kind: TypeDataKinds.Transform, transformations: expressions, rest}, exp, parent);
+            return new Validator(type, name, {kind: TypeDataKinds.Transform, transformations: expressions, rest, postChecks}, exp, parent);
         }
         // Check has precedence over other utility types
         else if (type.getProperty("__$check")) {

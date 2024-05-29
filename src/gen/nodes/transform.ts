@@ -42,7 +42,16 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
                     previousExp = _call(funcIdent, [previousExp]);
                 }
             }
-            return [...prevStmts, _stmt(_assign(assignTarget, previousExp))];
+
+            let nextStmts: ts.Statement[] = [];
+            // We use ctx.validate cause nothing can prevent post checks from happening
+            if (ctx.validate && validator.typeData.postChecks) {
+                const checkValidator = validator.typeData.postChecks;
+                if (checkValidator.typeData.kind === TypeDataKinds.Check) checkValidator.setChildren([]);
+                checkValidator.setAlias(() => assignTarget as ts.Identifier);
+                nextStmts = fullValidate(validator.typeData.postChecks, ctx.validate);
+            }
+            return [...prevStmts, _stmt(_assign(assignTarget, previousExp)), ...nextStmts];
         }
         case TypeDataKinds.Tuple:
         case TypeDataKinds.Object: {
@@ -50,7 +59,7 @@ export function genTransform(validator: Validator, target: ts.Expression, ctx: T
             const initializer = isTuple ? ts.factory.createArrayLiteralExpression() : _obj({});
             const validation: ts.Statement[] = [];
             if (validate) {
-                if (isTuple) validation.push(_if(_arr_check(validator.expression()), error(validate, [validator])));
+                if (isTuple) validation.push(_if(_not(_arr_check(validator.expression())), error(validate, [validator])));
                 else validation.push(_if(_obj_check(validator.expression()), error(validate, [validator])));
             }
             return [...validation, _stmt(_assign(assignTarget, initializer)), ...validator.children.map(child => genTransform(child, assignTarget, ctx)).flat()];
