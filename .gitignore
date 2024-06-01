@@ -105,3 +105,4 @@ dist
 
 manualTests/
 perf/dist/
+bench/
