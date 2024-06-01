@@ -1,0 +1,6 @@
+tests
+perf
+dist
+node_modules
+manualTests
+package-lock.json

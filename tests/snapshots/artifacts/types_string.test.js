@@ -11,7 +11,7 @@ describe("String", () => {
         }
         function test2(a) {
             if (a !== "abc")
-                throw new Error("Expected a to be equal to \"abc\"");
+                throw new Error("Expected a to be \"abc\"");
             return a;
         }
         it("Throw when a string is not provided", () => {
@@ -22,7 +22,7 @@ describe("String", () => {
             (0, chai_1.expect)((0, utils_1.call)(test, "abc3de3de3")).to.not.throw();
         });
         it("Throw when the string literal is not the same", () => {
-            (0, chai_1.expect)((0, utils_1.call)(test2, "abcd")).to.throw("Expected a to be equal to \"abc\"");
+            (0, chai_1.expect)((0, utils_1.call)(test2, "abcd")).to.throw("Expected a to be \"abc\"");
         });
         it("Not throw when the string literal is the same", () => {
             (0, chai_1.expect)((0, utils_1.call)(test2, "abc")).to.not.throw();

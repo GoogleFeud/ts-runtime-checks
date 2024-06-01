@@ -11,9 +11,9 @@ describe("Object", () => {
             if (typeof a.a !== "string")
                 throw new Error("Expected a.a to be a string");
             if (a.b !== undefined && typeof a.b !== "number")
-                throw new Error("Expected a.b to be a number");
+                throw new Error("Expected a.b to be undefined | number");
             if (!Array.isArray(c_1))
-                throw new Error("Expected a.c to be an array");
+                throw new Error("Expected a.c to be an array<string>");
             for (let i_1 = 0; i_1 < c_1.length; i_1++) {
                 if (typeof c_1[i_1] !== "string")
                     throw new Error("Expected a.c[" + i_1 + "] to be a string");
@@ -29,7 +29,7 @@ describe("Object", () => {
                 a: "ABC",
                 b: "adc",
                 c: 123
-            })).to.throw("Expected a.b to be a number");
+            })).to.throw("Expected a.b to be undefined | number");
             (0, chai_1.expect)((0, utils_1.call)(test, {
                 a: "ABC",
                 b: 123,

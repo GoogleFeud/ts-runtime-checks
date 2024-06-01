@@ -28,7 +28,7 @@ describe("Early return", () => {
             return "Expected a to be an object";
         const { a: a_1 } = a;
         if (!Array.isArray(a_1))
-            return "Expected a.a to be an array";
+            return "Expected a.a to be [string, number, undefined | object]";
         const [t_1, t_2, t_3] = a_1;
         if (typeof t_1 !== "string")
             return "Expected a.a[0] to be a string";

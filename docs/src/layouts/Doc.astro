@@ -1,0 +1,31 @@
+---
+import Header from "../components/Header.astro";
+import {getCollection} from "astro:content";
+
+//type Props = CollectionEntry<"docs">["data"]
+const {title, description} = Astro.props;
+
+const posts = (await getCollection("docs")).sort((a, b) => a.data.order - b.data.order);
+---
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>{title}</title>
+        <meta name="title" content={title} />
+        <meta name="description" content={description} />
+        <style></style>
+    </head>
+
+    <body>
+        <Header />
+        <main>
+            <h2>{title}</h2>
+            <article>
+                <slot />
+            </article>
+            <p>{posts.map(post => post.data.title)}</p>
+        </main>
+    </body>
+</html>

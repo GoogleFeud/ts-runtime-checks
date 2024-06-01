@@ -22,7 +22,7 @@ describe("Number", () => {
         });
 
         it("Throw when the number literal is not the same", () => {
-            expect(call(test2, 1234)).to.throw("Expected a to be equal to 123");
+            expect(call(test2, 1234)).to.throw("Expected a to be 123");
         });
 
         it("Not throw when the number literal is the same", () => {

@@ -12,7 +12,7 @@ describe("Exact Props", () => {
             if (typeof a.b !== "number")
                 throw new Error("Expected a.b to be a number");
             if (a.c !== undefined && typeof a.c !== "string")
-                throw new Error("Expected a.c to be a string");
+                throw new Error("Expected a.c to be undefined | string");
             for (let p_1 in a) {
                 if (p_1 !== "a" && p_1 !== "b" && p_1 !== "c")
                     throw new Error("Property a." + p_1 + " is excessive");
@@ -81,7 +81,7 @@ describe("Exact Props", () => {
                 if (typeof a.b !== "number")
                     throw new Error("Expected a.b to be a number");
                 if (a.c !== undefined && typeof a.c !== "string")
-                    throw new Error("Expected a.c to be a string");
+                    throw new Error("Expected a.c to be undefined | string");
                 for (let p_5 in a) {
                     if (p_5 !== "a" && p_5 !== "b" && p_5 !== "c")
                         a[p_5] = undefined;

@@ -22,7 +22,7 @@ describe("Object", () => {
                 a: "ABC",
                 b: "adc",
                 c: 123
-            })).to.throw("Expected a.b to be a number");
+            })).to.throw("Expected a.b to be undefined | number");
             expect(call(test, {
                 a: "ABC",
                 b: 123,

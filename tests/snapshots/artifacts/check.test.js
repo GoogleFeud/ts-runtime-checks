@@ -23,10 +23,10 @@ describe("Check function", () => {
                 errs.push("Expected value.c to be an object");
             else {
                 if (typeof c_1.d !== "number" || c_1.d < 1 || c_1.d > 10)
-                    errs.push("Expected value.c.d to be a number, to be greater than 1, to be less than 10");
+                    errs.push("Expected value.c.d to be a number, to be greater than 1 & to be less than 10");
             }
         }
         (0, chai_1.expect)(errs[0]).to.be.equal("Expected value.b to be a string");
-        (0, chai_1.expect)(errs[1]).to.be.equal("Expected value.c.d to be a number, to be greater than 1, to be less than 10");
+        (0, chai_1.expect)(errs[1]).to.be.equal("Expected value.c.d to be a number, to be greater than 1 & to be less than 10");
     });
 });

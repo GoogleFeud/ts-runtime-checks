@@ -21,7 +21,7 @@ describe("String", () => {
         });
 
         it("Throw when the string literal is not the same", () => {
-            expect(call(test2, "abcd")).to.throw("Expected a to be equal to \"abc\"");
+            expect(call(test2, "abcd")).to.throw("Expected a to be \"abc\"");
         });
 
         it("Not throw when the string literal is the same", () => {

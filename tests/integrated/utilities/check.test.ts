@@ -11,7 +11,7 @@ describe("Check", () => {
         it("Combine different checks", () => {
             expect(call(test, 6)).to.not.throw();
             expect(call(test, 13)).to.not.throw();
-            expect(call(test, 3)).to.throw("Expected a to be a number, to be greater than 5, to be less than 15");
+            expect(call(test, 3)).to.throw("Expected a to be a number, to be greater than 5 & to be less than 15");
         });
 
         type AmountOfProps<T extends number> = Check<`Object.keys($self).length === ${T}`, `to have exactly ${T} keys`>;
