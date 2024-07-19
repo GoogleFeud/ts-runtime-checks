@@ -1,6 +1,6 @@
 {
     "name": "ts-runtime-checks",
-    "version": "0.6.0",
+    "version": "0.6.1",
     "description": "A typescript transformer which automatically generates validation code from your types.",
     "main": "dist/index.js",
     "scripts": {
@@ -33,7 +33,7 @@
         "@types/diff": "^5.0.2",
         "@types/mocha": "^9.1.0",
         "@types/node": "^20.3.0",
-        "@types/ts-expose-internals": "npm:ts-expose-internals@^5.4.3",
+        "@types/ts-expose-internals": "npm:ts-expose-internals@^5.5.3",
         "@typescript-eslint/eslint-plugin": "^5.62.0",
         "@typescript-eslint/parser": "^5.62.0",
         "chai": "^4.3.6",
@@ -43,7 +43,7 @@
         "mitata": "^0.1.6",
         "mocha": "^9.2.2",
         "prettier": "^3.2.5",
-        "ts-patch": "^3.1.1",
-        "typescript": "^5.4.3"
+        "ts-patch": "^3.2.1",
+        "typescript": "^5.5.3"
     }
 }

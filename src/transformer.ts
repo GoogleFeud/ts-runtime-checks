@@ -1,7 +1,7 @@
 import ts from "typescript";
 import * as Block from "./block";
 import {FnCallFn, Functions, MarkerCallData, MarkerFn, Markers} from "./markers";
-import {TransformerError, getResolvedTypesFromCallSig, hasBit, importSymbol, resolveAsChain} from "./utils";
+import {TransformerError, cloneNodeWithoutOriginal, getResolvedTypesFromCallSig, hasBit, importSymbol, resolveAsChain} from "./utils";
 import {UNDEFINED, _var} from "./gen/expressionUtils";
 import {CodeReference, ResolveTypeData, Validator, genValidator} from "./gen/validators";
 import {ValidationResultType, createContext, fullValidate} from "./gen/nodes";
@@ -279,13 +279,16 @@ export class Transformer {
         const result = ts.createSourceFile("expr", str, ts.ScriptTarget.ESNext, false, ts.ScriptKind.JS);
         const firstStmt = result.statements[0];
         if (!firstStmt || !ts.isExpressionStatement(firstStmt)) return UNDEFINED;
+        //console.dir(firstStmt, { depth: 3});
         const visitor = (node: ts.Node): ts.Node => {
             if (ts.isIdentifier(node)) {
-                if (replacements && replacements[node.text] && typeof replacements[node.text] === "object") return replacements[node.text] as ts.Expression;
+                if (replacements && replacements[node.text] && typeof replacements[node.text] === "object") return ts.factory.cloneNode(replacements[node.text] as ts.Expression);
                 return ts.factory.createIdentifier(node.text);
-            } else if (replacements && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && replacements[node.expression.text] && typeof replacements[node.expression.text] === "function")
+            }
+            else if (replacements && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && replacements[node.expression.text] && typeof replacements[node.expression.text] === "function") {   
                 return (replacements[node.expression.text] as (...args: ts.Expression[]) => ts.Node)(...node.arguments);
-            return ts.visitEachChild(ts.factory.cloneNode(node), visitor, this.ctx);
+            }
+            return ts.visitEachChild(cloneNodeWithoutOriginal(node), visitor, this.ctx);
         };
         return ts.visitNode(firstStmt.expression, visitor) as ts.Expression;
     }
