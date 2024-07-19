@@ -225,3 +225,9 @@ export function addArticle(msg: string): string {
     if (firstLetter === "a" || firstLetter === "e" || firstLetter === "o" || firstLetter === "i" || firstLetter === "u") return `an ${msg}`;
     return `a ${msg}`;
 }
+
+export function cloneNodeWithoutOriginal(node: ts.Node) : ts.Node {
+    const cloned = ts.factory.cloneNode(node);
+    delete cloned.original;
+    return cloned;
+}

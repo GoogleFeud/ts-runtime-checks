@@ -212,7 +212,6 @@ export function _val(val: unknown) : ts.Expression {
 }
 
 export function _arr(array: Array<unknown>) : ts.Expression {
-    console.log(array.map(val => _val(val)));
     return ts.factory.createArrayLiteralExpression(array.map(val => _val(val)));
 }
 
