@@ -40,5 +40,27 @@ describe("Check", () => {
                 two: { a: "a", b: 123, c: true, d: false }
             })()).to.equal(false);
         });
+        function test2(a) {
+            if ((typeof a !== "string" || a.length < 3) && (typeof a !== "number" || a < 3))
+                return false;
+            return true;
+        }
+        it("Conditional checks between different types", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test2, "abcdef")()).to.equal(true);
+            (0, chai_1.expect)((0, utils_1.call)(test2, 5)()).to.equal(true);
+            (0, chai_1.expect)((0, utils_1.call)(test2, "ab")()).to.equal(false);
+            (0, chai_1.expect)((0, utils_1.call)(test2, 1)()).to.equal(false);
+        });
+        function test3(a) {
+            if (typeof a !== "string" || a.length > 3 && !a.startsWith("a"))
+                return false;
+            return true;
+        }
+        it("Conditional checks between the same type", () => {
+            (0, chai_1.expect)((0, utils_1.call)(test3, "de")()).to.equal(true);
+            (0, chai_1.expect)((0, utils_1.call)(test3, "abcdef")()).to.equal(true);
+            (0, chai_1.expect)((0, utils_1.call)(test3, "efeew3e")()).to.equal(false);
+            (0, chai_1.expect)((0, utils_1.call)(test3, 123)()).to.equal(false);
+        });
     });
 });
