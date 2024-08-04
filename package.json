@@ -3,6 +3,16 @@
     "version": "0.6.1",
     "description": "A typescript transformer which automatically generates validation code from your types.",
     "main": "dist/index.js",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./unplugin": {
+            "types": "./dist/unplugin/index.d.ts",
+            "default": "./dist/unplugin/index.js"
+        }
+    },
     "scripts": {
         "test": "tsc && cd ./tests && tspc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index",
         "ci": "cd ./tests && tspc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index force",
@@ -20,7 +30,8 @@
         "typescript",
         "typecheck",
         "runtime",
-        "check"
+        "check",
+        "unplugin"
     ],
     "author": "GoogleFeud",
     "license": "MIT",
@@ -44,6 +55,7 @@
         "mocha": "^9.2.2",
         "prettier": "^3.2.5",
         "ts-patch": "^3.2.1",
-        "typescript": "^5.5.3"
+        "typescript": "^5.5.3",
+        "unplugin": "^1.12.0"
     }
 }

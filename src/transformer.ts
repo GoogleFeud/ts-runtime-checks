@@ -24,6 +24,11 @@ export type CodeReferenceExpand = {kind: CodeReferenceKind; expression: ts.Expre
 
 export type CodeReferenceReplacement = Record<string, ts.Expression | ((...args: ts.Expression[]) => ts.Node)>;
 
+export interface SymbolImportInfo {
+    identifierMap: Map<ts.Symbol, ts.Identifier>;
+    importStatements: ts.ImportDeclaration[];
+}
+
 export class Transformer {
     checker: ts.TypeChecker;
     program: ts.Program;
@@ -31,21 +36,22 @@ export class Transformer {
     ctx: ts.TransformationContext;
     toBeResolved: Map<ts.SignatureDeclaration, ToBeResolved[]>;
     validatedDecls: Map<ts.Declaration, ts.FunctionLikeDeclaration>;
-    symbolsToImport: {
-        identifierMap: Map<ts.Symbol, ts.Identifier>;
-        importStatements: ts.ImportDeclaration[];
-    };
-    constructor(program: ts.Program, ctx: ts.TransformationContext, config: TsRuntimeChecksConfig) {
+    symbolsToImport: SymbolImportInfo;
+    constructor(program: ts.Program, ctx: ts.TransformationContext, config: TsRuntimeChecksConfig, toBeResolved = new Map(), validatedDecls = new Map()) {
         this.checker = program.getTypeChecker();
         this.program = program;
         this.ctx = ctx;
         this.config = config;
-        this.toBeResolved = new Map();
-        this.validatedDecls = new Map();
+        this.toBeResolved = toBeResolved;
+        this.validatedDecls = validatedDecls;
         this.symbolsToImport = {
             identifierMap: new Map(),
             importStatements: []
         };
+    }
+
+    extend(program: ts.Program, ctx: ts.TransformationContext) : Transformer {
+        return new Transformer(program, ctx, this.config, this.toBeResolved);
     }
 
     run(node: ts.SourceFile): ts.SourceFile {
@@ -284,8 +290,13 @@ export class Transformer {
             if (ts.isIdentifier(node)) {
                 if (replacements && replacements[node.text] && typeof replacements[node.text] === "object") return ts.factory.cloneNode(replacements[node.text] as ts.Expression);
                 return ts.factory.createIdentifier(node.text);
-            }
-            else if (replacements && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && replacements[node.expression.text] && typeof replacements[node.expression.text] === "function") {   
+            } else if (
+                replacements &&
+                ts.isCallExpression(node) &&
+                ts.isIdentifier(node.expression) &&
+                replacements[node.expression.text] &&
+                typeof replacements[node.expression.text] === "function"
+            ) {
                 return (replacements[node.expression.text] as (...args: ts.Expression[]) => ts.Node)(...node.arguments);
             }
             return ts.visitEachChild(cloneNodeWithoutOriginal(node), visitor, this.ctx);
