@@ -76,6 +76,9 @@ export function _var(name: ts.BindingName | string, initializer?: ts.Expression,
 
 export function _ident(name: string | ts.Identifier, nonUnique?: boolean): ts.Identifier {
     if (typeof name !== "string") return name;
+    // normalizes the name to be a valid identifier
+    name = name.replace(/^[^a-zA-Z_$]/g, "_");
+    name = name.replace(/[^a-zA-Z0-9_$]/g, "_");
     return nonUnique ? factory.createIdentifier(name) : factory.createUniqueName(name);
 }
 
