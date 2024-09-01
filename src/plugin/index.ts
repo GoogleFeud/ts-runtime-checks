@@ -1,8 +1,8 @@
 import {TsRuntimeChecksConfig} from "../index";
 import {Transformer} from "../transformer";
-import ts, {TransformationContext} from "typescript";
+import ts from "typescript";
 
-export type ProgramType = ts.SemanticDiagnosticsBuilderProgram;
+export type ProgramType = ts.EmitAndSemanticDiagnosticsBuilderProgram;
 export type WatcherHost = ts.WatchCompilerHostOfFilesAndCompilerOptions<ProgramType>;
 export type WatcherProgram = ts.WatchOfFilesAndCompilerOptions<ProgramType>;
 export type ConfigInfo = [fileName: string, config: ts.ParsedCommandLine];
@@ -20,7 +20,7 @@ export class PluginContext {
     //private relationsBetweenFiles: Map<string, string[]>;
     private tsconfig: ts.ParsedCommandLine;
     private previousTransformer?: Transformer;
-    private transformers: ts.TransformerFactory<ts.SourceFile | ts.Bundle>[];
+    private transformerFactory: (ctx: ts.TransformationContext) => (file: ts.SourceFile) => ts.SourceFile;
     constructor(
         config: ConfigInfo,
         public tsrsConfig: TsRuntimeChecksConfig,
@@ -29,7 +29,10 @@ export class PluginContext {
         this.tsconfig = config[1];
         this.tsconfig.options.sourceMap = true;
         this.tsconfig.options.inlineSources = true;
-        const transformerFactory: (ctx: TransformationContext) => (file: ts.SourceFile) => (ts.SourceFile) = ctx => {
+        this.tsconfig.options.noEmit = false;
+        this.tsconfig.options.noEmitOnError = false;
+        this.tsconfig.options.jsx = ts.JsxEmit.React;
+        this.transformerFactory = ctx => {
             const program = this.watcher.getProgram().getProgram();
             let transformer: Transformer;
             if (this.previousTransformer) transformer = this.previousTransformer.extend(program, ctx);
@@ -37,17 +40,6 @@ export class PluginContext {
             this.previousTransformer = transformer;
             return file => transformer.run(file);
         };
-        //this.transformers = [transformerFactory, ts.transformESNext as unknown as (ctx: TransformationContext) => (file: ts.SourceFile) => ts.SourceFile];
-        this.transformers = [
-            ...ts.getTransformers(
-                this.tsconfig.options,
-                {
-                    before: [transformerFactory]
-                },
-                ts.EmitOnly.Js
-            ).scriptTransformers
-        ];
-        console.log(this.transformers);
     }
 
     finish() {
@@ -64,15 +56,29 @@ export class PluginContext {
      *
      * _emitFile: EmitFileFn
      */
-    transform(fileName: string): string | undefined {
-        const program = this.watcher.getProgram();
-        const sourceFile = program.getSourceFile(fileName);
-        if (!sourceFile) return;
-        const transformResult = ts.transform(sourceFile, this.transformers, this.tsconfig.options);
-        const transformedSource = transformResult.transformed[0];
-        if (!transformedSource || ts.isBundle(transformedSource)) return;
+    transform(fileName: string): Promise<string | undefined> {
+        return new Promise(resolve => {
+            const program = this.watcher.getProgram();
+            const sourceFile = program.getSourceFile(fileName);
+            if (!sourceFile) return;
+            program.getProgram().emit(
+                sourceFile,
+                (fileName, content) => {
+                    if (fileName.endsWith(".map")) return;
+                    resolve(content);
+                },
+                undefined,
+                undefined,
+                {
+                    before: [this.transformerFactory]
+                }
+            );
+        });
         // TODO: Do something with diagnostics?
-        return PluginContext.printer.printFile(transformedSource);
+        // const transformResult = ts.transform(sourceFile, [this.transformerFactory], this.tsconfig.options);
+        // const transformedSource = transformResult.transformed[0];
+        // if (!transformedSource) return;
+        // return PluginContext.printer.printFile(transformedSource);
     }
 
     static createContext(tsrcConfig: TsRuntimeChecksConfig = {}): PluginContext | undefined {
@@ -99,10 +105,10 @@ export class PluginContext {
         system.clearScreen = () => {
             void 0;
         };
-        system.writeFile = _ => {
-            _;
+        system.writeFile = path => {
+            console.log(path);
         };
-        const host = ts.createWatchCompilerHost(config.fileNames, config.options, system, ts.createSemanticDiagnosticsBuilderProgram, this.diagnosticReporter);
+        const host = ts.createWatchCompilerHost(config.fileNames, config.options, system, ts.createEmitAndSemanticDiagnosticsBuilderProgram, this.diagnosticReporter);
         return host;
     }
 

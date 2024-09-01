@@ -15,8 +15,8 @@ export const unpluginFactory: UnpluginFactory<TsRuntimeChecksConfig | undefined>
             // TODO: Allow more
             return fileName.endsWith(".ts") || fileName.endsWith(".tsx");
         },
-        transform(code, fileName) {
-            const transformed = ctx.transform(fileName);
+        async transform(code, fileName) {
+            const transformed = await ctx.transform(fileName);
             console.log("TRANSFORMED: ", fileName, transformed);
             return transformed || code;
         },
