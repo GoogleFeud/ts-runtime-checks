@@ -677,7 +677,7 @@ Using the configuration above, all types in your project will be turned into JSO
 
 #### `assertAll`
 
-Setting this option to true will add assertion code to ALL function parameters and `as` assertions. The assertion code will throw an error.
+Setting this option to true will add assertion code to ALL function parameters and `as` assertions. The assertion code will throw an error. You can use the `NoCheck` marker to override this behaviour.
 
 ## Contributing
 
