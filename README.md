@@ -643,7 +643,9 @@ function verify(n) {
 }
 ```
 
-### Generating JSON Schemas from your types
+### Transformer options
+
+#### JSON Schema 
 
 The transformer allows you to turn any of the types you use in your project into [JSON Schemas](https://json-schema.org/) with the `jsonSchema` configuration option:
 
@@ -672,6 +674,10 @@ Using the configuration above, all types in your project will be turned into JSO
     "typePrefix": "$"
 }
 ```
+
+#### `assertAll`
+
+Setting this option to true will add assertion code to ALL function parameters and `as` assertions. The assertion code will throw an error.
 
 ## Contributing
 
