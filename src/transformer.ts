@@ -24,6 +24,8 @@ export type CodeReferenceExpand = {kind: CodeReferenceKind; expression: ts.Expre
 
 export type CodeReferenceReplacement = Record<string, ts.Expression | ((...args: ts.Expression[]) => ts.Node)>;
 
+const DEFAULT_MARKER = Markers["Assert"] as MarkerFn;
+
 export class Transformer {
     checker: ts.TypeChecker;
     program: ts.Program;
@@ -82,7 +84,9 @@ export class Transformer {
             this.validatedDecls.set(node, node);
             if (!node.body) return node;
             const fnBody = Block.createBlock<ts.Statement>(body);
-            for (const param of node.parameters) this.callMarker(param.type, fnBody, {exp: param.name as ts.Expression, optional: Boolean(param.questionToken)});
+            for (const param of node.parameters) {
+                this.callMarker(param.type, fnBody, {exp: param.name as ts.Expression, optional: Boolean(param.questionToken)}, this.config.assertAll ? DEFAULT_MARKER : undefined);
+            }
             if (ts.isBlock(node.body)) this.visitEach(node.body.statements, fnBody);
             else {
                 const exp = ts.visitNode(node.body, node => this.visitor(node, fnBody));
@@ -119,7 +123,7 @@ export class Transformer {
                 body.cache.add(sym);
             }
             expOnly = ts.visitEachChild(expOnly, node => this.visitor(node, body), this.ctx);
-            const newIdent = this.callMarker(node.type, body, {exp: expOnly});
+            const newIdent = this.callMarker(node.type, body, {exp: expOnly}, this.config.assertAll ? DEFAULT_MARKER : undefined);
             if (!newIdent) return node;
             if (!ts.isExpressionStatement(node.parent)) return newIdent[1];
             else return;
@@ -218,19 +222,34 @@ export class Transformer {
         return ts.visitEachChild(node, node => this.visitor(node, body), this.ctx);
     }
 
-    callMarker(node: ts.Node | undefined, block: Block.Block<unknown>, data: Pick<MarkerCallData, "exp" | "optional">): [ts.Type, ts.Expression?] | undefined {
-        if (!node || !ts.isTypeReferenceNode(node)) return;
+    callMarker(node: ts.Node | undefined, block: Block.Block<unknown>, data: Pick<MarkerCallData, "exp" | "optional">, marker?: MarkerFn): [ts.Type, ts.Expression?] | undefined {
+        if (!node) return;
         const type = this.checker.getTypeAtLocation(node);
         if (!type) return;
-        const markerName = this.getPropType(type, "marker");
-        if (!markerName || !markerName.isStringLiteral()) return;
-        const markerParams = this.getPropType(type, "marker_params");
-        if (!markerParams || !this.checker.isTupleType(markerParams)) return;
+        let markerParams: ts.Type[];
+        if (!marker) {
+            if (!ts.isTypeReferenceNode(node)) return;
+            const markerName = this.getPropType(type, "marker");
+            if (!markerName || !markerName.isStringLiteral()) return;
+            marker = Markers[markerName.value] as MarkerFn;
+            const params = this.getPropType(type, "marker_params");
+            if (!params || !this.checker.isTupleType(params)) return;
+            markerParams = this.checker.getTypeArguments(params as ts.TypeReference) as ts.Type[];
+            if (!markerParams.length) markerParams = node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [];
+        } else {
+            // TODO: For now we only have one marker so setting the params is straightforward
+            // Change this when adding new markers
+            const markerName = this.getPropType(type, "marker");
+            if (markerName && markerName.isStringLiteral() && Markers[markerName.value]) {
+                const params = this.getPropType(type, "marker_params");
+                markerParams = this.checker.getTypeArguments(params as ts.TypeReference) as ts.Type[];
+            } else markerParams = [type];
+        }
         return [
             type,
-            (Markers[markerName.value] as MarkerFn)(this, {
+            marker(this, {
                 block,
-                parameters: (this.checker.getTypeArguments(markerParams as ts.TypeReference) as ts.Type[]) || node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [],
+                parameters: markerParams,
                 ...data
             })
         ];
@@ -284,8 +303,13 @@ export class Transformer {
             if (ts.isIdentifier(node)) {
                 if (replacements && replacements[node.text] && typeof replacements[node.text] === "object") return ts.factory.cloneNode(replacements[node.text] as ts.Expression);
                 return ts.factory.createIdentifier(node.text);
-            }
-            else if (replacements && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && replacements[node.expression.text] && typeof replacements[node.expression.text] === "function") {   
+            } else if (
+                replacements &&
+                ts.isCallExpression(node) &&
+                ts.isIdentifier(node.expression) &&
+                replacements[node.expression.text] &&
+                typeof replacements[node.expression.text] === "function"
+            ) {
                 return (replacements[node.expression.text] as (...args: ts.Expression[]) => ts.Node)(...node.arguments);
             }
             return ts.visitEachChild(cloneNodeWithoutOriginal(node), visitor, this.ctx);

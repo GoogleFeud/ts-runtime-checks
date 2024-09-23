@@ -7,6 +7,7 @@ export interface TsRuntimeChecksConfig {
         types?: string[];
         typePrefix?: string;
     };
+    assertAll?: boolean
 }
 
 export default (program: ts.Program, config?: TsRuntimeChecksConfig): ts.TransformerFactory<ts.Node> =>
