@@ -57,7 +57,7 @@ export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse?: Block
 }
 
 export function _if_chain(ind: number, check: [ts.Expression, BlockLike][], last?: BlockLike): ts.Statement | undefined {
-    if (ind >= check.length) return last ? _stmt(last) : undefined;;
+    if (ind >= check.length) return last ? _stmt(last) : undefined;
     return factory.createIfStatement(check[ind]![0], _stmt(check[ind]![1]), _if_chain(ind + 1, check, last));
 }
 
@@ -76,6 +76,9 @@ export function _var(name: ts.BindingName | string, initializer?: ts.Expression,
 
 export function _ident(name: string | ts.Identifier, nonUnique?: boolean): ts.Identifier {
     if (typeof name !== "string") return name;
+    // normalizes the name to be a valid identifier
+    name = name.replace(/^[^a-zA-Z_$]/g, "_");
+    name = name.replace(/[^a-zA-Z0-9_$]/g, "_");
     return nonUnique ? factory.createIdentifier(name) : factory.createUniqueName(name);
 }
 
@@ -171,7 +174,7 @@ export function _not(exp: ts.Expression): ts.Expression {
 export function _access(exp: ts.Expression, key: string | number | ts.Expression): ts.Expression {
     if (typeof key === "string") {
         if (isInt(key)) return factory.createElementAccessExpression(exp, ts.factory.createNumericLiteral(key));
-        return ts.factory.createPropertyAccessExpression(exp, key);
+        return ts.factory.createElementAccessExpression(exp, ts.factory.createStringLiteral(key));
     } else return factory.createElementAccessExpression(exp, key);
 }
 
@@ -197,21 +200,20 @@ export function _for_in(arr: ts.Expression, elName: ts.Identifier | string, body
     return [factory.createForInStatement(initializerCreate.declarationList, arr, _stmt(body)), initializer];
 }
 
-export function _val(val: unknown) : ts.Expression {
-     if (typeof val === "string") return _str(val);
-     else if (typeof val === "number") return _num(val);
-     else if (val === true) return _bool(true);
-     else if (val === false) return _bool(false);
-     else if (Array.isArray(val)) return _arr(val);
-     else if (val === null) return ts.factory.createNull();
-     else if (typeof val === "object") {
+export function _val(val: unknown): ts.Expression {
+    if (typeof val === "string") return _str(val);
+    else if (typeof val === "number") return _num(val);
+    else if (val === true) return _bool(true);
+    else if (val === false) return _bool(false);
+    else if (Array.isArray(val)) return _arr(val);
+    else if (val === null) return ts.factory.createNull();
+    else if (typeof val === "object") {
         if ("kind" in val && "pos" in val) return val as ts.Expression;
         else return _obj(val as Record<string, unknown>);
-    }
-    else return UNDEFINED;
+    } else return UNDEFINED;
 }
 
-export function _arr(array: Array<unknown>) : ts.Expression {
+export function _arr(array: Array<unknown>): ts.Expression {
     return ts.factory.createArrayLiteralExpression(array.map(val => _val(val)));
 }
 
@@ -228,7 +230,7 @@ export function _obj(props: Record<string | number | symbol, unknown>): ts.Expre
 
 export function _obj_binding_decl(elements: [string, ts.Identifier?][], value: ts.Expression): ts.VariableDeclaration {
     return factory.createVariableDeclaration(
-        factory.createObjectBindingPattern(elements.map(e => factory.createBindingElement(undefined, e[1] ? e[0] : undefined, e[1] ? e[1] : e[0], undefined))),
+        factory.createObjectBindingPattern(elements.map(e => factory.createBindingElement(undefined, e[1] ? ts.factory.createStringLiteral(e[0]) : undefined, e[1] ? e[1] : _ident(e[0]), undefined))),
         undefined,
         undefined,
         value
