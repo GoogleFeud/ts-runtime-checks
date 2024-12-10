@@ -57,7 +57,7 @@ export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse?: Block
 }
 
 export function _if_chain(ind: number, check: [ts.Expression, BlockLike][], last?: BlockLike): ts.Statement | undefined {
-    if (ind >= check.length) return last ? _stmt(last) : undefined;;
+    if (ind >= check.length) return last ? _stmt(last) : undefined;
     return factory.createIfStatement(check[ind]![0], _stmt(check[ind]![1]), _if_chain(ind + 1, check, last));
 }
 
@@ -113,6 +113,7 @@ export function _str(string: string): ts.Expression {
 }
 
 export function _num(number: number): ts.Expression {
+    if (number < 0) return factory.createPrefixUnaryExpression(ts.SyntaxKind.MinusToken, ts.factory.createNumericLiteral(Math.abs(number)));
     return factory.createNumericLiteral(number);
 }
 
@@ -197,21 +198,20 @@ export function _for_in(arr: ts.Expression, elName: ts.Identifier | string, body
     return [factory.createForInStatement(initializerCreate.declarationList, arr, _stmt(body)), initializer];
 }
 
-export function _val(val: unknown) : ts.Expression {
-     if (typeof val === "string") return _str(val);
-     else if (typeof val === "number") return _num(val);
-     else if (val === true) return _bool(true);
-     else if (val === false) return _bool(false);
-     else if (Array.isArray(val)) return _arr(val);
-     else if (val === null) return ts.factory.createNull();
-     else if (typeof val === "object") {
+export function _val(val: unknown): ts.Expression {
+    if (typeof val === "string") return _str(val);
+    else if (typeof val === "number") return _num(val);
+    else if (val === true) return _bool(true);
+    else if (val === false) return _bool(false);
+    else if (Array.isArray(val)) return _arr(val);
+    else if (val === null) return ts.factory.createNull();
+    else if (typeof val === "object") {
         if ("kind" in val && "pos" in val) return val as ts.Expression;
         else return _obj(val as Record<string, unknown>);
-    }
-    else return UNDEFINED;
+    } else return UNDEFINED;
 }
 
-export function _arr(array: Array<unknown>) : ts.Expression {
+export function _arr(array: Array<unknown>): ts.Expression {
     return ts.factory.createArrayLiteralExpression(array.map(val => _val(val)));
 }
 
