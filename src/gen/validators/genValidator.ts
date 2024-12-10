@@ -117,7 +117,9 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
             const properties = (parent: Validator) =>
                 type.getProperties().map(sym => {
                     const typeOfProp = (transformer.checker.getTypeOfSymbol(sym) || transformer.checker.getNullType()) as ts.Type;
-                    return genValidator(transformer, typeOfProp, sym.name, undefined, parent);
+                    const validator = genValidator(transformer, typeOfProp, sym.name, undefined, parent);
+                    if (validator) validator.typeData.isStringWrapped = sym.declarations?.[0] && ts.isPropertySignature(sym.declarations[0]) && ts.isStringLiteral(sym.declarations[0].name);
+                    return validator;
                 });
             const objValidator = new Validator(type, name, {kind: TypeDataKinds.Object}, exp, parent, properties);
             for (const info of ((type as ts.ObjectType).indexInfos as ts.IndexInfo[]) || []) {
@@ -125,8 +127,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 if (!keyType) continue;
                 const valueType = genValidator(transformer, info.type, "", undefined, objValidator);
                 if (valueType) {
-                    if (keyType.getBaseType() === TypeDataKinds.String) (objValidator.typeData as ObjectTypeData).stringIndexInfo = [keyType, valueType];
-                    else if (keyType.getBaseType() === TypeDataKinds.Number) (objValidator.typeData as ObjectTypeData).numberIndexInfo = [keyType, valueType];
+                    if (keyType.getBaseTypeKind() === TypeDataKinds.String) (objValidator.typeData as ObjectTypeData).stringIndexInfo = [keyType, valueType];
+                    else if (keyType.getBaseTypeKind() === TypeDataKinds.Number) (objValidator.typeData as ObjectTypeData).numberIndexInfo = [keyType, valueType];
                 }
             }
             return objValidator;

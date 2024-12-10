@@ -123,7 +123,11 @@ export interface TransformTypeData {
     postChecks?: Validator;
 }
 
-export type TypeData =
+export interface BaseTypeData {
+    isStringWrapped?: boolean;
+}
+
+export type TypeData = (
     | BooleanTypeData
     | SymbolTypeData
     | FunctionTypeData
@@ -140,7 +144,9 @@ export type TypeData =
     | ResolveTypeData
     | RecursiveTypeData
     | CheckTypeData
-    | TransformTypeData;
+    | TransformTypeData
+) &
+    BaseTypeData;
 
 export type ValidatorTargetName = string | number | ts.Identifier;
 
@@ -201,7 +207,7 @@ export class Validator {
         if (this._exp) return this._exp;
         if (!this.parent) return ts.factory.createNull();
         if (this.name === "") return this.parent.expression();
-        return (this._exp = _access(this.parent.expression(), this.name));
+        return (this._exp = _access(this.parent.expression(), this.name, this.typeData.isStringWrapped));
     }
 
     /**
@@ -374,9 +380,18 @@ export class Validator {
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
     }
 
-    getBaseType(): TypeDataKinds {
+    getBaseTypeKind(): TypeDataKinds {
         if (this.typeData.kind === TypeDataKinds.Check && this.children.length) return this.children[0]!.typeData.kind;
         return this.typeData.kind;
+    }
+
+    getBaseType() : ts.Type | undefined {
+        switch(this.typeData.kind) {
+            case TypeDataKinds.Check:
+                return this.children[0]?._original;
+            default:
+                return this._original;
+        }
     }
 
     /**

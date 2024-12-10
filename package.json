@@ -3,6 +3,12 @@
     "version": "0.6.2",
     "description": "A typescript transformer which automatically generates validation code from your types.",
     "main": "dist/index.js",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
     "scripts": {
         "test": "tsc && cd ./tests && tspc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index",
         "ci": "cd ./tests && tspc && mocha dist/integrated/**/*.js && node ./dist/snapshots/index force",
@@ -20,7 +26,8 @@
         "typescript",
         "typecheck",
         "runtime",
-        "check"
+        "check",
+        "unplugin"
     ],
     "author": "GoogleFeud",
     "license": "MIT",
@@ -33,7 +40,7 @@
         "@types/diff": "^5.0.2",
         "@types/mocha": "^9.1.0",
         "@types/node": "^22.5.5",
-        "@types/ts-expose-internals": "npm:ts-expose-internals@^5.6.2",
+        "@types/ts-expose-internals": "npm:ts-expose-internals@^5.7.2",
         "@typescript-eslint/eslint-plugin": "^5.62.0",
         "@typescript-eslint/parser": "^5.62.0",
         "chai": "^4.3.6",
@@ -43,7 +50,7 @@
         "mitata": "^0.1.6",
         "mocha": "^9.2.2",
         "prettier": "^3.2.5",
-        "ts-patch": "^3.2.1",
-        "typescript": "^5.6.2"
+        "ts-patch": "^3.3.0",
+        "typescript": "^5.7.2"
     }
 }

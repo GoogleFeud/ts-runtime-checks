@@ -57,7 +57,7 @@ export function _if(condition: ts.Expression, ifTrue: BlockLike, ifFalse?: Block
 }
 
 export function _if_chain(ind: number, check: [ts.Expression, BlockLike][], last?: BlockLike): ts.Statement | undefined {
-    if (ind >= check.length) return last ? _stmt(last) : undefined;;
+    if (ind >= check.length) return last ? _stmt(last) : undefined;
     return factory.createIfStatement(check[ind]![0], _stmt(check[ind]![1]), _if_chain(ind + 1, check, last));
 }
 
@@ -74,8 +74,9 @@ export function _var(name: ts.BindingName | string, initializer?: ts.Expression,
     ];
 }
 
-export function _ident(name: string | ts.Identifier, nonUnique?: boolean): ts.Identifier {
+export function _ident(name: string | ts.Identifier, nonUnique?: boolean, normalize?: boolean): ts.Identifier {
     if (typeof name !== "string") return name;
+    if (normalize) name = _normalizeJsName(name);
     return nonUnique ? factory.createIdentifier(name) : factory.createUniqueName(name);
 }
 
@@ -108,11 +109,12 @@ export function _throw(exp: ts.Expression): ts.Statement {
     return factory.createThrowStatement(exp);
 }
 
-export function _str(string: string): ts.Expression {
+export function _str(string: string): ts.StringLiteral {
     return factory.createStringLiteral(string);
 }
 
 export function _num(number: number): ts.Expression {
+    if (number < 0) return factory.createPrefixUnaryExpression(ts.SyntaxKind.MinusToken, ts.factory.createNumericLiteral(Math.abs(number)));
     return factory.createNumericLiteral(number);
 }
 
@@ -168,10 +170,11 @@ export function _not(exp: ts.Expression): ts.Expression {
     return factory.createPrefixUnaryExpression(ts.SyntaxKind.ExclamationToken, exp);
 }
 
-export function _access(exp: ts.Expression, key: string | number | ts.Expression): ts.Expression {
+export function _access(exp: ts.Expression, key: string | number | ts.Expression, isStringWrapped?: boolean): ts.Expression {
     if (typeof key === "string") {
         if (isInt(key)) return factory.createElementAccessExpression(exp, ts.factory.createNumericLiteral(key));
-        return ts.factory.createPropertyAccessExpression(exp, key);
+        else if (isStringWrapped) return ts.factory.createElementAccessExpression(exp, ts.factory.createStringLiteral(key));
+        else return ts.factory.createPropertyAccessExpression(exp, key);
     } else return factory.createElementAccessExpression(exp, key);
 }
 
@@ -197,21 +200,20 @@ export function _for_in(arr: ts.Expression, elName: ts.Identifier | string, body
     return [factory.createForInStatement(initializerCreate.declarationList, arr, _stmt(body)), initializer];
 }
 
-export function _val(val: unknown) : ts.Expression {
-     if (typeof val === "string") return _str(val);
-     else if (typeof val === "number") return _num(val);
-     else if (val === true) return _bool(true);
-     else if (val === false) return _bool(false);
-     else if (Array.isArray(val)) return _arr(val);
-     else if (val === null) return ts.factory.createNull();
-     else if (typeof val === "object") {
+export function _val(val: unknown): ts.Expression {
+    if (typeof val === "string") return _str(val);
+    else if (typeof val === "number") return _num(val);
+    else if (val === true) return _bool(true);
+    else if (val === false) return _bool(false);
+    else if (Array.isArray(val)) return _arr(val);
+    else if (val === null) return ts.factory.createNull();
+    else if (typeof val === "object") {
         if ("kind" in val && "pos" in val) return val as ts.Expression;
         else return _obj(val as Record<string, unknown>);
-    }
-    else return UNDEFINED;
+    } else return UNDEFINED;
 }
 
-export function _arr(array: Array<unknown>) : ts.Expression {
+export function _arr(array: Array<unknown>): ts.Expression {
     return ts.factory.createArrayLiteralExpression(array.map(val => _val(val)));
 }
 
@@ -226,13 +228,17 @@ export function _obj(props: Record<string | number | symbol, unknown>): ts.Expre
     return factory.createObjectLiteralExpression(propNodes);
 }
 
-export function _obj_binding_decl(elements: [string, ts.Identifier?][], value: ts.Expression): ts.VariableDeclaration {
-    return factory.createVariableDeclaration(
-        factory.createObjectBindingPattern(elements.map(e => factory.createBindingElement(undefined, e[1] ? e[0] : undefined, e[1] ? e[1] : e[0], undefined))),
-        undefined,
-        undefined,
-        value
+export function _obj_binding_decl(elements: [string, ts.Identifier | undefined, boolean | undefined][], value: ts.Expression): ts.VariableDeclaration {
+    const mappedBindingElements = elements.map(e =>
+        factory.createBindingElement(
+            undefined,
+            // Property name
+            e[1] ? (e[2] ? _str(e[0]) : e[0]) : undefined,
+            // Alias
+            e[1] ? e[1] : e[2] ? _normalizeJsName(e[0]) : e[0]
+        )
     );
+    return factory.createVariableDeclaration(factory.createObjectBindingPattern(mappedBindingElements), undefined, undefined, value);
 }
 
 export function _arr_binding_decl(elements: [number, ts.Identifier][], value: ts.Expression): ts.VariableDeclaration {
@@ -263,6 +269,11 @@ export function _arrow_fn(args: Array<ts.Identifier | string>, body: BlockLike):
 
 export function _assign(left: ts.Expression, right: ts.Expression): ts.Expression {
     return factory.createAssignment(left, right);
+}
+
+export function _normalizeJsName(name: string): string {
+    name = name.replace(/^[^a-zA-Z_$]/g, "_");
+    return name.replace(/[^a-zA-Z0-9_$]/g, "_");
 }
 
 export const UNDEFINED = factory.createIdentifier("undefined");

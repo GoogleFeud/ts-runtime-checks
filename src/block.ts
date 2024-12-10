@@ -1,29 +1,5 @@
 import ts from "typescript";
 
-// export class Block {
-//     nodes: Array<ts.Node>;
-//     cache: Set<ts.Symbol>;
-//     events: Array<() => void>;
-//     parent: Block<unknown> | undefined;
-//     constructor(parent?: Block) {
-//         this.nodes = [];
-//         this.cache = new Set();
-//         this.parent = parent;
-//         this.events = [];
-//     }
-
-//     isInCache(sym: ts.Symbol): boolean {
-//         // eslint-disable-next-line @typescript-eslint/no-this-alias
-//         let parent: Block<unknown> | undefined = this;
-//         while (parent) {
-//             if (parent.cache.has(sym)) return true;
-//             parent = parent.parent;
-//         }
-//         return false;
-//     }
-
-// }
-
 export interface Block<T> {
     nodes: Array<T>;
     cache: Set<ts.Symbol>;

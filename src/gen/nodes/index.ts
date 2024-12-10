@@ -376,9 +376,10 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
         }
         case TypeDataKinds.Object: {
             const checks: ts.Statement[] = [];
-            const names: [string, ts.Identifier][] = [];
+            const names: [string, ts.Identifier, boolean | undefined][] = [];
             for (const child of validator.children) {
-                if (!child.isRedirect() && child.weigh() > 4 && typeof child.name === "string") names.push([child.name, child.setAlias(() => _ident(child.name as string))]);
+                if (!child.isRedirect() && child.weigh() > 4 && typeof child.name === "string")
+                    names.push([child.name, child.setAlias(() => _ident(child.name as string, false, child.typeData.isStringWrapped)), child.typeData.isStringWrapped]);
                 checks.push(...validateType(child, ctx));
             }
 
@@ -430,13 +431,21 @@ export function genNode(validator: Validator, ctx: NodeGenContext): GenResult {
                         const indexTypeCheck = genNode(indexType, ctx);
                         checkBody = [
                             stmt,
-                            _if(indexTypeCheck.condition, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", indexType.translate("to be ", true)])], true)),
+                            _if(
+                                indexTypeCheck.condition,
+                                error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), " ", indexType.translate("to be ", true)])], true)
+                            ),
                             ...validateType(valueType, ctx)
                         ];
                     } else checkBody = validateType(valueType, ctx);
 
                     if (finalCheck) finalCheck = _if(typeCheck, checkBody, finalCheck);
-                    else finalCheck = _if(typeCheck, checkBody, error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), indexType.translate("to be ", true)])], true));
+                    else
+                        finalCheck = _if(
+                            typeCheck,
+                            checkBody,
+                            error(ctx, [validator, joinElements(["Expected key ", keyName, " of ", ...validator.path(), indexType.translate("to be ", true)])], true)
+                        );
                 }
 
                 checks.push(_for_in(validator.expression(), keyName, finalCheck)[0]);
