@@ -7,10 +7,6 @@
         ".": {
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        },
-        "./unplugin": {
-            "types": "./dist/unplugin/index.d.ts",
-            "default": "./dist/unplugin/index.js"
         }
     },
     "scripts": {

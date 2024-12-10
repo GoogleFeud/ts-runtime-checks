@@ -24,14 +24,12 @@ export type CodeReferenceExpand = {kind: CodeReferenceKind; expression: ts.Expre
 
 export type CodeReferenceReplacement = Record<string, ts.Expression | ((...args: ts.Expression[]) => ts.Node)>;
 
-<<<<<<< HEAD
 const DEFAULT_MARKER = Markers["Assert"] as MarkerFn;
-=======
+
 export interface SymbolImportInfo {
     identifierMap: Map<ts.Symbol, ts.Identifier>;
     importStatements: ts.ImportDeclaration[];
 }
->>>>>>> 6554491137984c00899d86706118722bdb5a05b3
 
 export class Transformer {
     checker: ts.TypeChecker;
