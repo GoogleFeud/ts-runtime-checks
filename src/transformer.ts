@@ -39,6 +39,7 @@ export class Transformer {
     toBeResolved: Map<ts.SignatureDeclaration, ToBeResolved[]>;
     validatedDecls: Map<ts.Declaration, ts.FunctionLikeDeclaration>;
     symbolsToImport: SymbolImportInfo;
+    private boundDeclarationVisitor = this.declarationVisitor.bind(this);
     constructor(program: ts.Program, ctx: ts.TransformationContext, config: TsRuntimeChecksConfig, toBeResolved = new Map(), validatedDecls = new Map()) {
         this.checker = program.getTypeChecker();
         this.program = program;
@@ -52,12 +53,12 @@ export class Transformer {
         };
     }
 
-    extend(program: ts.Program, ctx: ts.TransformationContext) : Transformer {
+    extend(program: ts.Program, ctx: ts.TransformationContext): Transformer {
         return new Transformer(program, ctx, this.config, this.toBeResolved);
     }
 
     run(node: ts.SourceFile): ts.SourceFile {
-        if (node.isDeclarationFile) return node;
+        if (node.isDeclarationFile) return ts.visitEachChild(node, this.boundDeclarationVisitor, this.ctx);
         const children = this.visitEach(node.statements);
         const allChildren = [...this.symbolsToImport.importStatements, ...children];
         this.symbolsToImport = {identifierMap: new Map(), importStatements: []};
@@ -238,10 +239,9 @@ export class Transformer {
             const markerName = this.getPropType(type, "marker");
             if (!markerName || !markerName.isStringLiteral()) return;
             marker = Markers[markerName.value] as MarkerFn;
-            const params = this.getPropType(type, "marker_params");
-            if (!params || !this.checker.isTupleType(params)) return;
-            markerParams = this.checker.getTypeArguments(params as ts.TypeReference) as ts.Type[];
-            if (!markerParams.length) markerParams = node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [];
+            const params = this.getMarkerParams(node, type);
+            if (!params) return;
+            markerParams = params;
         } else {
             // TODO: For now we only have one marker so setting the params is straightforward
             // Change this when adding new markers
@@ -261,16 +261,18 @@ export class Transformer {
         ];
     }
 
+    getMarkerParams(node: ts.TypeReferenceNode, type: ts.Type): ts.Type[] | undefined {
+        const params = this.getPropType(type, "marker_params");
+        if (!params || !this.checker.isTupleType(params)) return;
+        let markerParams = this.checker.getTypeArguments(params as ts.TypeReference) as ts.Type[];
+        if (!markerParams.length) markerParams = node.typeArguments?.map(arg => this.checker.getTypeAtLocation(arg)) || [];
+        return markerParams;
+    }
+
     getPropType(type: ts.Type, prop: string): ts.Type | undefined {
         const propSym = type.getProperty(`__$${prop}`);
         if (!propSym || !propSym.valueDeclaration) return;
         return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(propSym, propSym.valueDeclaration));
-    }
-
-    resolveActualType(t: ts.Type): ts.Type | undefined {
-        const prop = t.getProperty("__$marker");
-        if (!prop || !prop.valueDeclaration) return;
-        return this.checker.getNonNullableType(this.checker.getTypeOfSymbolAtLocation(prop, prop.valueDeclaration));
     }
 
     typeValueToNode(t: ts.Type, firstOnly?: true, exprReplacements?: Record<string, ts.Expression>): ts.Expression;
@@ -349,5 +351,37 @@ export class Transformer {
             }
         }
         return refs;
+    }
+
+    declarationVisitor(node: ts.Node): ts.Node | undefined {
+        const typeOfNode = this.checker.getTypeAtLocation(node);
+        if (ts.isTypeReferenceNode(node)) {
+            const markerName = this.getPropType(typeOfNode, "marker");
+            if (markerName) {
+                const params = this.getMarkerParams(node, typeOfNode);
+                if (!params || !params[0]) return node;
+                return this.checker.typeToTypeNode(params[0], undefined, undefined);
+            }
+            const utilityMarker = this.getPropType(typeOfNode, "name");
+            if (utilityMarker && utilityMarker.isStringLiteral()) {
+                if (utilityMarker.value === "Check") {
+                    const validator = genValidator(this, typeOfNode, "");
+                    if (!validator || !validator.children[0]) return;
+                    return this.checker.typeToTypeNode(validator.getBaseType()!, undefined, undefined);
+                } else if (utilityMarker.value === "NoCheck") {
+                    return node.typeArguments?.[0];
+                } else return;
+            }
+        } else if (typeOfNode.isUnion() && ts.isTypeNode(node)) {
+            const validator = genValidator(this, typeOfNode, "");
+            if (!validator) return node;
+            return ts.factory.createUnionTypeNode(
+                validator.children
+                    .map(child => child.getBaseType())
+                    .filter(t => t)
+                    .map(baseType => this.checker.typeToTypeNode(baseType!, undefined, undefined)!)
+            );
+        }
+        return ts.visitEachChild(node, this.boundDeclarationVisitor, this.ctx);
     }
 }

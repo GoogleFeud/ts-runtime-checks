@@ -380,9 +380,18 @@ export class Validator {
         return this.children.reduce((prev, current) => prev + current.weigh(), sum);
     }
 
-    getBaseType(): TypeDataKinds {
+    getBaseTypeKind(): TypeDataKinds {
         if (this.typeData.kind === TypeDataKinds.Check && this.children.length) return this.children[0]!.typeData.kind;
         return this.typeData.kind;
+    }
+
+    getBaseType() : ts.Type | undefined {
+        switch(this.typeData.kind) {
+            case TypeDataKinds.Check:
+                return this.children[0]?._original;
+            default:
+                return this._original;
+        }
     }
 
     /**

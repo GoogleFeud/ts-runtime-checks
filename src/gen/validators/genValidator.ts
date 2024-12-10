@@ -127,8 +127,8 @@ export function genValidator(transformer: Transformer, type: ts.Type | undefined
                 if (!keyType) continue;
                 const valueType = genValidator(transformer, info.type, "", undefined, objValidator);
                 if (valueType) {
-                    if (keyType.getBaseType() === TypeDataKinds.String) (objValidator.typeData as ObjectTypeData).stringIndexInfo = [keyType, valueType];
-                    else if (keyType.getBaseType() === TypeDataKinds.Number) (objValidator.typeData as ObjectTypeData).numberIndexInfo = [keyType, valueType];
+                    if (keyType.getBaseTypeKind() === TypeDataKinds.String) (objValidator.typeData as ObjectTypeData).stringIndexInfo = [keyType, valueType];
+                    else if (keyType.getBaseTypeKind() === TypeDataKinds.Number) (objValidator.typeData as ObjectTypeData).numberIndexInfo = [keyType, valueType];
                 }
             }
             return objValidator;
