@@ -1,6 +1,6 @@
 {
     "name": "ts-runtime-checks",
-    "version": "0.6.3",
+    "version": "0.6.4",
     "description": "A typescript transformer which automatically generates validation code from your types.",
     "main": "dist/index.js",
     "exports": {
