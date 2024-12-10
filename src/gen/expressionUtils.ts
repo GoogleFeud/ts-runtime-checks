@@ -76,6 +76,9 @@ export function _var(name: ts.BindingName | string, initializer?: ts.Expression,
 
 export function _ident(name: string | ts.Identifier, nonUnique?: boolean): ts.Identifier {
     if (typeof name !== "string") return name;
+    // normalizes the name to be a valid identifier
+    name = name.replace(/^[^a-zA-Z_$]/g, "_");
+    name = name.replace(/[^a-zA-Z0-9_$]/g, "_");
     return nonUnique ? factory.createIdentifier(name) : factory.createUniqueName(name);
 }
 
@@ -172,7 +175,7 @@ export function _not(exp: ts.Expression): ts.Expression {
 export function _access(exp: ts.Expression, key: string | number | ts.Expression): ts.Expression {
     if (typeof key === "string") {
         if (isInt(key)) return factory.createElementAccessExpression(exp, ts.factory.createNumericLiteral(key));
-        return ts.factory.createPropertyAccessExpression(exp, key);
+        return ts.factory.createElementAccessExpression(exp, ts.factory.createStringLiteral(key));
     } else return factory.createElementAccessExpression(exp, key);
 }
 
@@ -228,7 +231,7 @@ export function _obj(props: Record<string | number | symbol, unknown>): ts.Expre
 
 export function _obj_binding_decl(elements: [string, ts.Identifier?][], value: ts.Expression): ts.VariableDeclaration {
     return factory.createVariableDeclaration(
-        factory.createObjectBindingPattern(elements.map(e => factory.createBindingElement(undefined, e[1] ? e[0] : undefined, e[1] ? e[1] : e[0], undefined))),
+        factory.createObjectBindingPattern(elements.map(e => factory.createBindingElement(undefined, e[1] ? ts.factory.createStringLiteral(e[0]) : undefined, e[1] ? e[1] : _ident(e[0]), undefined))),
         undefined,
         undefined,
         value
