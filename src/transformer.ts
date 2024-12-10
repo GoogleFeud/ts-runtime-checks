@@ -24,7 +24,14 @@ export type CodeReferenceExpand = {kind: CodeReferenceKind; expression: ts.Expre
 
 export type CodeReferenceReplacement = Record<string, ts.Expression | ((...args: ts.Expression[]) => ts.Node)>;
 
+<<<<<<< HEAD
 const DEFAULT_MARKER = Markers["Assert"] as MarkerFn;
+=======
+export interface SymbolImportInfo {
+    identifierMap: Map<ts.Symbol, ts.Identifier>;
+    importStatements: ts.ImportDeclaration[];
+}
+>>>>>>> 6554491137984c00899d86706118722bdb5a05b3
 
 export class Transformer {
     checker: ts.TypeChecker;
@@ -33,21 +40,22 @@ export class Transformer {
     ctx: ts.TransformationContext;
     toBeResolved: Map<ts.SignatureDeclaration, ToBeResolved[]>;
     validatedDecls: Map<ts.Declaration, ts.FunctionLikeDeclaration>;
-    symbolsToImport: {
-        identifierMap: Map<ts.Symbol, ts.Identifier>;
-        importStatements: ts.ImportDeclaration[];
-    };
-    constructor(program: ts.Program, ctx: ts.TransformationContext, config: TsRuntimeChecksConfig) {
+    symbolsToImport: SymbolImportInfo;
+    constructor(program: ts.Program, ctx: ts.TransformationContext, config: TsRuntimeChecksConfig, toBeResolved = new Map(), validatedDecls = new Map()) {
         this.checker = program.getTypeChecker();
         this.program = program;
         this.ctx = ctx;
         this.config = config;
-        this.toBeResolved = new Map();
-        this.validatedDecls = new Map();
+        this.toBeResolved = toBeResolved;
+        this.validatedDecls = validatedDecls;
         this.symbolsToImport = {
             identifierMap: new Map(),
             importStatements: []
         };
+    }
+
+    extend(program: ts.Program, ctx: ts.TransformationContext) : Transformer {
+        return new Transformer(program, ctx, this.config, this.toBeResolved);
     }
 
     run(node: ts.SourceFile): ts.SourceFile {
